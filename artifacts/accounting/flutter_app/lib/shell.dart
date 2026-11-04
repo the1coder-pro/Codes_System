@@ -44,7 +44,7 @@ class _AppShellState extends State<AppShell> {
           children: [
             _titleStrip(),
             _menuBar(),
-            _ribbon(narrow),
+            _ribbon(),
             const Divider(height: 1, color: AppColors.line),
             Expanded(child: _content()),
             _StatusBar(narrow: narrow),
@@ -93,11 +93,15 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget _menuBar() => Container(
+    key: const ValueKey('top-menu-bar'),
     color: Colors.white,
     height: 32,
+    width: double.infinity,
+    alignment: AlignmentDirectional.centerStart,
     child: SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           _menu('القائمة الرئيسية', [
             ('الشاشة الرئيسية', () => go(ShellView.home)),
@@ -121,7 +125,7 @@ class _AppShellState extends State<AppShell> {
     ),
   );
 
-  Widget _ribbon(bool narrow) {
+  Widget _ribbon() {
     final right = [
       _RibbonButton(
         glyph: '▤',
@@ -193,27 +197,36 @@ class _AppShellState extends State<AppShell> {
     ];
     return Container(
       color: AppColors.ribbon,
-      height: 74,
-      child: narrow
-          ? ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              children: [
-                ...right,
-                const VerticalDivider(width: 14, indent: 12, endIndent: 12),
-                ...left,
-              ],
-            )
-          : Row(
-              children: [
-                const SizedBox(width: 6),
-                ...right,
-                const Spacer(),
-                Container(width: 1, height: 44, color: AppColors.line),
-                ...left,
-                const SizedBox(width: 6),
-              ],
+      height: 86,
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: SizedBox(
+              height: 86,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [const SizedBox(width: 6), ...right],
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(width: 1, height: 44, color: AppColors.line),
+                      ...left,
+                      const SizedBox(width: 6),
+                    ],
+                  ),
+                ],
+              ),
             ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -259,37 +272,41 @@ class _RibbonButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-      child: Material(
-        color: active ? const Color(0xFFDDEBFA) : Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(3),
-          side: BorderSide(
-            color: active ? const Color(0xFF8DB6E2) : Colors.transparent,
+      child: SizedBox(
+        height: 74,
+        child: Material(
+          key: ValueKey('ribbon-$label'),
+          color: active ? const Color(0xFFDDEBFA) : Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(3),
+            side: BorderSide(
+              color: active ? const Color(0xFF8DB6E2) : Colors.transparent,
+            ),
           ),
-        ),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(3),
-          hoverColor: const Color(0xFFE8F1FB),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  glyph,
-                  style: TextStyle(
-                    fontSize: 22,
-                    color: color,
-                    fontWeight: FontWeight.w800,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(3),
+            hoverColor: const Color(0xFFE8F1FB),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    glyph,
+                    style: TextStyle(
+                      fontSize: 22,
+                      color: color,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: const TextStyle(fontSize: 12.5, height: 1.2),
-                ),
-              ],
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: const TextStyle(fontSize: 12.5, height: 1.2),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -27,6 +27,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   int? selected;
   List<Item> catalog = [];
   bool draftLoaded = false;
+  String? selectedPayment;
 
   DateTime invDate = DateTime.now();
   DateTime delivDate = DateTime.now();
@@ -154,6 +155,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     'storeCredit': storeCredit,
     'storeDebit': storeDebit,
     'taxable': taxable,
+    'selectedPayment': selectedPayment,
     'lines': lines.map((l) => l.toJson()).toList(),
   };
 
@@ -168,6 +170,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     storeCredit = d['storeCredit'] ?? storeCredit;
     storeDebit = d['storeDebit'] ?? storeDebit;
     taxable = d['taxable'] ?? taxable;
+    selectedPayment = d['selectedPayment'] as String?;
     lines.clear();
     lineCtl.clear();
     for (final raw in (d['lines'] as List? ?? [])) {
@@ -203,6 +206,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       lines.clear();
       lineCtl.clear();
       selected = null;
+      selectedPayment = null;
       for (final k in ['number', 'account', 'taxNo', 'notes']) {
         h[k]!.text = '';
       }
@@ -1015,37 +1019,115 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     ),
   );
 
+  Future<void> _editPayment(String label, String key) async {
+    final form = GlobalKey<FormState>();
+    var amount = h[key]!.text;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        void apply() {
+          if (form.currentState!.validate()) {
+            Navigator.of(dialogContext).pop(amount);
+          }
+        }
+
+        return AlertDialog(
+          title: Text('مبلغ الدفع — $label'),
+          content: SizedBox(
+            width: 320,
+            child: Form(
+              key: form,
+              child: TextFormField(
+                key: const ValueKey('payment-amount'),
+                initialValue: amount,
+                autofocus: true,
+                textDirection: TextDirection.ltr,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(labelText: 'المبلغ'),
+                onChanged: (value) => amount = value.trim(),
+                onFieldSubmitted: (_) => apply(),
+                validator: (value) {
+                  final parsed = double.tryParse(value?.trim() ?? '');
+                  if (parsed == null || !parsed.isFinite || parsed < 0) {
+                    return 'أدخل مبلغاً صحيحاً لا يقل عن صفر';
+                  }
+                  return null;
+                },
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(onPressed: apply, child: const Text('تأكيد المبلغ')),
+          ],
+        );
+      },
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      selectedPayment = key;
+      h[key]!.text = money(double.parse(result));
+    });
+  }
+
   Widget _pay(String label, String glyph, String key) => Expanded(
-    child: Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppColors.line),
-      ),
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
-          ),
-          Text(
-            glyph,
-            style: const TextStyle(
-              fontSize: 22,
-              color: AppColors.green,
-              fontWeight: FontWeight.w800,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Semantics(
+        button: true,
+        selected: selectedPayment == key,
+        label: '$label، ${h[key]!.text}',
+        child: Material(
+          key: ValueKey('payment-$key'),
+          color: selectedPayment == key ? AppColors.mint : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(3),
+            side: BorderSide(
+              color: selectedPayment == key ? AppColors.green : AppColors.line,
+              width: selectedPayment == key ? 2 : 1,
             ),
           ),
-          SizedBox(
-            height: 30,
-            child: TextBox(
-              controller: h[key]!,
-              align: TextAlign.center,
-              onChanged: (_) => setState(() {}),
+          child: InkWell(
+            onTap: () => _editPayment(label, key),
+            borderRadius: BorderRadius.circular(3),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              child: Column(
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    glyph,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      color: AppColors.green,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Text(
+                      money(_n(key)),
+                      textDirection: TextDirection.ltr,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
+        ),
       ),
     ),
   );
