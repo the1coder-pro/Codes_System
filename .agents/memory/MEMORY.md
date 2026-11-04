@@ -1,0 +1,1 @@
+- [Flutter preview rendering](flutter-preview.md) — CPU-only preview browsers need extra time for Flutter's first frame; an early blank capture is not conclusive.

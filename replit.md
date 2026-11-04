@@ -1,8 +1,13 @@
-# [Project name]
+# Arabic Accounting Flutter UI
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Responsive Arabic RTL accounting interface reproducing the user's desktop screenshots in Flutter/Dart.
 
 ## Run & Operate
+
+- `pnpm --filter @workspace/accounting run dev` — builds Flutter web and serves it on the managed `PORT`.
+- `cd artifacts/accounting/flutter_app && flutter run -d chrome` — standard Flutter development outside the managed preview.
+- `cd artifacts/accounting/flutter_app && flutter analyze` — Dart static analysis.
+- Flutter SDK is installed through the project's Nix system dependencies.
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
 - `pnpm run typecheck` — full typecheck across all packages
@@ -22,11 +27,15 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/accounting/flutter_app/` — actual Flutter project; source in `lib/`.
+- `artifacts/accounting/serve.mjs` — development static hosting for compiled Flutter web.
+- The React files left by the artifact bootstrap are not used by the running UI.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Flutter, not React, is the requested implementation. The web artifact scaffold is only used to register and serve Flutter web.
+- This is a UI project, not a production accounting backend. Inventory and invoice drafts use device-local storage.
+- Bundle the Arabic font and CanvasKit locally to avoid depending on external font/rendering CDNs.
 
 ## Product
 
@@ -34,7 +43,11 @@ _Describe the high-level user-facing capabilities of this app once they exist._
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Preserve the screenshot layout on large screens and adapt it for small screens.
+- The main screen is plain blue instead of the original large background graphic/text.
+- Keep the top buttons and bottom status bar; inventory replaces the background inside that shell.
+- Invoicing opens the green type menu, and selecting a type opens the invoice form.
+- No icons for now; text and simple symbols are used.
 
 ## Gotchas
 

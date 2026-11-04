@@ -53,3 +53,6 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+.dart_tool/
+**/flutter_app/build/
+**/flutter_app/.flutter-plugins-dependencies
