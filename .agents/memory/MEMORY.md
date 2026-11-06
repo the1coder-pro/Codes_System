@@ -1,1 +1,2 @@
 - [Flutter preview rendering](flutter-preview.md) — CPU-only preview browsers need extra time for Flutter's first frame; an early blank capture is not conclusive.
+- [Flutter publishing dependencies](flutter-publishing.md) — release builds must restore Dart packages explicitly; the preview's home-directory cache is absent during publishing.

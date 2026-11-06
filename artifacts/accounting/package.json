@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm run build && node serve.mjs",
-    "build": "cd flutter_app && flutter build web --release --no-web-resources-cdn --output ../dist/public",
+    "build": "cd flutter_app && flutter pub get --enforce-lockfile && flutter build web --no-pub --release --no-web-resources-cdn --output ../dist/public",
     "serve": "node serve.mjs",
     "typecheck": "cd flutter_app && flutter analyze"
   },
