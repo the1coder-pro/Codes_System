@@ -3,6 +3,7 @@ import 'package:accounting_ui/barcode_screen.dart';
 import 'package:accounting_ui/invoice_screen.dart';
 import 'package:accounting_ui/theme.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,38 +16,93 @@ void main() {
     expect(find.textContaining('مؤسسة العيدان'), findsOneWidget);
   });
 
-  testWidgets(
-    'menus align right and ribbon buttons have equal padded heights',
-    (tester) async {
-      tester.view.physicalSize = const Size(1280, 900);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      await tester.pumpWidget(const AccountingApp());
-      await tester.pumpAndSettle();
-      final menu = tester.getRect(find.text('القائمة الرئيسية'));
-      expect(menu.right, greaterThan(1200));
-      final buttons = [
-        'الفواتير\nوأوامر الصرف',
-        'طباعة\nالباركود',
-        'الحسابات',
-        'الأصناف',
-        'ارسال واعتماد\nالفواتير',
-        'آلة حاسبة',
-        'تحديث',
-        'موقعنا',
-        'Arabic',
-        'خروج',
-      ];
-      for (final label in buttons) {
-        expect(
-          tester.getSize(find.byKey(ValueKey('ribbon-$label'))).height,
-          74,
-        );
-      }
-      expect(tester.takeException(), isNull);
-    },
-  );
+  testWidgets('menus align right and ribbon buttons stay compact on desktop', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const AccountingApp());
+    await tester.pumpAndSettle();
+    final menu = tester.getRect(find.text('القائمة الرئيسية'));
+    expect(menu.right, greaterThan(1200));
+    final buttons = [
+      'الفواتير\nوأوامر الصرف',
+      'طباعة\nالباركود',
+      'الحسابات',
+      'الأصناف',
+      'ارسال واعتماد\nالفواتير',
+      'آلة حاسبة',
+      'تحديث',
+      'موقعنا',
+      'Arabic',
+      'خروج',
+    ];
+    for (final label in buttons) {
+      expect(tester.getSize(find.byKey(ValueKey('ribbon-$label'))).height, 82);
+      final rect = tester.getRect(find.byKey(ValueKey('ribbon-$label')));
+      expect(rect.left, greaterThanOrEqualTo(0));
+      expect(rect.right, lessThanOrEqualTo(1280));
+    }
+    final ribbon = find.byKey(const ValueKey('ribbon-container'));
+    expect(
+      find.descendant(of: ribbon, matching: find.byType(SingleChildScrollView)),
+      findsNothing,
+    );
+    final iconRect = tester.getRect(find.text('🧾'));
+    final labelRect = tester.getRect(find.text('الفواتير وأوامر الصرف'));
+    expect(iconRect.center.dx, closeTo(labelRect.center.dx, 1));
+    expect(iconRect.bottom, lessThan(labelRect.top));
+    final hoveredButton = find.byKey(
+      const ValueKey('ribbon-الفواتير\nوأوامر الصرف'),
+    );
+    final initialRect = tester.getRect(hoveredButton);
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: initialRect.center);
+    await mouse.moveTo(initialRect.center);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.getRect(hoveredButton), initialRect);
+    await mouse.removePointer();
+    expect(buildFluentTheme().typography.body!.fontFamily, 'IBMPlexSansArabic');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('small screens show the full toolbar without horizontal scroll', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 850);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const AccountingApp());
+    await tester.pumpAndSettle();
+
+    final ribbon = find.byKey(const ValueKey('ribbon-container'));
+    for (final label in [
+      'الفواتير\nوأوامر الصرف',
+      'طباعة\nالباركود',
+      'الحسابات',
+      'الأصناف',
+      'ارسال واعتماد\nالفواتير',
+      'آلة حاسبة',
+      'تحديث',
+      'موقعنا',
+      'Arabic',
+      'خروج',
+    ]) {
+      final button = find.byKey(ValueKey('ribbon-$label'));
+      expect(button, findsOneWidget);
+      final rect = tester.getRect(button);
+      expect(rect.left, greaterThanOrEqualTo(0));
+      expect(rect.right, lessThanOrEqualTo(400));
+    }
+    expect(
+      find.descendant(of: ribbon, matching: find.byType(SingleChildScrollView)),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'payment buttons open validated amounts and support split payments',
@@ -140,6 +196,8 @@ void main() {
     );
     await tester.tap(find.text('حفظ'));
     await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
     const newAccountRow = ValueKey('account-row-1000006');
     expect(find.byKey(newAccountRow), findsOneWidget);
 
@@ -172,6 +230,11 @@ void main() {
     expect(find.text('طباعة الباركود'), findsOneWidget);
     expect(find.text('ورق تصوير A4'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('barcode-row-2004')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('barcode-date-تاريخ الإنتاج')));
+    await tester.pumpAndSettle();
+    expect(find.byType(fluent.DatePicker), findsOneWidget);
+    await tester.tap(find.text('إلغاء'));
     await tester.pumpAndSettle();
     final barcodeField = tester.widget<EditableText>(
       find.descendant(

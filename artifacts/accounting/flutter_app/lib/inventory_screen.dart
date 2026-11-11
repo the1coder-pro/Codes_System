@@ -453,8 +453,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
         ),
         Row(
           children: [
-            Checkbox(
-              value: draft.unused,
+            fluent.Checkbox(
+              checked: draft.unused,
               onChanged: e ? (v) => setState(() => draft.unused = v!) : null,
             ),
             const Text(
@@ -561,8 +561,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
               cell: (r, c) {
                 if (c == 8) {
                   return Center(
-                    child: Checkbox(
-                      value: draft.units[r].quick,
+                    child: fluent.Checkbox(
+                      checked: draft.units[r].quick,
                       onChanged: editing
                           ? (v) => setState(() => draft.units[r].quick = v!)
                           : null,

@@ -74,19 +74,40 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
 
   Future<void> _chooseDate(bool production) async {
     final initial = production ? productionDate : expiryDate;
-    final date = await showDatePicker(
+    var selectedDate = initial;
+    final confirmed = await fluent.showDialog<bool>(
       context: context,
-      initialDate: initial,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      helpText: production ? 'تاريخ الإنتاج' : 'تاريخ الانتهاء',
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => fluent.ContentDialog(
+          title: Text(production ? 'تاريخ الإنتاج' : 'تاريخ الانتهاء'),
+          content: SizedBox(
+            width: 340,
+            child: fluent.DatePicker(
+              selected: selectedDate,
+              startDate: DateTime(2000),
+              endDate: DateTime(2100),
+              onChanged: (date) => setDialogState(() => selectedDate = date),
+            ),
+          ),
+          actions: [
+            fluent.Button(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('إلغاء'),
+            ),
+            fluent.FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('اختيار'),
+            ),
+          ],
+        ),
+      ),
     );
-    if (date == null || !mounted) return;
+    if (confirmed != true || !mounted) return;
     setState(() {
       if (production) {
-        productionDate = date;
+        productionDate = selectedDate;
       } else {
-        expiryDate = date;
+        expiryDate = selectedDate;
       }
     });
   }
@@ -365,6 +386,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
       ),
       const SizedBox(height: 4),
       fluent.Button(
+        key: ValueKey('barcode-date-$label'),
         onPressed: onTap,
         style: fluent.ButtonStyle(
           backgroundColor: const WidgetStatePropertyAll(Colors.white),
@@ -434,7 +456,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                 const Divider(height: 1),
                 Expanded(
                   child: loading
-                      ? const Center(child: CircularProgressIndicator())
+                      ? const Center(child: fluent.ProgressRing())
                       : visibleItems.isEmpty
                       ? const Center(child: Text('لا توجد أصناف مطابقة'))
                       : ListView.builder(

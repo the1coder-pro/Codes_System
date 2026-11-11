@@ -83,11 +83,12 @@ class _AppShellState extends State<AppShell> {
   );
 
   Widget _menu(String title, List<(String, VoidCallback)> entries) {
+    final compact = MediaQuery.sizeOf(context).width < 600;
     return fluent.DropDownButton(
-      title: Text(title, style: const TextStyle(fontSize: 13)),
+      title: Text(title, style: TextStyle(fontSize: compact ? 11 : 13)),
       style: fluent.ButtonStyle(
-        padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: compact ? 4 : 10, vertical: 3),
         ),
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
@@ -100,40 +101,53 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  Widget _menuBar() => Container(
-    key: const ValueKey('top-menu-bar'),
-    color: Colors.white,
-    height: 32,
-    width: double.infinity,
-    alignment: AlignmentDirectional.centerStart,
-    child: SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _menu('القائمة الرئيسية', [
-            ('الشاشة الرئيسية', () => go(ShellView.home)),
-            ('الفواتير وأوامر الصرف', () => go(ShellView.invoiceMenu)),
-            ('الأصناف / المخزون', () => go(ShellView.inventory)),
-            ('الحسابات', () => go(ShellView.accounts)),
-            ('طباعة الباركود', () => go(ShellView.barcode)),
-          ]),
-          _menu('إدارة', [
-            ('المستخدمون والصلاحيات', () => soon('المستخدمون')),
-            ('بيانات المنشأة', () => soon('بيانات المنشأة')),
-          ]),
-          _menu('أدوات', [
-            ('آلة حاسبة', calculator),
-            ('نسخة احتياطية', () => soon('النسخ الاحتياطي')),
-          ]),
-          _menu('الأصناف', [
-            ('بطاقة صنف', () => go(ShellView.inventory)),
-            ('طباعة الباركود', () => go(ShellView.barcode)),
-          ]),
-        ],
-      ),
-    ),
-  );
+  Widget _menuBar() {
+    final compact = MediaQuery.sizeOf(context).width < 600;
+    final mainMenu = _menu('القائمة الرئيسية', [
+      ('الشاشة الرئيسية', () => go(ShellView.home)),
+      ('الفواتير وأوامر الصرف', () => go(ShellView.invoiceMenu)),
+      ('الأصناف / المخزون', () => go(ShellView.inventory)),
+      ('الحسابات', () => go(ShellView.accounts)),
+      ('طباعة الباركود', () => go(ShellView.barcode)),
+    ]);
+    final adminMenu = _menu('إدارة', [
+      ('المستخدمون والصلاحيات', () => soon('المستخدمون')),
+      ('بيانات المنشأة', () => soon('بيانات المنشأة')),
+    ]);
+    final toolsMenu = _menu('أدوات', [
+      ('آلة حاسبة', calculator),
+      ('نسخة احتياطية', () => soon('النسخ الاحتياطي')),
+    ]);
+    final itemsMenu = _menu('الأصناف', [
+      ('بطاقة صنف', () => go(ShellView.inventory)),
+      ('طباعة الباركود', () => go(ShellView.barcode)),
+    ]);
+    return Container(
+      key: const ValueKey('top-menu-bar'),
+      color: Colors.white,
+      height: compact ? 56 : 32,
+      width: double.infinity,
+      alignment: AlignmentDirectional.centerStart,
+      child: compact
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [mainMenu, adminMenu],
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [toolsMenu, itemsMenu],
+                ),
+              ],
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [mainMenu, adminMenu, toolsMenu, itemsMenu],
+            ),
+    );
+  }
 
   Widget _ribbon() {
     final right = [
@@ -208,36 +222,80 @@ class _AppShellState extends State<AppShell> {
       ),
     ];
     return Container(
+      key: const ValueKey('ribbon-container'),
       color: AppColors.ribbon,
-      height: 86,
       child: LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth),
-            child: SizedBox(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          if (width >= 1400) {
+            return SizedBox(
               height: 86,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: width),
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: [const SizedBox(width: 6), ...right],
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(width: 1, height: 44, color: AppColors.line),
-                      ...left,
-                      const SizedBox(width: 6),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [const SizedBox(width: 6), ...right],
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 1,
+                            height: 44,
+                            color: AppColors.line,
+                          ),
+                          ...left,
+                          const SizedBox(width: 6),
+                        ],
+                      ),
                     ],
                   ),
+                ),
+              ),
+            );
+          }
+
+          Widget compactGroup(
+            List<_RibbonButton> buttons, {
+            bool dense = false,
+          }) {
+            return Row(
+              children: [
+                for (final button in buttons)
+                  Expanded(child: button.asStacked(dense: dense)),
+              ],
+            );
+          }
+
+          if (width < 700) {
+            return SizedBox(
+              height: 124,
+              child: Column(
+                children: [
+                  Expanded(child: compactGroup(right, dense: true)),
+                  Expanded(child: compactGroup(left, dense: true)),
                 ],
               ),
+            );
+          }
+
+          return SizedBox(
+            height: 88,
+            child: Row(
+              children: [
+                Expanded(child: compactGroup(left)),
+                Container(width: 1, height: 46, color: AppColors.line),
+                Expanded(child: compactGroup(right)),
+              ],
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -275,6 +333,8 @@ class _RibbonButton extends StatelessWidget {
   final String label;
   final Color color;
   final bool active;
+  final bool stacked;
+  final bool dense;
   final VoidCallback onTap;
   const _RibbonButton({
     required this.glyph,
@@ -282,15 +342,32 @@ class _RibbonButton extends StatelessWidget {
     required this.color,
     required this.onTap,
     this.active = false,
+    this.stacked = false,
+    this.dense = false,
   });
+
+  _RibbonButton asStacked({bool dense = false}) => _RibbonButton(
+    glyph: glyph,
+    label: label,
+    color: color,
+    active: active,
+    onTap: onTap,
+    stacked: true,
+    dense: dense,
+  );
 
   @override
   Widget build(BuildContext context) {
+    final buttonHeight = stacked ? (dense ? 58.0 : 82.0) : 74.0;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+      padding: EdgeInsets.symmetric(
+        horizontal: stacked ? 1 : 2,
+        vertical: stacked ? (dense ? 0 : 2) : 6,
+      ),
       child: SizedBox(
         key: ValueKey('ribbon-$label'),
-        height: 74,
+        width: stacked ? double.infinity : null,
+        height: buttonHeight,
         child: Container(
           decoration: BoxDecoration(
             border: Border.all(
@@ -301,8 +378,11 @@ class _RibbonButton extends StatelessWidget {
           child: fluent.Button(
             onPressed: onTap,
             style: fluent.ButtonStyle(
-              padding: const WidgetStatePropertyAll(
-                EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: WidgetStatePropertyAll(
+                EdgeInsets.symmetric(
+                  horizontal: stacked ? 2 : 10,
+                  vertical: stacked ? 2 : 8,
+                ),
               ),
               backgroundColor: WidgetStateProperty.resolveWith(
                 (states) => active
@@ -311,28 +391,61 @@ class _RibbonButton extends StatelessWidget {
                     ? const Color(0xFFE8F1FB)
                     : Colors.transparent,
               ),
+              foregroundColor: const WidgetStatePropertyAll(AppColors.ink),
+              shadowColor: const WidgetStatePropertyAll(Colors.transparent),
+              elevation: const WidgetStatePropertyAll(0),
               shape: WidgetStatePropertyAll(
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
               ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  glyph,
-                  style: TextStyle(
-                    fontSize: 22,
-                    color: color,
-                    fontWeight: FontWeight.w800,
+            child: stacked
+                ? SizedBox(
+                    width: double.infinity,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          glyph,
+                          style: TextStyle(
+                            fontSize: dense ? 17 : 20,
+                            height: 1.05,
+                            color: color,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          label.replaceAll('\n', ' '),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: dense ? 8.5 : 9.5,
+                            height: 1,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        glyph,
+                        style: TextStyle(
+                          fontSize: 22,
+                          color: color,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        label,
+                        style: const TextStyle(fontSize: 12.5, height: 1.2),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: const TextStyle(fontSize: 12.5, height: 1.2),
-                ),
-              ],
-            ),
           ),
         ),
       ),

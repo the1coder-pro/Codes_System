@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
@@ -405,11 +407,18 @@ Future<bool> confirmDialog(
 }
 
 void toast(BuildContext context, String msg) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
-    );
+  unawaited(
+    fluent.displayInfoBar(
+      context,
+      builder: (context, close) => fluent.InfoBar(
+        title: Text(msg),
+        severity: fluent.InfoBarSeverity.info,
+        isIconVisible: false,
+        onClose: close,
+      ),
+      duration: const Duration(seconds: 2),
+    ),
+  );
 }
 
 String money(double v) => v.toStringAsFixed(2);

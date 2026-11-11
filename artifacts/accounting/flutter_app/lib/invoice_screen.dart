@@ -748,8 +748,11 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (_, i) {
                     final it = list[i];
-                    return ListTile(
-                      dense: true,
+                    return fluent.ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       title: Text(
                         it.nameAr,
                         style: const TextStyle(fontWeight: FontWeight.w700),

@@ -22,7 +22,7 @@ class AppColors {
 }
 
 fluent.FluentThemeData buildFluentTheme() => fluent.FluentThemeData(
-  fontFamily: 'NotoSansArabic',
+  fontFamily: 'IBMPlexSansArabic',
   accentColor: fluent.AccentColor.swatch({'normal': AppColors.canvasBlue}),
   scaffoldBackgroundColor: AppColors.chrome,
   cardColor: Colors.white,
@@ -32,6 +32,7 @@ fluent.FluentThemeData buildFluentTheme() => fluent.FluentThemeData(
   selectionColor: const Color(0x553B82C4),
   visualDensity: VisualDensity.compact,
   animationCurve: Curves.easeOutCubic,
-  fastAnimationDuration: const Duration(milliseconds: 160),
+  fasterAnimationDuration: const Duration(milliseconds: 55),
+  fastAnimationDuration: const Duration(milliseconds: 100),
   mediumAnimationDuration: const Duration(milliseconds: 220),
 );

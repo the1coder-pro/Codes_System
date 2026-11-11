@@ -298,7 +298,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
         ),
         Expanded(
           child: loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: fluent.ProgressRing())
               : visibleAccounts.isEmpty
               ? const Center(child: Text('لا توجد حسابات'))
               : ListView.builder(
