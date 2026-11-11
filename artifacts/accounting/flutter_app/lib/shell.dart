@@ -132,35 +132,35 @@ class _AppShellState extends State<AppShell> {
   Widget _ribbon() {
     final right = [
       _RibbonButton(
-        glyph: '▤',
+        glyph: '🧾',
         label: 'الفواتير\nوأوامر الصرف',
         color: AppColors.navy,
         active: view == ShellView.invoiceMenu || view == ShellView.invoice,
         onTap: () => go(ShellView.invoiceMenu),
       ),
       _RibbonButton(
-        glyph: '▥',
+        glyph: '🏷️',
         label: 'طباعة\nالباركود',
         color: AppColors.muted,
-          active: view == ShellView.barcode,
-          onTap: () => go(ShellView.barcode),
+        active: view == ShellView.barcode,
+        onTap: () => go(ShellView.barcode),
       ),
       _RibbonButton(
-        glyph: '◎',
+        glyph: '📒',
         label: 'الحسابات',
         color: AppColors.navy,
-          active: view == ShellView.accounts,
-          onTap: () => go(ShellView.accounts),
+        active: view == ShellView.accounts,
+        onTap: () => go(ShellView.accounts),
       ),
       _RibbonButton(
-        glyph: '▦',
+        glyph: '📦',
         label: 'الأصناف',
         color: const Color(0xFF2B7BC4),
         active: view == ShellView.inventory,
         onTap: () => go(ShellView.inventory),
       ),
       _RibbonButton(
-        glyph: '☑',
+        glyph: '📨',
         label: 'ارسال واعتماد\nالفواتير',
         color: AppColors.red,
         onTap: () => soon('ارسال واعتماد الفواتير'),
@@ -168,13 +168,13 @@ class _AppShellState extends State<AppShell> {
     ];
     final left = [
       _RibbonButton(
-        glyph: '±',
+        glyph: '🧮',
         label: 'آلة حاسبة',
         color: AppColors.muted,
         onTap: calculator,
       ),
       _RibbonButton(
-        glyph: '↻',
+        glyph: '🔄',
         label: 'تحديث',
         color: AppColors.green,
         onTap: () {
@@ -183,19 +183,19 @@ class _AppShellState extends State<AppShell> {
         },
       ),
       _RibbonButton(
-        glyph: 'www',
+        glyph: '🌐',
         label: 'موقعنا',
         color: const Color(0xFF2B7BC4),
         onTap: () => soon('الموقع'),
       ),
       _RibbonButton(
-        glyph: 'Ar',
+        glyph: '🗣️',
         label: 'Arabic',
         color: AppColors.ink,
         onTap: () => toast(context, 'اللغة الحالية: العربية'),
       ),
       _RibbonButton(
-        glyph: '⇥',
+        glyph: '🚪',
         label: 'خروج',
         color: const Color(0xFF2B7BC4),
         onTap: () => go(ShellView.home),

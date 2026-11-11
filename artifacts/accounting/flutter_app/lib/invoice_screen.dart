@@ -763,7 +763,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             alignment: WrapAlignment.center,
             children: [
               ActionTile(
-                glyph: '✕',
+                glyph: '🗑️',
                 label: 'حذف صنف',
                 glyphColor: AppColors.red,
                 width: 54,
@@ -771,14 +771,14 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                 onTap: _deleteLine,
               ),
               ActionTile(
-                glyph: '▣',
+                glyph: '💾',
                 label: 'حفظ F8',
                 width: 54,
                 height: 58,
                 onTap: _save,
               ),
               ActionTile(
-                glyph: '⎙',
+                glyph: '🖨️',
                 label: 'طباعة F7',
                 glyphColor: AppColors.muted,
                 width: 54,
@@ -786,14 +786,14 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                 onTap: _print,
               ),
               ActionTile(
-                glyph: '⌕',
+                glyph: '🔎',
                 label: 'بحث F2',
                 width: 54,
                 height: 58,
                 onTap: () => setState(() => tab = 2),
               ),
               ActionTile(
-                glyph: '⇥',
+                glyph: '🚪',
                 label: 'خروج F1',
                 width: 54,
                 height: 58,
@@ -883,8 +883,8 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           const SizedBox(height: 6),
           Row(
             children: [
-              _greenBtn('↑', () => _move(-1)),
-              _greenBtn('+', () => _changeQty(1)),
+              _greenBtn('⬆️', () => _move(-1)),
+              _greenBtn('➕', () => _changeQty(1)),
               Expanded(
                 child: Container(
                   height: 34,
@@ -902,8 +902,8 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                   ),
                 ),
               ),
-              _greenBtn('−', () => _changeQty(-1)),
-              _greenBtn('↓', () => _move(1)),
+              _greenBtn('➖', () => _changeQty(-1)),
+              _greenBtn('⬇️', () => _move(1)),
             ],
           ),
           const SizedBox(height: 8),
@@ -938,10 +938,10 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              _pay('نقداً', '¤', 'cash'),
-              _pay('شبكة', '▦', 'network'),
-              _pay('آجل', '\$', 'credit'),
-              _pay('رصيد رجيع', '↺', 'returnBal'),
+              _pay('نقداً', '💵', 'cash'),
+              _pay('شبكة', '💳', 'network'),
+              _pay('آجل', '🧾', 'credit'),
+              _pay('رصيد رجيع', '💸', 'returnBal'),
             ],
           ),
           const SizedBox(height: 6),

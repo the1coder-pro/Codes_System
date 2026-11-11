@@ -312,7 +312,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ActionTile(
-              glyph: '⇥',
+              glyph: '🚪',
               label: 'خروج',
               glyphColor: const Color(0xFF178BD0),
               width: 76,

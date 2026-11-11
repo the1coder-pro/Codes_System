@@ -349,37 +349,37 @@ class _InventoryScreenState extends State<InventoryScreen> {
           runSpacing: 6,
           children: [
             ActionTile(
-              glyph: '+',
+              glyph: '➕',
               label: 'جديد',
               glyphColor: AppColors.green,
               onTap: editing ? null : _new,
             ),
             ActionTile(
-              glyph: '✎',
+              glyph: '🖊️',
               label: 'تعديل',
               glyphColor: const Color(0xFF2B7BC4),
               onTap: editing || !hasCurrent ? null : _edit,
             ),
             ActionTile(
-              glyph: '▣',
+              glyph: '💾',
               label: 'حفظ',
               glyphColor: AppColors.muted,
               onTap: editing ? _save : null,
             ),
             ActionTile(
-              glyph: '⇥',
+              glyph: '🚪',
               label: 'خروج',
               glyphColor: const Color(0xFF2B7BC4),
               onTap: widget.onExit,
             ),
             ActionTile(
-              glyph: '✕',
+              glyph: '🗑️',
               label: 'حذف',
               glyphColor: AppColors.red,
               onTap: editing || !hasCurrent ? null : _delete,
             ),
             ActionTile(
-              glyph: '↶',
+              glyph: '↩️',
               label: 'تراجع',
               glyphColor: AppColors.muted,
               onTap: editing ? _undo : null,

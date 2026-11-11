@@ -404,7 +404,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
             _action('💾', 'حفظ', editing ? _save : null),
             _action('↶', 'تراجع', editing ? _undo : null),
             _action('🗑', 'حذف', !editing ? _delete : null, color: AppColors.red),
-            _action('⇥', 'خروج', widget.onExit),
+            _action('🚪', 'خروج', widget.onExit),
           ],
         ),
       ],
