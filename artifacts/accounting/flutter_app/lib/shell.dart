@@ -23,6 +23,32 @@ class _AppShellState extends State<AppShell> {
   ShellView view = ShellView.home;
   int invoiceType = 0;
   int invoiceSession = 0;
+  String? currentUser;
+  bool _loginDialogOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _showLoginDialog());
+  }
+
+  Future<void> _showLoginDialog() async {
+    if (!mounted || _loginDialogOpen || currentUser != null) return;
+    _loginDialogOpen = true;
+    final username = await fluent.showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      dismissWithEsc: false,
+      builder: (_) => const _LoginDialog(),
+    );
+    _loginDialogOpen = false;
+    if (!mounted) return;
+    if (username == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showLoginDialog());
+      return;
+    }
+    setState(() => currentUser = username);
+  }
 
   void go(ShellView v) => setState(() => view = v);
 
@@ -60,27 +86,44 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  Widget _titleStrip() => Container(
-    color: Colors.white,
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-    child: Row(
-      children: [
-        const Text(
-          'المحاسبة المالية العامة',
-          style: TextStyle(fontSize: 12, color: AppColors.muted),
-        ),
-        const Spacer(),
-        Text(
-          view == ShellView.invoice ? '25.07.17' : '25.08.18',
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.red,
-            fontWeight: FontWeight.w700,
+  Widget _titleStrip() {
+    final compact = MediaQuery.sizeOf(context).width < 600;
+    final version = view == ShellView.invoice ? '25.07.17' : '25.08.18';
+    final versionAndUser = currentUser == null
+        ? version
+        : '$version - ($currentUser)';
+    return Container(
+      width: double.infinity,
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'المحاسبة المالية العامة',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: compact ? 10 : 12,
+                color: AppColors.muted,
+              ),
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(width: 8),
+          Text(
+            versionAndUser,
+            key: const ValueKey('top-version-user'),
+            textDirection: TextDirection.ltr,
+            style: TextStyle(
+              fontSize: compact ? 10 : 12,
+              color: AppColors.red,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _menu(String title, List<(String, VoidCallback)> entries) {
     final compact = MediaQuery.sizeOf(context).width < 600;
@@ -286,12 +329,12 @@ class _AppShellState extends State<AppShell> {
           }
 
           return SizedBox(
-            height: 88,
+            height: 98,
             child: Row(
               children: [
-                Expanded(child: compactGroup(left)),
-                Container(width: 1, height: 46, color: AppColors.line),
                 Expanded(child: compactGroup(right)),
+                Container(width: 1, height: 46, color: AppColors.line),
+                Expanded(child: compactGroup(left)),
               ],
             ),
           );
@@ -382,11 +425,11 @@ class _RibbonButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final buttonHeight = stacked ? (dense ? 58.0 : 82.0) : 74.0;
+    final buttonHeight = stacked ? (dense ? 58.0 : 92.0) : 74.0;
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: stacked ? 1 : 2,
-        vertical: stacked ? (dense ? 0 : 2) : 6,
+        vertical: stacked ? (dense ? 0 : 1) : 6,
       ),
       child: SizedBox(
         key: ValueKey('ribbon-$label'),
@@ -404,8 +447,8 @@ class _RibbonButton extends StatelessWidget {
             style: fluent.ButtonStyle(
               padding: WidgetStatePropertyAll(
                 EdgeInsets.symmetric(
-                  horizontal: stacked ? 2 : 10,
-                  vertical: stacked ? 2 : 8,
+                  horizontal: stacked ? 1 : 10,
+                  vertical: stacked ? (dense ? 2 : 1) : 8,
                 ),
               ),
               backgroundColor: WidgetStatePropertyAll(
@@ -428,19 +471,19 @@ class _RibbonButton extends StatelessWidget {
                         Text(
                           glyph,
                           style: TextStyle(
-                            fontSize: dense ? 17 : 20,
+                            fontSize: dense ? 17 : 27,
                             height: 1.05,
                             color: color,
                           ),
                         ),
-                        const SizedBox(height: 1),
+                        SizedBox(height: dense ? 1 : 2),
                         Text(
                           label.replaceAll('\n', ' '),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: dense ? 8.5 : 9.5,
+                            fontSize: dense ? 8.5 : 12,
                             height: 1,
                             fontWeight: FontWeight.w600,
                           ),
@@ -489,6 +532,8 @@ class _StatusBar extends StatelessWidget {
       Container(width: 54, height: 10, color: AppColors.red),
     ];
     return Container(
+      key: const ValueKey('bottom-status-bar'),
+      width: double.infinity,
       height: 26,
       color: const Color(0xFFF6F6F4),
       child: SingleChildScrollView(
@@ -500,6 +545,118 @@ class _StatusBar extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _LoginDialog extends StatefulWidget {
+  const _LoginDialog();
+
+  @override
+  State<_LoginDialog> createState() => _LoginDialogState();
+}
+
+class _LoginDialogState extends State<_LoginDialog> {
+  static const _users = ['admin', 'cashier1', 'cashier2', 'auditor'];
+  static const _demoPassword = '1233';
+
+  final password = TextEditingController();
+  String selectedUser = _users.first;
+  String? error;
+
+  @override
+  void dispose() {
+    password.dispose();
+    super.dispose();
+  }
+
+  void _login() {
+    if (password.text != _demoPassword) {
+      setState(() => error = 'كلمة المرور غير صحيحة');
+      return;
+    }
+    Navigator.of(context).pop(selectedUser);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final maxDialogWidth = (MediaQuery.sizeOf(context).width - 32).clamp(
+      280.0,
+      420.0,
+    );
+    return fluent.ContentDialog(
+      key: const ValueKey('login-dialog'),
+      constraints: BoxConstraints(maxWidth: maxDialogWidth),
+      content: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.canvasBlue,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'تسجيل الدخول',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'اختر المستخدم وأدخل كلمة المرور',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white),
+            ),
+            const SizedBox(height: 20),
+            const Text('المستخدم', style: TextStyle(color: Colors.white)),
+            const SizedBox(height: 5),
+            DropBox(
+              key: const ValueKey('login-user'),
+              value: selectedUser,
+              options: _users,
+              onChanged: (value) => setState(() {
+                selectedUser = value;
+                error = null;
+              }),
+            ),
+            const SizedBox(height: 12),
+            const Text('كلمة المرور', style: TextStyle(color: Colors.white)),
+            const SizedBox(height: 5),
+            fluent.TextBox(
+              key: const ValueKey('login-password'),
+              controller: password,
+              obscureText: true,
+              autofocus: true,
+              textDirection: TextDirection.ltr,
+              placeholder: 'كلمة المرور',
+              onSubmitted: (_) => _login(),
+            ),
+            if (error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                error!,
+                key: const ValueKey('login-error'),
+                style: const TextStyle(
+                  color: Color(0xFFFFD3D3),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        fluent.FilledButton(
+          key: const ValueKey('login-submit'),
+          onPressed: _login,
+          child: const Text('دخول'),
+        ),
+      ],
     );
   }
 }

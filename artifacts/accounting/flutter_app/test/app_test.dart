@@ -10,12 +10,51 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+Future<void> _launchAndLogin(
+  WidgetTester tester, {
+  String username = 'admin',
+  bool tryInvalidPassword = false,
+}) async {
+  await tester.pumpWidget(const AccountingApp());
+  await tester.pumpAndSettle();
+  expect(find.byKey(const ValueKey('login-dialog')), findsOneWidget);
+
+  if (tryInvalidPassword) {
+    await tester.enterText(
+      find.byKey(const ValueKey('login-password')),
+      'wrong',
+    );
+    await tester.tap(find.byKey(const ValueKey('login-submit')));
+    await tester.pumpAndSettle();
+    expect(find.text('كلمة المرور غير صحيحة'), findsOneWidget);
+  }
+
+  if (username != 'admin') {
+    await tester.tap(find.byKey(const ValueKey('login-user')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(username).last);
+    await tester.pumpAndSettle();
+  }
+  await tester.enterText(find.byKey(const ValueKey('login-password')), '1233');
+  await tester.tap(find.byKey(const ValueKey('login-submit')));
+  await tester.pumpAndSettle();
+  expect(find.byKey(const ValueKey('login-dialog')), findsNothing);
+}
+
 void main() {
   testWidgets('shell renders ribbon and status bar', (tester) async {
-    await tester.pumpWidget(const AccountingApp());
-    await tester.pump();
+    await _launchAndLogin(
+      tester,
+      username: 'cashier1',
+      tryInvalidPassword: true,
+    );
     expect(find.text('القائمة الرئيسية'), findsOneWidget);
     expect(find.textContaining('مؤسسة العيدان'), findsOneWidget);
+    expect(find.text('25.08.18 - (cashier1)'), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('bottom-status-bar'))).width,
+      tester.getSize(find.byKey(const ValueKey('top-menu-bar'))).width,
+    );
     final textContext = tester.element(find.text('القائمة الرئيسية'));
     expect(
       Theme.of(textContext).textTheme.bodyMedium?.fontFamily,
@@ -27,12 +66,11 @@ void main() {
   testWidgets('screen navigation uses Fluent fade and slide transitions', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.physicalSize = const Size(1024, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const AccountingApp());
-    await tester.pumpAndSettle();
+    await _launchAndLogin(tester);
 
     await tester.tap(find.byKey(const ValueKey('ribbon-الأصناف')));
     await tester.pump(const Duration(milliseconds: 40));
@@ -51,14 +89,13 @@ void main() {
   testWidgets('menus align right and ribbon buttons stay compact on desktop', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.physicalSize = const Size(1024, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const AccountingApp());
-    await tester.pumpAndSettle();
+    await _launchAndLogin(tester);
     final menu = tester.getRect(find.text('القائمة الرئيسية'));
-    expect(menu.right, greaterThan(1200));
+    expect(menu.right, greaterThan(960));
     final buttons = [
       'الفواتير\nوأوامر الصرف',
       'طباعة\nالباركود',
@@ -72,10 +109,10 @@ void main() {
       'خروج',
     ];
     for (final label in buttons) {
-      expect(tester.getSize(find.byKey(ValueKey('ribbon-$label'))).height, 82);
+      expect(tester.getSize(find.byKey(ValueKey('ribbon-$label'))).height, 92);
       final rect = tester.getRect(find.byKey(ValueKey('ribbon-$label')));
       expect(rect.left, greaterThanOrEqualTo(0));
-      expect(rect.right, lessThanOrEqualTo(1280));
+      expect(rect.right, lessThanOrEqualTo(1024));
     }
     final ribbon = find.byKey(const ValueKey('ribbon-container'));
     expect(
@@ -86,6 +123,21 @@ void main() {
     final labelRect = tester.getRect(find.text('الفواتير وأوامر الصرف'));
     expect(iconRect.center.dx, closeTo(labelRect.center.dx, 1));
     expect(iconRect.bottom, lessThan(labelRect.top));
+    expect(
+      tester.widget<Text>(find.text('🧾')).style!.fontSize,
+      greaterThan(22),
+    );
+    expect(
+      tester.widget<Text>(find.text('الفواتير وأوامر الصرف')).style!.fontSize,
+      greaterThan(9.5),
+    );
+    final mainAction = tester.getRect(
+      find.byKey(const ValueKey('ribbon-الفواتير\nوأوامر الصرف')),
+    );
+    final utilityAction = tester.getRect(
+      find.byKey(const ValueKey('ribbon-خروج')),
+    );
+    expect(mainAction.center.dx, greaterThan(utilityAction.center.dx));
     final hoveredButton = find.byKey(
       const ValueKey('ribbon-الفواتير\nوأوامر الصرف'),
     );
@@ -114,8 +166,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const AccountingApp());
-    await tester.pumpAndSettle();
+    await _launchAndLogin(tester);
 
     final ribbon = find.byKey(const ValueKey('ribbon-container'));
     for (final label in [
@@ -274,8 +325,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const AccountingApp());
-    await tester.pumpAndSettle();
+    await _launchAndLogin(tester);
     await tester.tap(find.byKey(const ValueKey('ribbon-الحسابات')));
     await tester.pumpAndSettle();
 
