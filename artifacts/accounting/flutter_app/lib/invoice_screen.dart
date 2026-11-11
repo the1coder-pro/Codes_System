@@ -581,12 +581,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   Widget _tabs() {
-    const names = [
-      'بيانات الفاتورة',
-      'إضافة الأصناف',
-      'اختيار الأصناف',
-      'بنود الفاتورة',
-    ];
+    const names = ['بيانات الفاتورة', 'إضافة الأصناف', 'اختيار الأصناف'];
     return Container(
       key: const ValueKey('invoice-tabs-strip'),
       width: double.infinity,
@@ -644,10 +639,8 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       body = _headerTab();
     } else if (tab == 1) {
       body = _itemsTab(quickOnly: true);
-    } else if (tab == 2) {
-      body = _itemsTab(quickOnly: false);
     } else {
-      body = _linesTab();
+      body = _itemsTab(quickOnly: false);
     }
     return Column(
       mainAxisSize: wide ? MainAxisSize.max : MainAxisSize.min,
@@ -879,127 +872,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       style: const TextStyle(fontSize: 12, color: AppColors.muted),
     ),
   );
-
-  Widget _linesTab() {
-    const cols = [
-      GridColumn('م', 44),
-      GridColumn('اسم الصنف', 220),
-      GridColumn('الكمية', 80),
-      GridColumn('سعر الوحدة قبل الضريبة', 140),
-      GridColumn('الوحدة', 90),
-      GridColumn('الإجمالي قبل الضريبة', 130),
-    ];
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: Row(
-            children: [
-              fluent.FilledButton(
-                style: fluent.ButtonStyle(
-                  backgroundColor: const WidgetStatePropertyAll(
-                    AppColors.green,
-                  ),
-                  shape: WidgetStatePropertyAll(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-                onPressed: () => setState(() => _addLine()),
-                child: const Text('+ سطر جديد'),
-              ),
-              const SizedBox(width: 8),
-              fluent.Button(
-                key: const ValueKey('invoice-delete-selected-lines'),
-                onPressed: _deleteLine,
-                child: const Text('حذف المحدد'),
-              ),
-              const Spacer(),
-              Text(
-                '${lines.length} سطر${selectedLineIds.isEmpty ? '' : ' - محدد ${selectedLineIds.length}'}',
-                style: const TextStyle(color: AppColors.muted),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: AppColors.ink),
-            ),
-            child: lines.isEmpty
-                ? const Center(
-                    child: Text(
-                      'لا توجد أصناف بعد — أضف سطراً أو اختر من تبويب اختيار الأصناف',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.muted),
-                    ),
-                  )
-                : EditableGrid(
-                    columns: cols,
-                    rowCount: lines.length,
-                    selectedRow: selected,
-                    selectedRows: {
-                      for (var row = 0; row < lines.length; row++)
-                        if (selectedLineIds.contains(lines[row].id)) row,
-                    },
-                    onSelectRow: (r) => setState(() => selected = r),
-                    onToggleRowSelection: (r) => setState(() {
-                      selected = r;
-                      _toggleLineSelection(lines[r].id);
-                    }),
-                    cell: (r, c) {
-                      final l = lines[r];
-                      if (c == 0) {
-                        return Center(
-                          child: Text(
-                            '${r + 1}',
-                            key: ValueKey('invoice-line-index-$r'),
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        );
-                      }
-                      if (c == 4) {
-                        return Center(
-                          child: Text(
-                            l.unit,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        );
-                      }
-                      if (c == 5) {
-                        return Padding(
-                          padding: const EdgeInsets.all(6),
-                          child: Text(
-                            money(l.total),
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        );
-                      }
-                      return CellField(
-                        controller: lineCtl[l.id]![c - 1],
-                        onChanged: (v) => setState(() {
-                          switch (c) {
-                            case 1:
-                              l.name = v;
-                            case 2:
-                              l.qty = double.tryParse(v) ?? 0;
-                            case 3:
-                              l.price = double.tryParse(v) ?? 0;
-                          }
-                        }),
-                      );
-                    },
-                  ),
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _itemsTab({required bool quickOnly}) {
     final q = h['pick']!.text.trim();

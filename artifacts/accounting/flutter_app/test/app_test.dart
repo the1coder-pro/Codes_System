@@ -91,6 +91,12 @@ void main() {
     expect(infoBarRect.right, greaterThan(1200));
     expect(infoBarRect.top, lessThan(200));
 
+    await tester.tap(find.text('عرض رسالة'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(infoBar, findsOneWidget);
+    expect(tester.getRect(infoBar).left, isNot(infoBarRect.left));
+
     await tester.pump(const Duration(seconds: 3));
     expect(tester.takeException(), isNull);
   });
@@ -986,12 +992,8 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('invoice-item-add-MULTI-1-2')));
     await tester.pumpAndSettle();
     expect(find.text('صنف متعدد • كرتون'), findsOneWidget);
-    await tester.tap(find.text('بنود الفاتورة'));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('invoice-line-index-0')), findsOneWidget);
-    expect(find.text('MULTI-1'), findsNothing);
-    expect(find.text('سعر الوحدة قبل الضريبة'), findsOneWidget);
-    expect(find.text('الإجمالي قبل الضريبة'), findsOneWidget);
+    expect(find.text('بنود الفاتورة'), findsNothing);
+    expect(find.byKey(const ValueKey('invoice-tab-3')), findsNothing);
     await tester.pump(const Duration(seconds: 3));
     expect(tester.takeException(), isNull);
   });

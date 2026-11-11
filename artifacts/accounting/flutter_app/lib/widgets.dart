@@ -458,20 +458,130 @@ Future<bool> confirmDialog(
   return r ?? false;
 }
 
+typedef _ToastKey = (String, fluent.InfoBarSeverity);
+
+final Map<_ToastKey, _ToastEntry> _activeToasts = {};
+int _nextToastId = 0;
+
+class _ToastEntry {
+  _ToastEntry() : id = _nextToastId++;
+
+  final int id;
+  final ValueNotifier<int> jiggle = ValueNotifier(0);
+  Timer? timer;
+}
+
 void toast(
   BuildContext context,
   String msg, {
   fluent.InfoBarSeverity severity = fluent.InfoBarSeverity.info,
 }) {
+  final toastKey = (msg, severity);
+  final activeToast = _activeToasts[toastKey];
+  if (activeToast != null) {
+    activeToast.jiggle.value++;
+    return;
+  }
+
+  final entry = _ToastEntry();
+  _activeToasts[toastKey] = entry;
+  const duration = Duration(seconds: 2);
+  final animationDuration = fluent.FluentTheme.of(
+    context,
+  ).mediumAnimationDuration;
+  void releaseEntry() {
+    if (identical(_activeToasts[toastKey], entry)) {
+      _activeToasts.remove(toastKey);
+    }
+    entry.timer?.cancel();
+  }
+
+  entry.timer = Timer(
+    duration + Duration(milliseconds: animationDuration.inMilliseconds * 2),
+    releaseEntry,
+  );
   unawaited(
     fluent.displayInfoBar(
       context,
       alignment: Alignment.topRight,
-      builder: (context, close) =>
-          fluent.InfoBar(title: Text(msg), severity: severity, onClose: close),
-      duration: const Duration(seconds: 2),
+      builder: (context, close) => _JigglingInfoBar(
+        key: ValueKey('info-bar-${entry.id}'),
+        message: msg,
+        severity: severity,
+        jiggle: entry.jiggle,
+        onClose: () {
+          close();
+          entry.timer?.cancel();
+          entry.timer = Timer(animationDuration, releaseEntry);
+        },
+      ),
+      duration: duration,
     ),
   );
+}
+
+class _JigglingInfoBar extends StatefulWidget {
+  const _JigglingInfoBar({
+    super.key,
+    required this.message,
+    required this.severity,
+    required this.jiggle,
+    required this.onClose,
+  });
+
+  final String message;
+  final fluent.InfoBarSeverity severity;
+  final ValueNotifier<int> jiggle;
+  final VoidCallback onClose;
+
+  @override
+  State<_JigglingInfoBar> createState() => _JigglingInfoBarState();
+}
+
+class _JigglingInfoBarState extends State<_JigglingInfoBar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _offset;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+      value: 1,
+    );
+    _offset = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0, end: 7), weight: 15),
+      TweenSequenceItem(tween: Tween(begin: 7, end: -7), weight: 25),
+      TweenSequenceItem(tween: Tween(begin: -7, end: 4), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 4, end: 0), weight: 40),
+    ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    widget.jiggle.addListener(_replay);
+  }
+
+  void _replay() => _controller.forward(from: 0);
+
+  @override
+  void dispose() {
+    widget.jiggle.removeListener(_replay);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) =>
+          Transform.translate(offset: Offset(_offset.value, 0), child: child),
+      child: fluent.InfoBar(
+        title: Text(widget.message),
+        severity: widget.severity,
+        onClose: widget.onClose,
+      ),
+    );
+  }
 }
 
 String money(double v) => v.toStringAsFixed(2);
