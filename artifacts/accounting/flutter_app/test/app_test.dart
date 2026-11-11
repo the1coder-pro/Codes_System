@@ -27,6 +27,16 @@ Future<void> _launchAndLogin(
     await tester.tap(find.byKey(const ValueKey('login-submit')));
     await tester.pumpAndSettle();
     expect(find.text('كلمة المرور غير صحيحة'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('login-clear')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<fluent.TextBox>(find.byKey(const ValueKey('login-password')))
+          .controller!
+          .text,
+      isEmpty,
+    );
+    expect(find.text('كلمة المرور غير صحيحة'), findsNothing);
   }
 
   if (username != 'admin') {
@@ -42,6 +52,45 @@ Future<void> _launchAndLogin(
 }
 
 void main() {
+  testWidgets('login dialog places the fields left of the lock', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1024, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const AccountingApp());
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widgetList<ModalBarrier>(find.byType(ModalBarrier))
+          .any((barrier) => barrier.color == AppColors.canvasBlue),
+      isTrue,
+    );
+    final fields = tester.getRect(find.byKey(const ValueKey('login-fields')));
+    final lock = tester.getRect(find.byKey(const ValueKey('login-lock')));
+    expect(fields.center.dx, lessThan(lock.center.dx));
+    expect(
+      tester.getRect(find.text('تسجيل الدخول')).bottom,
+      lessThan(tester.getRect(find.byKey(const ValueKey('login-user'))).top),
+    );
+    expect(
+      tester.getRect(find.byKey(const ValueKey('login-submit'))).top,
+      greaterThan(
+        tester.getRect(find.byKey(const ValueKey('login-password'))).bottom,
+      ),
+    );
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('login-lock')))
+          .style!
+          .fontSize,
+      greaterThan(100),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('shell renders ribbon and status bar', (tester) async {
     await _launchAndLogin(
       tester,

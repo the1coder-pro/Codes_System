@@ -38,6 +38,7 @@ class _AppShellState extends State<AppShell> {
     final username = await fluent.showDialog<String>(
       context: context,
       barrierDismissible: false,
+      barrierColor: AppColors.canvasBlue,
       dismissWithEsc: false,
       builder: (_) => const _LoginDialog(),
     );
@@ -578,11 +579,97 @@ class _LoginDialogState extends State<_LoginDialog> {
     Navigator.of(context).pop(selectedUser);
   }
 
+  void _clearPassword() {
+    password.clear();
+    setState(() => error = null);
+  }
+
+  Widget _loginFields() => Directionality(
+    textDirection: TextDirection.rtl,
+    child: Column(
+      key: const ValueKey('login-fields'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'تسجيل الدخول',
+          textAlign: TextAlign.left,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 14),
+        const Text('المستخدم', style: TextStyle(color: Colors.white)),
+        const SizedBox(height: 5),
+        DropBox(
+          key: const ValueKey('login-user'),
+          value: selectedUser,
+          options: _users,
+          onChanged: (value) => setState(() {
+            selectedUser = value;
+            error = null;
+          }),
+        ),
+        const SizedBox(height: 12),
+        const Text('كلمة المرور', style: TextStyle(color: Colors.white)),
+        const SizedBox(height: 5),
+        fluent.TextBox(
+          key: const ValueKey('login-password'),
+          controller: password,
+          obscureText: true,
+          autofocus: true,
+          textDirection: TextDirection.ltr,
+          placeholder: 'كلمة المرور',
+          onSubmitted: (_) => _login(),
+        ),
+        if (error != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            error!,
+            key: const ValueKey('login-error'),
+            style: const TextStyle(
+              color: Color(0xFFFFD3D3),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+        const SizedBox(height: 16),
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              fluent.FilledButton(
+                key: const ValueKey('login-submit'),
+                onPressed: _login,
+                child: const Text('دخول'),
+              ),
+              fluent.Button(
+                key: const ValueKey('login-clear'),
+                onPressed: _clearPassword,
+                child: const Text('مسح كلمة المرور'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
-    final maxDialogWidth = (MediaQuery.sizeOf(context).width - 32).clamp(
-      280.0,
-      420.0,
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final compact = screenWidth < 600;
+    final maxDialogWidth = (screenWidth - 32).clamp(280.0, 760.0);
+    final lock = Center(
+      child: Text(
+        '🔒',
+        key: const ValueKey('login-lock'),
+        style: TextStyle(fontSize: compact ? 72 : 176, height: 1),
+      ),
     );
     return fluent.ContentDialog(
       key: const ValueKey('login-dialog'),
@@ -593,70 +680,26 @@ class _LoginDialogState extends State<_LoginDialog> {
           color: AppColors.canvasBlue,
           borderRadius: BorderRadius.circular(6),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'تسجيل الدخول',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'اختر المستخدم وأدخل كلمة المرور',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white),
-            ),
-            const SizedBox(height: 20),
-            const Text('المستخدم', style: TextStyle(color: Colors.white)),
-            const SizedBox(height: 5),
-            DropBox(
-              key: const ValueKey('login-user'),
-              value: selectedUser,
-              options: _users,
-              onChanged: (value) => setState(() {
-                selectedUser = value;
-                error = null;
-              }),
-            ),
-            const SizedBox(height: 12),
-            const Text('كلمة المرور', style: TextStyle(color: Colors.white)),
-            const SizedBox(height: 5),
-            fluent.TextBox(
-              key: const ValueKey('login-password'),
-              controller: password,
-              obscureText: true,
-              autofocus: true,
-              textDirection: TextDirection.ltr,
-              placeholder: 'كلمة المرور',
-              onSubmitted: (_) => _login(),
-            ),
-            if (error != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                error!,
-                key: const ValueKey('login-error'),
-                style: const TextStyle(
-                  color: Color(0xFFFFD3D3),
-                  fontWeight: FontWeight.w700,
+        child: compact
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _loginFields(),
+                  const SizedBox(height: 12),
+                  SizedBox(height: 82, child: lock),
+                ],
+              )
+            : Directionality(
+                textDirection: TextDirection.ltr,
+                child: Row(
+                  children: [
+                    Expanded(child: _loginFields()),
+                    const SizedBox(width: 28),
+                    SizedBox(width: 190, height: 250, child: lock),
+                  ],
                 ),
               ),
-            ],
-          ],
-        ),
       ),
-      actions: [
-        fluent.FilledButton(
-          key: const ValueKey('login-submit'),
-          onPressed: _login,
-          child: const Text('دخول'),
-        ),
-      ],
     );
   }
 }
