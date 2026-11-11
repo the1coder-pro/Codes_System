@@ -1,3 +1,4 @@
 - [Flutter preview rendering](flutter-preview.md) — CPU-only preview browsers need extra time for Flutter's first frame; an early blank capture is not conclusive.
 - [Flutter publishing dependencies](flutter-publishing.md) — release builds must restore Dart packages explicitly; the preview's home-directory cache is absent during publishing.
 - [Fluent UI SDK compatibility](fluent-ui-sdk-compatibility.md) — recent package releases may use Flutter APIs newer than their declared minimum; verify with tests and a web release build.
+- [Browser file selection](web-file-selection.md) — accounting image uploads use a browser-native picker because the generated web build omitted FilePickerWeb registration.

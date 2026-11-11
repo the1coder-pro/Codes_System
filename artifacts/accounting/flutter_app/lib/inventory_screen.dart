@@ -145,7 +145,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     if (draft.taxCat != 'غير معفاة') return 0;
     final rate = double.tryParse(f['taxRate']!.text.trim());
     if (rate == null || rate < 0) return null;
-    return rate > 1 ? rate / 100 : rate;
+    return rate / 100;
   }
 
   void _syncPricePair(int row, int sourceColumn, String value) {
@@ -184,7 +184,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
           return n > m ? n : m;
         }) +
         1;
-    draft = Item(id: '$next', units: [UnitRow(unitNo: '$next')]);
+    draft = Item(
+      id: '$next',
+      units: [UnitRow(unitNo: '$next')],
+    );
     currentId = null;
     isNew = true;
     editing = true;
@@ -311,7 +314,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
       return value > max ? value : max;
     });
     final u = UnitRow(
-      unitNo: '${lastUnitNumber == 0 ? draft.units.length : lastUnitNumber + 1}',
+      unitNo:
+          '${lastUnitNumber == 0 ? draft.units.length : lastUnitNumber + 1}',
     );
     draft.units.add(u);
     unitCtl.add(_rowCtl(u));

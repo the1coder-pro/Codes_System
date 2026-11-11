@@ -143,42 +143,15 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     });
   }
 
-  Widget _lineSelectionCheckbox(
-    InvoiceLine line, {
-    required Key key,
-    required double size,
-  }) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: FittedBox(
-        fit: BoxFit.contain,
-        child: fluent.Checkbox(
-          key: key,
-          checked: selectedLineIds.contains(line.id),
-          semanticLabel: 'حدد ${line.name}',
-          onChanged: (checked) => setState(() {
-            if (checked == true) {
-              selectedLineIds.add(line.id);
-            } else {
-              selectedLineIds.remove(line.id);
-            }
-          }),
-        ),
-      ),
-    );
+  void _toggleLineSelection(String id) {
+    if (!selectedLineIds.add(id)) selectedLineIds.remove(id);
   }
 
   Future<void> _deleteLine() async {
-    final markedIds = lines
+    final targets = lines
         .where((line) => selectedLineIds.contains(line.id))
         .map((line) => line.id)
         .toSet();
-    final targets = markedIds.isNotEmpty
-        ? markedIds
-        : selected != null && selected! < lines.length
-        ? {lines[selected!].id}
-        : <String>{};
     if (targets.isEmpty) {
       toast(context, 'حدد صنفاً أو أكثر أولاً');
       return;
@@ -692,7 +665,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
 
   Widget _linesTab() {
     const cols = [
-      GridColumn('تحديد', 54),
       GridColumn('رمز الصنف', 100),
       GridColumn('اسم الصنف', 220),
       GridColumn('الكمية', 80),
@@ -752,19 +724,18 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                     columns: cols,
                     rowCount: lines.length,
                     selectedRow: selected,
+                    selectedRows: {
+                      for (var row = 0; row < lines.length; row++)
+                        if (selectedLineIds.contains(lines[row].id)) row,
+                    },
                     onSelectRow: (r) => setState(() => selected = r),
+                    onToggleRowSelection: (r) => setState(() {
+                      selected = r;
+                      _toggleLineSelection(lines[r].id);
+                    }),
                     cell: (r, c) {
                       final l = lines[r];
-                      if (c == 0) {
-                        return Center(
-                          child: _lineSelectionCheckbox(
-                            l,
-                            key: ValueKey('invoice-line-select-${l.id}'),
-                            size: 30,
-                          ),
-                        );
-                      }
-                      if (c == 5) {
+                      if (c == 4) {
                         return Padding(
                           padding: const EdgeInsets.all(6),
                           child: Text(
@@ -774,9 +745,9 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                         );
                       }
                       return CellField(
-                        controller: lineCtl[l.id]![c - 1],
+                        controller: lineCtl[l.id]![c],
                         onChanged: (v) => setState(() {
-                          switch (c - 1) {
+                          switch (c) {
                             case 0:
                               l.code = v;
                             case 1:
@@ -1019,10 +990,16 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                     itemBuilder: (_, i) {
                       final l = lines[i];
                       return GestureDetector(
-                        onTap: () => setState(() => selected = i),
+                        onTap: () => setState(() {
+                          selected = i;
+                          _toggleLineSelection(l.id);
+                        }),
                         child: Container(
-                          color: i == selected
+                          key: ValueKey('invoice-side-row-$i'),
+                          color: selectedLineIds.contains(l.id)
                               ? const Color(0xFFDDEBFA)
+                              : i == selected
+                              ? const Color(0xFFEAF3F9)
                               : Colors.white,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
@@ -1050,13 +1027,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                                   money(l.total),
                                   style: const TextStyle(fontSize: 12),
                                 ),
-                              ),
-                              _lineSelectionCheckbox(
-                                l,
-                                key: ValueKey(
-                                  'invoice-side-line-select-${l.id}',
-                                ),
-                                size: 32,
                               ),
                             ],
                           ),

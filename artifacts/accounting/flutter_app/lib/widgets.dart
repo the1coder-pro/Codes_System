@@ -232,6 +232,8 @@ class EditableGrid extends StatefulWidget {
   final Widget Function(int row, int col) cell;
   final int? selectedRow;
   final ValueChanged<int>? onSelectRow;
+  final Set<int> selectedRows;
+  final ValueChanged<int>? onToggleRowSelection;
   final Color headerColor;
 
   const EditableGrid({
@@ -241,6 +243,8 @@ class EditableGrid extends StatefulWidget {
     required this.cell,
     this.selectedRow,
     this.onSelectRow,
+    this.selectedRows = const <int>{},
+    this.onToggleRowSelection,
     this.headerColor = const Color(0xFFF1F3F5),
   });
 
@@ -306,22 +310,39 @@ class _EditableGridState extends State<EditableGrid> {
                       itemCount: widget.rowCount,
                       itemBuilder: (context, r) {
                         final sel = r == widget.selectedRow;
+                        final marked = widget.selectedRows.contains(r);
                         return GestureDetector(
                           onTap: widget.onSelectRow == null
                               ? null
                               : () => widget.onSelectRow!(r),
                           child: Container(
-                            color: sel ? const Color(0xFFDDEBFA) : null,
+                            color: marked
+                                ? const Color(0xFFDDEBFA)
+                                : sel
+                                ? const Color(0xFFEAF3F9)
+                                : null,
                             child: Row(
                               children: [
                                 _cellBox(
                                   24,
-                                  Center(
-                                    child: Text(
-                                      sel ? '▸' : '${r + 1}',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: AppColors.muted,
+                                  GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: widget.onToggleRowSelection == null
+                                        ? null
+                                        : () => widget.onToggleRowSelection!(r),
+                                    child: Center(
+                                      child: Text(
+                                        marked
+                                            ? '●'
+                                            : sel
+                                            ? '▸'
+                                            : '${r + 1}',
+                                        style: TextStyle(
+                                          fontSize: marked ? 9 : 11,
+                                          color: marked
+                                              ? AppColors.canvasBlue
+                                              : AppColors.muted,
+                                        ),
                                       ),
                                     ),
                                   ),

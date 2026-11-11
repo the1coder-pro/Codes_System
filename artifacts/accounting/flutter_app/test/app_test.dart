@@ -403,6 +403,7 @@ void main() {
 
     await tester.tap(find.text('تعديل').first);
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('inventory-unit-quick-0')));
     await tester.tap(find.byKey(const ValueKey('inventory-image-upload')));
     await tester.pumpAndSettle();
     expect(find.byType(ItemImage), findsOneWidget);
@@ -413,6 +414,7 @@ void main() {
     var savedItems = await Store.loadItems();
     expect(savedItems.first.imageBase64, isNotNull);
     expect(savedItems.first.imageBase64, isNotEmpty);
+    expect(savedItems.first.units.first.quick, isTrue);
 
     await tester.tap(find.text('تعديل').first);
     await tester.pumpAndSettle();
@@ -421,6 +423,64 @@ void main() {
     await tester.pumpAndSettle();
     savedItems = await Store.loadItems();
     expect(savedItems.first.imageBase64, isNull);
+    await tester.pump(const Duration(seconds: 3));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('new inventory items get numbers and paired VAT prices', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: InventoryScreen(onExit: () {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    fluent.TextBox unitField(int column) => tester.widget<fluent.TextBox>(
+      find.descendant(
+        of: find.byKey(ValueKey('inventory-unit-cell-0-$column')),
+        matching: find.byType(fluent.TextBox),
+      ),
+    );
+    await tester.tap(find.text('جديد').first);
+    await tester.pumpAndSettle();
+    expect(unitField(0).controller!.text, '2005');
+
+    await tester.enterText(
+      find.byKey(const ValueKey('inventory-name-ar')),
+      'منتج جديد',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('inventory-unit-cell-0-1')),
+      '100',
+    );
+    await tester.pump();
+    expect(unitField(4).controller!.text, '115.00');
+
+    await tester.enterText(
+      find.byKey(const ValueKey('inventory-unit-cell-0-4')),
+      '230',
+    );
+    await tester.pump();
+    expect(unitField(1).controller!.text, '200.00');
+
+    await tester.tap(find.text('حفظ').first);
+    await tester.pumpAndSettle();
+    final savedItems = await Store.loadItems();
+    expect(savedItems.last.id, '2005');
+    expect(savedItems.last.units.first.unitNo, '2005');
+    expect(savedItems.last.units.first.priceBefore, '200.00');
+    expect(savedItems.last.units.first.priceInc, '230');
     await tester.pump(const Duration(seconds: 3));
     expect(tester.takeException(), isNull);
   });
@@ -441,7 +501,7 @@ void main() {
           id: 'P-1',
           nameAr: 'صنف مصور',
           imageBase64: imageData,
-          units: [UnitRow(unitNo: '1', priceBefore: '12.50')],
+          units: [UnitRow(unitNo: '1', priceBefore: '12.50', quick: true)],
         ),
       ]),
       isTrue,
@@ -472,7 +532,68 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('invoice deletes all checked rows in one action', (tester) async {
+  testWidgets('invoice shows quick items first and searches all items', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await Store.saveItems([
+      Item(
+        id: 'FAST-1',
+        nameAr: 'صنف سريع',
+        units: [UnitRow(unitNo: '1', priceBefore: '10', quick: true)],
+      ),
+      Item(
+        id: 'REGULAR-1',
+        nameAr: 'صنف عادي',
+        units: [UnitRow(unitNo: '1', priceBefore: '20')],
+      ),
+    ]);
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: InvoiceScreen(typeIndex: 0, onExit: () {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('اختيار الأصناف'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('invoice-item-card-FAST-1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('invoice-item-card-REGULAR-1')),
+      findsNothing,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('invoice-item-search')),
+      'REGULAR-1',
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('invoice-item-card-FAST-1')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('invoice-item-card-REGULAR-1')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('invoice deletes all mouse-selected rows in one action', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(1280, 1200);
     tester.view.devicePixelRatio = 1;
@@ -491,15 +612,22 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('اختيار الأصناف'));
     await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('invoice-item-search')),
+      '1001',
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('إضافة').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('إضافة').first);
     await tester.pumpAndSettle();
 
-    expect(find.byType(fluent.Checkbox), findsNWidgets(2));
-    await tester.tap(find.byType(fluent.Checkbox).at(0));
+    expect(find.byType(fluent.Checkbox), findsNothing);
+    expect(find.byKey(const ValueKey('invoice-side-row-0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('invoice-side-row-1')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('invoice-side-row-0')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(fluent.Checkbox).at(1));
+    await tester.tap(find.byKey(const ValueKey('invoice-side-row-1')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('حذف صنف'));
     await tester.pumpAndSettle();
@@ -508,7 +636,7 @@ void main() {
 
     await tester.tap(find.text('نعم، تأكيد'));
     await tester.pumpAndSettle();
-    expect(find.byType(fluent.Checkbox), findsNothing);
+    expect(find.byKey(const ValueKey('invoice-side-row-0')), findsNothing);
     await tester.pump(const Duration(seconds: 3));
     expect(tester.takeException(), isNull);
   });
@@ -551,6 +679,11 @@ void main() {
           .text;
 
       await tester.tap(find.text('اختيار الأصناف'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('invoice-item-search')),
+        '1001',
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('إضافة').first);
       await tester.pumpAndSettle();
