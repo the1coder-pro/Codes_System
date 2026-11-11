@@ -595,13 +595,13 @@ class _LoginDialogState extends State<_LoginDialog> {
           'تسجيل الدخول',
           textAlign: TextAlign.left,
           style: TextStyle(
-            color: Colors.white,
+            color: AppColors.ink,
             fontSize: 24,
             fontWeight: FontWeight.w800,
           ),
         ),
         const SizedBox(height: 14),
-        const Text('المستخدم', style: TextStyle(color: Colors.white)),
+        const Text('المستخدم', style: TextStyle(color: AppColors.ink)),
         const SizedBox(height: 5),
         DropBox(
           key: const ValueKey('login-user'),
@@ -613,7 +613,7 @@ class _LoginDialogState extends State<_LoginDialog> {
           }),
         ),
         const SizedBox(height: 12),
-        const Text('كلمة المرور', style: TextStyle(color: Colors.white)),
+        const Text('كلمة المرور', style: TextStyle(color: AppColors.ink)),
         const SizedBox(height: 5),
         fluent.TextBox(
           key: const ValueKey('login-password'),
@@ -630,7 +630,7 @@ class _LoginDialogState extends State<_LoginDialog> {
             error!,
             key: const ValueKey('login-error'),
             style: const TextStyle(
-              color: Color(0xFFFFD3D3),
+              color: Color(0xFFB42318),
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -675,9 +675,10 @@ class _LoginDialogState extends State<_LoginDialog> {
       key: const ValueKey('login-dialog'),
       constraints: BoxConstraints(maxWidth: maxDialogWidth),
       content: Container(
+        key: const ValueKey('login-panel'),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppColors.canvasBlue,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(6),
         ),
         child: compact

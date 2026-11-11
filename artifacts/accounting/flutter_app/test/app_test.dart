@@ -68,6 +68,14 @@ void main() {
           .any((barrier) => barrier.color == AppColors.canvasBlue),
       isTrue,
     );
+    expect(
+      (tester
+                  .widget<Container>(find.byKey(const ValueKey('login-panel')))
+                  .decoration!
+              as BoxDecoration)
+          .color,
+      Colors.white,
+    );
     final fields = tester.getRect(find.byKey(const ValueKey('login-fields')));
     final lock = tester.getRect(find.byKey(const ValueKey('login-lock')));
     expect(fields.center.dx, lessThan(lock.center.dx));
