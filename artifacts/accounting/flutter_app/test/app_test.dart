@@ -318,9 +318,10 @@ void main() {
 
     await tester.drag(verticalDivider, const Offset(0, -1000));
     await tester.pumpAndSettle();
+    expect(tester.getSize(verticalDivider).height, 48);
     expect(
       tester.getSize(searchSection).height,
-      closeTo(tester.getSize(resizeViewport).height - 32, 1),
+      closeTo(tester.getSize(resizeViewport).height - 48, 1),
     );
 
     await tester.tap(sectionToggle);
@@ -331,7 +332,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       tester.getSize(searchSection).height,
-      closeTo(tester.getSize(resizeViewport).height - 32, 1),
+      closeTo(tester.getSize(resizeViewport).height - 48, 1),
     );
 
     final searchToggle = find.byKey(

@@ -191,7 +191,7 @@ class ResizableVerticalSplit extends StatefulWidget {
 }
 
 class _ResizableVerticalSplitState extends State<ResizableVerticalSplit> {
-  static const _dividerHeight = 32.0;
+  static const _dividerHeight = 48.0;
   double? _secondExtent;
   bool _secondCollapsed = false;
 
@@ -245,47 +245,50 @@ class _ResizableVerticalSplitState extends State<ResizableVerticalSplit> {
             child: SizedBox(
               height: _dividerHeight,
               width: double.infinity,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(height: 1, color: AppColors.line),
-                  Material(
-                    color: AppColors.paper,
-                    child: IconButton(
-                      key: widget.collapseToggleKey,
-                      tooltip: expanding
-                          ? 'إظهار البحث والتصفية'
-                          : 'طي البحث والتصفية',
-                      padding: EdgeInsets.zero,
-                      visualDensity: VisualDensity.compact,
-                      constraints: const BoxConstraints.tightFor(
-                        width: 30,
-                        height: 30,
-                      ),
-                      icon: Icon(
-                        expanding
-                            ? Icons.keyboard_arrow_up
-                            : Icons.keyboard_arrow_down,
-                        size: 18,
-                        color: AppColors.ink,
-                      ),
-                      onPressed: () => setState(() {
-                        if (expanding) {
-                          _secondCollapsed = false;
-                          if (secondExtent == 0) {
-                            _secondExtent = math.min(
-                              widget.initialSecondExtent,
-                              maxSecond,
-                            );
+              child: ColoredBox(
+                color: AppColors.paper,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(height: 1, color: AppColors.line),
+                    Material(
+                      color: AppColors.paper,
+                      child: IconButton(
+                        key: widget.collapseToggleKey,
+                        tooltip: expanding
+                            ? 'إظهار البحث والتصفية'
+                            : 'طي البحث والتصفية',
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 30,
+                          height: 30,
+                        ),
+                        icon: Icon(
+                          expanding
+                              ? Icons.keyboard_arrow_up
+                              : Icons.keyboard_arrow_down,
+                          size: 18,
+                          color: AppColors.ink,
+                        ),
+                        onPressed: () => setState(() {
+                          if (expanding) {
+                            _secondCollapsed = false;
+                            if (secondExtent == 0) {
+                              _secondExtent = math.min(
+                                widget.initialSecondExtent,
+                                maxSecond,
+                              );
+                            }
+                          } else {
+                            _secondExtent = secondHeight;
+                            _secondCollapsed = true;
                           }
-                        } else {
-                          _secondExtent = secondHeight;
-                          _secondCollapsed = true;
-                        }
-                      }),
+                        }),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

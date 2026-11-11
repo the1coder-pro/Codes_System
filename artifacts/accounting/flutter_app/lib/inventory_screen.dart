@@ -287,7 +287,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       secondExtentKey: const ValueKey(
                         'inventory-search-section-size',
                       ),
-                      initialSecondExtent: 204,
+                      initialSecondExtent: 188,
                       minFirstExtent: 0,
                       minSecondExtent: 0,
                       overlaySecond: true,
