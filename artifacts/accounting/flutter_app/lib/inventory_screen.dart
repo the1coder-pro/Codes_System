@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'models.dart';
+import 'resizable_split.dart';
 import 'storage.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -268,13 +269,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
               children: [
                 SizedBox(
                   height: 236,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(width: 250, child: _actions()),
-                      const SizedBox(width: 8),
-                      Expanded(child: _headerForm(true)),
-                    ],
+                  child: ResizableSplit(
+                    dividerKey: const ValueKey('splitter-inventory-header'),
+                    first: _actions(),
+                    second: _headerForm(true),
+                    initialFirstFraction: .27,
+                    minFirstWidth: 210,
+                    minSecondWidth: 480,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -282,13 +283,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 const SizedBox(height: 8),
                 SizedBox(
                   height: 236,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(width: 300, child: _searchPanel()),
-                      const SizedBox(width: 8),
-                      Expanded(child: _resultsPanel()),
-                    ],
+                  child: ResizableSplit(
+                    dividerKey: const ValueKey('splitter-inventory-search'),
+                    first: _searchPanel(),
+                    second: _resultsPanel(),
+                    initialFirstFraction: .31,
+                    minFirstWidth: 220,
+                    minSecondWidth: 380,
                   ),
                 ),
               ],

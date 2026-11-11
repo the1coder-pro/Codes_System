@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'models.dart';
+import 'resizable_split.dart';
 import 'storage.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -225,12 +226,13 @@ class _AccountsScreenState extends State<AccountsScreen> {
       builder: (context, bounds) {
         final wide = bounds.maxWidth >= 920;
         if (wide) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(width: bounds.maxWidth * .38, child: _directory()),
-              Expanded(child: _editor(compact: false)),
-            ],
+          return ResizableSplit(
+            dividerKey: const ValueKey('splitter-accounts'),
+            first: _directory(),
+            second: _editor(compact: false),
+            initialFirstFraction: .38,
+            minFirstWidth: 270,
+            minSecondWidth: 460,
           );
         }
         return SingleChildScrollView(

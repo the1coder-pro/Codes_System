@@ -301,30 +301,54 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget _content() {
-    switch (view) {
-      case ShellView.home:
-        return const ColoredBox(
-          color: AppColors.canvasBlue,
-          child: SizedBox.expand(),
-        );
-      case ShellView.inventory:
-        return InventoryScreen(onExit: () => go(ShellView.home));
-      case ShellView.invoiceMenu:
-        return InvoiceMenu(
-          onPick: openInvoice,
-          onClose: () => go(ShellView.home),
-        );
-      case ShellView.invoice:
-        return InvoiceScreen(
-          key: ValueKey('inv-$invoiceType-$invoiceSession'),
-          typeIndex: invoiceType,
-          onExit: () => go(ShellView.invoiceMenu),
-        );
-      case ShellView.accounts:
-        return AccountsScreen(onExit: () => go(ShellView.home));
-      case ShellView.barcode:
-        return BarcodeScreen(onExit: () => go(ShellView.home));
-    }
+    final content = switch (view) {
+      ShellView.home => const ColoredBox(
+        color: AppColors.canvasBlue,
+        child: SizedBox.expand(),
+      ),
+      ShellView.inventory => InventoryScreen(onExit: () => go(ShellView.home)),
+      ShellView.invoiceMenu => InvoiceMenu(
+        onPick: openInvoice,
+        onClose: () => go(ShellView.home),
+      ),
+      ShellView.invoice => InvoiceScreen(
+        typeIndex: invoiceType,
+        onExit: () => go(ShellView.invoiceMenu),
+      ),
+      ShellView.accounts => AccountsScreen(onExit: () => go(ShellView.home)),
+      ShellView.barcode => BarcodeScreen(onExit: () => go(ShellView.home)),
+    };
+    final contentKey = ValueKey(
+      '${view.name}-${view == ShellView.invoice ? '$invoiceType-$invoiceSession' : ''}',
+    );
+    final theme = fluent.FluentTheme.of(context);
+    return ClipRect(
+      child: AnimatedSwitcher(
+        key: const ValueKey('app-content-transition'),
+        duration: theme.mediumAnimationDuration,
+        reverseDuration: theme.fastAnimationDuration,
+        switchInCurve: theme.animationCurve,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          final eased = CurvedAnimation(
+            parent: animation,
+            curve: theme.animationCurve,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return FadeTransition(
+            opacity: eased,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.035, 0),
+                end: Offset.zero,
+              ).animate(eased),
+              child: child,
+            ),
+          );
+        },
+        child: KeyedSubtree(key: contentKey, child: content),
+      ),
+    );
   }
 }
 
@@ -384,12 +408,8 @@ class _RibbonButton extends StatelessWidget {
                   vertical: stacked ? 2 : 8,
                 ),
               ),
-              backgroundColor: WidgetStateProperty.resolveWith(
-                (states) => active
-                    ? const Color(0xFFDDEBFA)
-                    : states.contains(WidgetState.hovered)
-                    ? const Color(0xFFE8F1FB)
-                    : Colors.transparent,
+              backgroundColor: WidgetStatePropertyAll(
+                active ? const Color(0xFFDDEBFA) : Colors.transparent,
               ),
               foregroundColor: const WidgetStatePropertyAll(AppColors.ink),
               shadowColor: const WidgetStatePropertyAll(Colors.transparent),

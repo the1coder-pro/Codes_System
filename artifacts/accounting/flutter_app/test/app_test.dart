@@ -1,6 +1,8 @@
 import 'package:accounting_ui/main.dart';
 import 'package:accounting_ui/barcode_screen.dart';
 import 'package:accounting_ui/invoice_screen.dart';
+import 'package:accounting_ui/inventory_screen.dart';
+import 'package:accounting_ui/resizable_split.dart';
 import 'package:accounting_ui/theme.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
@@ -14,6 +16,28 @@ void main() {
     await tester.pump();
     expect(find.text('القائمة الرئيسية'), findsOneWidget);
     expect(find.textContaining('مؤسسة العيدان'), findsOneWidget);
+  });
+
+  testWidgets('screen navigation uses Fluent fade and slide transitions', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const AccountingApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('ribbon-الأصناف')));
+    await tester.pump(const Duration(milliseconds: 40));
+    final transition = find.byKey(const ValueKey('app-content-transition'));
+    expect(
+      find.descendant(of: transition, matching: find.byType(SlideTransition)),
+      findsWidgets,
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(InventoryScreen), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('menus align right and ribbon buttons stay compact on desktop', (
@@ -63,6 +87,13 @@ void main() {
     await mouse.moveTo(initialRect.center);
     await tester.pump(const Duration(milliseconds: 100));
     expect(tester.getRect(hoveredButton), initialRect);
+    final actionButton = tester.widget<fluent.Button>(
+      find.descendant(of: hoveredButton, matching: find.byType(fluent.Button)),
+    );
+    expect(
+      actionButton.style!.backgroundColor!.resolve({WidgetState.hovered}),
+      Colors.transparent,
+    );
     await mouse.removePointer();
     expect(buildFluentTheme().typography.body!.fontFamily, 'IBMPlexSansArabic');
     expect(tester.takeException(), isNull);
@@ -105,7 +136,7 @@ void main() {
   });
 
   testWidgets(
-    'payment buttons open validated amounts and support split payments',
+    'payment defaults to cash and transfers the sole amount on selection',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       tester.view.physicalSize = const Size(1280, 1200);
@@ -122,55 +153,99 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      for (final entry in {'cash': '125.50', 'network': '25.00'}.entries) {
-        await tester.tap(find.byKey(ValueKey('payment-${entry.key}')));
-        await tester.pumpAndSettle();
-        if (entry.key == 'cash') {
-          await tester.enterText(
-            find.byKey(const ValueKey('payment-amount')),
-            '-1',
-          );
-          await tester.tap(find.text('تأكيد المبلغ'));
-          await tester.pumpAndSettle();
-          expect(find.text('أدخل مبلغاً صحيحاً لا يقل عن صفر'), findsOneWidget);
-        }
-        await tester.enterText(
-          find.byKey(const ValueKey('payment-amount')),
-          entry.value,
-        );
-        await tester.tap(find.text('تأكيد المبلغ'));
-        await tester.pumpAndSettle();
-        expect(
-          find.descendant(
-            of: find.byKey(ValueKey('payment-${entry.key}')),
-            matching: find.text(entry.value),
-          ),
-          findsOneWidget,
-        );
-      }
-      expect(find.text('-150.50'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('payment-credit')));
+
+      String amount(String key) => tester
+          .widget<fluent.TextBox>(find.byKey(ValueKey('payment-field-$key')))
+          .controller!
+          .text;
+
+      await tester.tap(find.text('اختيار الأصناف'));
       await tester.pumpAndSettle();
-      await tester.enterText(
-        find.byKey(const ValueKey('payment-amount')),
-        '99',
-      );
-      await tester.tap(find.text('إلغاء'));
+      await tester.tap(find.text('إضافة').first);
       await tester.pumpAndSettle();
-      expect(find.text('-150.50'), findsOneWidget);
+      expect(amount('cash'), isNot('0'));
       expect(
         (tester
                     .widget<Container>(
-                      find.byKey(const ValueKey('payment-network')),
+                      find.byKey(const ValueKey('payment-cash')),
                     )
                     .decoration!
                 as BoxDecoration)
             .color,
         AppColors.mint,
       );
+
+      final cashAmount = amount('cash');
+      await tester.tap(find.byKey(const ValueKey('payment-option-network')));
+      await tester.pumpAndSettle();
+      expect(amount('cash'), '0');
+      expect(amount('network'), cashAmount);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('payment-field-cash')),
+        '10.00',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('payment-option-credit')));
+      await tester.pumpAndSettle();
+      expect(amount('cash'), '10.00');
+      expect(amount('network'), cashAmount);
+      expect(amount('credit'), '0');
+      expect(
+        (tester
+                    .widget<Container>(
+                      find.byKey(const ValueKey('payment-credit')),
+                    )
+                    .decoration!
+                as BoxDecoration)
+            .color,
+        AppColors.mint,
+      );
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('resizable panel divider changes the first panel width', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: SizedBox.expand(
+            child: ResizableSplit(
+              first: Container(key: const ValueKey('first-panel')),
+              second: Container(key: const ValueKey('second-panel')),
+              initialFirstFraction: .4,
+              minFirstWidth: 180,
+              minSecondWidth: 200,
+              dividerKey: const ValueKey('test-panel-divider'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final before = tester
+        .getSize(find.byKey(const ValueKey('first-panel')))
+        .width;
+    await tester.drag(
+      find.byKey(const ValueKey('test-panel-divider')),
+      const Offset(-50, 0),
+    );
+    await tester.pumpAndSettle();
+    final after = tester
+        .getSize(find.byKey(const ValueKey('first-panel')))
+        .width;
+    expect(after, greaterThan(before));
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('accounts can be added and searched', (tester) async {
     SharedPreferences.setMockInitialValues({});

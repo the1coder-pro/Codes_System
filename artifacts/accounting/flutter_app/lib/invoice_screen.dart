@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'models.dart';
+import 'resizable_split.dart';
 import 'storage.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -22,13 +23,16 @@ class InvoiceScreen extends StatefulWidget {
 }
 
 class _InvoiceScreenState extends State<InvoiceScreen> {
+  static const _paymentKeys = ['cash', 'network', 'credit', 'returnBal'];
+
   int tab = 0;
   final lines = <InvoiceLine>[];
   final lineCtl = <String, List<TextEditingController>>{};
   int? selected;
   List<Item> catalog = [];
   bool draftLoaded = false;
-  String? selectedPayment;
+  String? selectedPayment = 'cash';
+  bool paymentAuto = true;
 
   DateTime invDate = DateTime.now();
   DateTime delivDate = DateTime.now();
@@ -61,7 +65,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     super.initState();
     h['taxRate']!.text = '0.15';
     h['discount']!.text = '0';
-    for (final k in ['cash', 'network', 'credit', 'returnBal']) {
+    for (final k in _paymentKeys) {
       h[k]!.text = '0';
     }
     Store.loadItems().then((v) {
@@ -86,6 +90,16 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   double get paid =>
       _n('cash') + _n('network') + _n('credit') + _n('returnBal');
   double get remaining => net - paid;
+
+  void _syncAutomaticPayment() {
+    if (!paymentAuto) return;
+    final destination = selectedPayment ?? 'cash';
+    final amount = money(net < 0 ? 0 : net);
+    for (final key in _paymentKeys) {
+      final expected = key == destination ? amount : '0';
+      if (h[key]!.text != expected) h[key]!.text = expected;
+    }
+  }
 
   void _addLine({String code = '', String name = '', double price = 0}) {
     final l = InvoiceLine(
@@ -157,6 +171,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     'storeDebit': storeDebit,
     'taxable': taxable,
     'selectedPayment': selectedPayment,
+    'paymentAuto': paymentAuto,
     'lines': lines.map((l) => l.toJson()).toList(),
   };
 
@@ -171,7 +186,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     storeCredit = d['storeCredit'] ?? storeCredit;
     storeDebit = d['storeDebit'] ?? storeDebit;
     taxable = d['taxable'] ?? taxable;
-    selectedPayment = d['selectedPayment'] as String?;
+    selectedPayment = d['selectedPayment'] as String? ?? 'cash';
     lines.clear();
     lineCtl.clear();
     for (final raw in (d['lines'] as List? ?? [])) {
@@ -185,6 +200,14 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       ];
       _syncQty(l);
     }
+    final activePayments = _paymentKeys
+        .where((key) => _n(key).abs() >= .005)
+        .toList();
+    paymentAuto =
+        d['paymentAuto'] as bool? ??
+        (activePayments.isEmpty ||
+            (activePayments.length == 1 &&
+                (_n(activePayments.single) - net).abs() < .005));
   }
 
   Future<void> _save() async {
@@ -207,7 +230,8 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       lines.clear();
       lineCtl.clear();
       selected = null;
-      selectedPayment = null;
+      selectedPayment = 'cash';
+      paymentAuto = true;
       for (final k in ['number', 'account', 'taxNo', 'notes']) {
         h[k]!.text = '';
       }
@@ -303,6 +327,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    _syncAutomaticPayment();
     return LayoutBuilder(
       builder: (context, box) {
         final wide = box.maxWidth >= 980;
@@ -315,16 +340,13 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             child: Column(
               children: [
                 Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(child: main),
-                      Container(width: 1, color: AppColors.line),
-                      SizedBox(
-                        width: 300,
-                        child: SingleChildScrollView(child: side),
-                      ),
-                    ],
+                  child: ResizableSplit(
+                    dividerKey: const ValueKey('splitter-invoice'),
+                    first: main,
+                    second: SingleChildScrollView(child: side),
+                    initialFirstFraction: .76,
+                    minFirstWidth: 480,
+                    minSecondWidth: 260,
                   ),
                 ),
                 totals,
@@ -1062,63 +1084,22 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     ),
   );
 
-  Future<void> _editPayment(String label, String key) async {
-    final form = GlobalKey<FormState>();
-    var amount = h[key]!.text;
-    final result = await fluent.showDialog<String>(
-      context: context,
-      builder: (dialogContext) {
-        void apply() {
-          if (form.currentState!.validate()) {
-            Navigator.of(dialogContext).pop(amount);
-          }
-        }
-
-        return fluent.ContentDialog(
-          title: Text('مبلغ الدفع — $label'),
-          content: SizedBox(
-            width: 320,
-            child: Form(
-              key: form,
-              child: fluent.TextFormBox(
-                key: const ValueKey('payment-amount'),
-                initialValue: amount,
-                autofocus: true,
-                textDirection: TextDirection.ltr,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                textInputAction: TextInputAction.done,
-                placeholder: 'المبلغ',
-                onChanged: (value) => amount = value.trim(),
-                onFieldSubmitted: (_) => apply(),
-                validator: (value) {
-                  final parsed = double.tryParse(value?.trim() ?? '');
-                  if (parsed == null || !parsed.isFinite || parsed < 0) {
-                    return 'أدخل مبلغاً صحيحاً لا يقل عن صفر';
-                  }
-                  return null;
-                },
-              ),
-            ),
-          ),
-          actions: [
-            fluent.Button(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('إلغاء'),
-            ),
-            fluent.FilledButton(
-              onPressed: apply,
-              child: const Text('تأكيد المبلغ'),
-            ),
-          ],
-        );
-      },
-    );
-    if (result == null || !mounted) return;
+  void _selectPayment(String key) {
     setState(() {
+      final active = [
+        'cash',
+        'network',
+        'credit',
+        'returnBal',
+      ].where((paymentKey) => _n(paymentKey).abs() >= .005).toList();
+      if (active.length == 1 && active.single != key) {
+        final previous = active.single;
+        h[key]!.text = h[previous]!.text;
+        h[previous]!.text = '0';
+      } else if (active.length > 1) {
+        paymentAuto = false;
+      }
       selectedPayment = key;
-      h[key]!.text = money(double.parse(result));
     });
   }
 
@@ -1139,50 +1120,72 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             ),
             borderRadius: BorderRadius.circular(4),
           ),
-          child: fluent.Button(
-            onPressed: () => _editPayment(label, key),
-            style: fluent.ButtonStyle(
-              padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-              backgroundColor: WidgetStateProperty.resolveWith(
-                (states) => selectedPayment == key
-                    ? AppColors.mint
-                    : states.contains(WidgetState.hovered)
-                    ? const Color(0xFFEAF2FB)
-                    : Colors.white,
-              ),
-              shape: WidgetStatePropertyAll(
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-              child: Column(
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Column(
+              children: [
+                fluent.Button(
+                  key: ValueKey('payment-option-$key'),
+                  onPressed: () => _selectPayment(key),
+                  style: fluent.ButtonStyle(
+                    padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+                    backgroundColor: WidgetStatePropertyAll(
+                      selectedPayment == key ? AppColors.mint : Colors.white,
+                    ),
+                    shape: WidgetStatePropertyAll(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
                   ),
-                  Text(
-                    glyph,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      color: AppColors.green,
-                      fontWeight: FontWeight.w800,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 5,
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            label,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            glyph,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              color: AppColors.green,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Text(
-                      money(_n(key)),
-                      textDirection: TextDirection.ltr,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                SizedBox(
+                  height: 34,
+                  child: fluent.TextBox(
+                    key: ValueKey('payment-field-$key'),
+                    controller: h[key],
+                    textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.center,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
                     ),
+                    placeholder: '0.00',
+                    onChanged: (_) {
+                      paymentAuto = false;
+                      setState(() => selectedPayment = key);
+                    },
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

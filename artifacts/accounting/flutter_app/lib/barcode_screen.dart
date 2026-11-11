@@ -5,6 +5,7 @@ import 'barcode_print_stub.dart'
     if (dart.library.js_interop) 'barcode_print_web.dart'
     as printer;
 import 'models.dart';
+import 'resizable_split.dart';
 import 'storage.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -221,15 +222,13 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, bounds) {
       if (bounds.maxWidth >= 860) {
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              width: bounds.maxWidth * .39,
-              child: _settings(compact: false),
-            ),
-            Expanded(child: _itemBrowser()),
-          ],
+        return ResizableSplit(
+          dividerKey: const ValueKey('splitter-barcode'),
+          first: _settings(compact: false),
+          second: _itemBrowser(),
+          initialFirstFraction: .39,
+          minFirstWidth: 300,
+          minSecondWidth: 420,
         );
       }
       return SingleChildScrollView(
