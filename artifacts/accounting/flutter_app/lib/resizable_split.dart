@@ -171,6 +171,7 @@ class ResizableVerticalSplit extends StatefulWidget {
   final Key? dividerKey;
   final Key? collapseToggleKey;
   final Key? secondExtentKey;
+  final bool overlaySecond;
 
   const ResizableVerticalSplit({
     super.key,
@@ -182,6 +183,7 @@ class ResizableVerticalSplit extends StatefulWidget {
     this.dividerKey,
     this.collapseToggleKey,
     this.secondExtentKey,
+    this.overlaySecond = false,
   });
 
   @override
@@ -220,6 +222,103 @@ class _ResizableVerticalSplitState extends State<ResizableVerticalSplit> {
         setSecondExtent(secondExtent - delta);
       }
 
+      final expanding = _secondCollapsed || secondHeight == 0;
+      final handle = Semantics(
+        label: 'تغيير ارتفاع قسم البحث والتصفية',
+        value: _secondCollapsed ? 'مطوي' : '${secondHeight.round()} بكسل',
+        increasedValue:
+            '${math.min(maxSecond, secondExtent + 16).round()} بكسل',
+        decreasedValue:
+            '${math.max(minSecond, secondExtent - 16).round()} بكسل',
+        onIncrease: _secondCollapsed
+            ? null
+            : () => setSecondExtent(secondExtent + 16),
+        onDecrease: _secondCollapsed
+            ? null
+            : () => setSecondExtent(secondExtent - 16),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.resizeRow,
+          child: GestureDetector(
+            key: widget.dividerKey,
+            behavior: HitTestBehavior.opaque,
+            onVerticalDragUpdate: (details) => resizeBy(details.delta.dy),
+            child: SizedBox(
+              height: _dividerHeight,
+              width: double.infinity,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(height: 1, color: AppColors.line),
+                  Material(
+                    color: AppColors.paper,
+                    child: IconButton(
+                      key: widget.collapseToggleKey,
+                      tooltip: expanding
+                          ? 'إظهار البحث والتصفية'
+                          : 'طي البحث والتصفية',
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                      constraints: const BoxConstraints.tightFor(
+                        width: 30,
+                        height: 30,
+                      ),
+                      icon: Icon(
+                        expanding
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
+                        size: 18,
+                        color: AppColors.ink,
+                      ),
+                      onPressed: () => setState(() {
+                        if (expanding) {
+                          _secondCollapsed = false;
+                          if (secondExtent == 0) {
+                            _secondExtent = math.min(
+                              widget.initialSecondExtent,
+                              maxSecond,
+                            );
+                          }
+                        } else {
+                          _secondExtent = secondHeight;
+                          _secondCollapsed = true;
+                        }
+                      }),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      final secondPanel = SizedBox(
+        key: widget.secondExtentKey,
+        height: secondHeight,
+        width: double.infinity,
+        child: Visibility(
+          visible: !_secondCollapsed,
+          maintainState: true,
+          child: widget.second,
+        ),
+      );
+
+      if (widget.overlaySecond) {
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            widget.first,
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: SizedBox(
+                height: _dividerHeight + secondHeight,
+                width: double.infinity,
+                child: Column(children: [handle, secondPanel]),
+              ),
+            ),
+          ],
+        );
+      }
+
       return Column(
         children: [
           SizedBox(
@@ -227,73 +326,8 @@ class _ResizableVerticalSplitState extends State<ResizableVerticalSplit> {
             width: double.infinity,
             child: widget.first,
           ),
-          Semantics(
-            label: 'تغيير ارتفاع قسم البحث والتصفية',
-            value: _secondCollapsed ? 'مطوي' : '${secondHeight.round()} بكسل',
-            increasedValue:
-                '${math.min(maxSecond, secondExtent + 16).round()} بكسل',
-            decreasedValue:
-                '${math.max(minSecond, secondExtent - 16).round()} بكسل',
-            onIncrease: _secondCollapsed
-                ? null
-                : () => setSecondExtent(secondExtent + 16),
-            onDecrease: _secondCollapsed
-                ? null
-                : () => setSecondExtent(secondExtent - 16),
-            child: MouseRegion(
-              cursor: SystemMouseCursors.resizeRow,
-              child: GestureDetector(
-                key: widget.dividerKey,
-                behavior: HitTestBehavior.opaque,
-                onVerticalDragUpdate: (details) => resizeBy(details.delta.dy),
-                child: SizedBox(
-                  height: _dividerHeight,
-                  width: double.infinity,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(height: 1, color: AppColors.line),
-                      Material(
-                        color: AppColors.paper,
-                        child: IconButton(
-                          key: widget.collapseToggleKey,
-                          tooltip: _secondCollapsed
-                              ? 'إظهار البحث والتصفية'
-                              : 'طي البحث والتصفية',
-                          padding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                          constraints: const BoxConstraints.tightFor(
-                            width: 30,
-                            height: 30,
-                          ),
-                          icon: Icon(
-                            _secondCollapsed
-                                ? Icons.keyboard_arrow_up
-                                : Icons.keyboard_arrow_down,
-                            size: 18,
-                            color: AppColors.ink,
-                          ),
-                          onPressed: () => setState(
-                            () => _secondCollapsed = !_secondCollapsed,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          SizedBox(
-            key: widget.secondExtentKey,
-            height: secondHeight,
-            width: double.infinity,
-            child: Visibility(
-              visible: !_secondCollapsed,
-              maintainState: true,
-              child: widget.second,
-            ),
-          ),
+          handle,
+          secondPanel,
         ],
       );
     },

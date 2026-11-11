@@ -271,6 +271,9 @@ void main() {
     await tester.pumpAndSettle();
 
     final gridArea = find.byKey(const ValueKey('inventory-items-grid-area'));
+    final resizeViewport = find.byKey(
+      const ValueKey('inventory-resize-viewport'),
+    );
     final searchSection = find.byKey(
       const ValueKey('inventory-search-section-size'),
     );
@@ -281,17 +284,10 @@ void main() {
       const ValueKey('splitter-inventory-search-section'),
     );
     final searchHeightBeforeResize = tester.getSize(searchSection).height;
-    final gridHeightBeforeResize = tester.getSize(gridArea).height;
     await tester.drag(verticalDivider, const Offset(0, 80));
     await tester.pumpAndSettle();
-    expect(
-      tester.getSize(searchSection).height,
-      lessThan(searchHeightBeforeResize),
-    );
-    expect(
-      tester.getSize(gridArea).height,
-      greaterThan(gridHeightBeforeResize),
-    );
+    final smallerSearchHeight = tester.getSize(searchSection).height;
+    expect(smallerSearchHeight, lessThan(searchHeightBeforeResize));
     final searchPanel = find.byKey(const ValueKey('inventory-search-panel'));
     expect(
       find.descendant(
@@ -320,22 +316,23 @@ void main() {
       greaterThan(0),
     );
 
-    final smallerSearchHeight = tester.getSize(searchSection).height;
-    await tester.drag(verticalDivider, const Offset(0, -40));
+    await tester.drag(verticalDivider, const Offset(0, -1000));
     await tester.pumpAndSettle();
     expect(
       tester.getSize(searchSection).height,
-      greaterThan(smallerSearchHeight),
+      closeTo(tester.getSize(resizeViewport).height - 32, 1),
     );
 
-    final gridHeightBeforeFold = tester.getSize(gridArea).height;
     await tester.tap(sectionToggle);
     await tester.pumpAndSettle();
     expect(tester.getSize(searchSection).height, 0);
-    expect(tester.getSize(gridArea).height, greaterThan(gridHeightBeforeFold));
+    expect(gridArea, findsOneWidget);
     await tester.tap(sectionToggle);
     await tester.pumpAndSettle();
-    expect(tester.getSize(searchSection).height, greaterThan(0));
+    expect(
+      tester.getSize(searchSection).height,
+      closeTo(tester.getSize(resizeViewport).height - 32, 1),
+    );
 
     final searchToggle = find.byKey(
       const ValueKey('splitter-inventory-search-toggle'),
@@ -355,6 +352,10 @@ void main() {
     await tester.tap(searchToggle);
     await tester.pumpAndSettle();
     expect(searchPanel, findsOneWidget);
+
+    await tester.tap(sectionToggle);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(searchSection).height, 0);
 
     final actionsPanel = find.byKey(const ValueKey('inventory-actions-panel'));
     final actionsToggle = find.byKey(

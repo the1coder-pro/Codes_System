@@ -274,56 +274,70 @@ class _InventoryScreenState extends State<InventoryScreen> {
             padding: const EdgeInsets.all(8),
             child: Column(
               children: [
-                SizedBox(
-                  height: 236,
-                  child: ResizableSplit(
-                    dividerKey: const ValueKey('splitter-inventory-header'),
-                    collapseToggleKey: const ValueKey(
-                      'splitter-inventory-header-toggle',
-                    ),
-                    first: _actions(),
-                    second: _headerForm(true),
-                    initialFirstFraction: .27,
-                    minFirstWidth: 210,
-                    minSecondWidth: 480,
-                    collapsibleFirst: true,
-                    collapsedLabel: 'الإجراءات',
-                  ),
-                ),
-                const SizedBox(height: 8),
                 Expanded(
-                  child: ResizableVerticalSplit(
-                    dividerKey: const ValueKey(
-                      'splitter-inventory-search-section',
-                    ),
-                    collapseToggleKey: const ValueKey(
-                      'splitter-inventory-search-section-toggle',
-                    ),
-                    secondExtentKey: const ValueKey(
-                      'inventory-search-section-size',
-                    ),
-                    initialSecondExtent: 236,
-                    minFirstExtent: 120,
-                    minSecondExtent: 96,
-                    first: Container(
-                      key: const ValueKey('inventory-items-grid-area'),
-                      child: grid,
-                    ),
-                    second: Container(
-                      key: const ValueKey('inventory-search-section'),
-                      color: AppColors.paper,
-                      child: ResizableSplit(
-                        dividerKey: const ValueKey('splitter-inventory-search'),
-                        collapseToggleKey: const ValueKey(
-                          'splitter-inventory-search-toggle',
+                  child: Container(
+                    key: const ValueKey('inventory-resize-viewport'),
+                    child: ResizableVerticalSplit(
+                      dividerKey: const ValueKey(
+                        'splitter-inventory-search-section',
+                      ),
+                      collapseToggleKey: const ValueKey(
+                        'splitter-inventory-search-section-toggle',
+                      ),
+                      secondExtentKey: const ValueKey(
+                        'inventory-search-section-size',
+                      ),
+                      initialSecondExtent: 204,
+                      minFirstExtent: 0,
+                      minSecondExtent: 0,
+                      overlaySecond: true,
+                      first: Column(
+                        children: [
+                          SizedBox(
+                            height: 236,
+                            child: ResizableSplit(
+                              dividerKey: const ValueKey(
+                                'splitter-inventory-header',
+                              ),
+                              collapseToggleKey: const ValueKey(
+                                'splitter-inventory-header-toggle',
+                              ),
+                              first: _actions(),
+                              second: _headerForm(true),
+                              initialFirstFraction: .27,
+                              minFirstWidth: 210,
+                              minSecondWidth: 480,
+                              collapsibleFirst: true,
+                              collapsedLabel: 'الإجراءات',
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Expanded(
+                            child: Container(
+                              key: const ValueKey('inventory-items-grid-area'),
+                              child: grid,
+                            ),
+                          ),
+                        ],
+                      ),
+                      second: Container(
+                        key: const ValueKey('inventory-search-section'),
+                        color: AppColors.paper,
+                        child: ResizableSplit(
+                          dividerKey: const ValueKey(
+                            'splitter-inventory-search',
+                          ),
+                          collapseToggleKey: const ValueKey(
+                            'splitter-inventory-search-toggle',
+                          ),
+                          first: _searchPanel(),
+                          second: _resultsPanel(),
+                          initialFirstFraction: .31,
+                          minFirstWidth: 220,
+                          minSecondWidth: 380,
+                          collapsibleFirst: true,
+                          collapsedLabel: 'التصفية',
                         ),
-                        first: _searchPanel(),
-                        second: _resultsPanel(),
-                        initialFirstFraction: .31,
-                        minFirstWidth: 220,
-                        minSecondWidth: 380,
-                        collapsibleFirst: true,
-                        collapsedLabel: 'التصفية',
                       ),
                     ),
                   ),
