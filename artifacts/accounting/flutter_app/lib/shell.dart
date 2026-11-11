@@ -289,6 +289,7 @@ class _RibbonButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: SizedBox(
+        key: ValueKey('ribbon-$label'),
         height: 74,
         child: Container(
           decoration: BoxDecoration(
@@ -298,7 +299,6 @@ class _RibbonButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
           ),
           child: fluent.Button(
-            key: ValueKey('ribbon-$label'),
             onPressed: onTap,
             style: fluent.ButtonStyle(
               padding: const WidgetStatePropertyAll(
