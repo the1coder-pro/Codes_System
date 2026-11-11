@@ -15,6 +15,30 @@ import 'widgets.dart';
 const _usageOpts = ['غير محدد', 'بيع وشراء', 'بيع فقط', 'شراء فقط'];
 const _typeOpts = ['غير محدد', 'مخزني', 'خدمي', 'تجميعي'];
 const _taxOpts = ['غير معفاة', 'معفاة', 'صفرية'];
+const _unitTypeOpts = [
+  'حبة',
+  'قطعة',
+  'وحدة',
+  'عبوة',
+  'علبة',
+  'كيس',
+  'كرتون',
+  'صندوق',
+  'طقم',
+  'كيلوجرام',
+  'جرام',
+  'طن',
+  'لتر',
+  'ملليلتر',
+  'متر',
+  'سنتيمتر',
+  'متر مربع',
+  'متر مكعب',
+  'ساعة',
+  'يوم',
+  'شهر',
+  'خدمة',
+];
 
 typedef ItemImageBytesPicker = Future<Uint8List?> Function();
 
@@ -177,22 +201,31 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
-  void _new() => setState(() {
+  Future<void> _new() async {
+    final group = f['group']!.text.trim();
+    if (editing && (!isNew || f['nameAr']!.text.trim().isNotEmpty)) {
+      if (!await _persistDraft() || !mounted) return;
+      toast(context, 'تم حفظ التعديلات؛ أضف الصنف الجديد في نفس المجموعة');
+    }
     final next =
         items.fold<int>(1000, (m, e) {
           final n = int.tryParse(e.id) ?? 0;
           return n > m ? n : m;
         }) +
         1;
-    draft = Item(
-      id: '$next',
-      units: [UnitRow(unitNo: '$next')],
-    );
-    currentId = null;
-    isNew = true;
-    editing = true;
-    _bind();
-  });
+    setState(() {
+      draft = Item(
+        id: '$next',
+        group: group,
+        units: [UnitRow(unitNo: '$next')],
+      );
+      currentId = null;
+      selectedUnit = null;
+      isNew = true;
+      editing = true;
+      _bind();
+    });
+  }
 
   void _edit() => setState(() => editing = true);
 
@@ -219,11 +252,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return pickItemImageBytes();
   }
 
-  Future<void> _save() async {
+  Future<bool> _persistDraft() async {
     _collect();
     if (draft.nameAr.isEmpty) {
       toast(context, 'اسم الصنف بالعربي مطلوب');
-      return;
+      return false;
     }
     final updatedItems = List<Item>.of(items);
     final idx = updatedItems.indexWhere((e) => e.id == draft.id);
@@ -233,10 +266,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
       updatedItems.add(draft.copy());
     }
     final saved = await Store.saveItems(updatedItems);
-    if (!mounted) return;
+    if (!mounted) return false;
     if (!saved) {
       toast(context, 'تعذر حفظ الصنف. قد تكون مساحة تخزين المتصفح ممتلئة');
-      return;
+      return false;
     }
     setState(() {
       items = updatedItems;
@@ -245,7 +278,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
       isNew = false;
       _search();
     });
-    if (mounted) toast(context, 'تم حفظ الصنف ${draft.nameAr}');
+    return true;
+  }
+
+  Future<void> _save() async {
+    if (await _persistDraft() && mounted) {
+      toast(context, 'تم حفظ الصنف ${draft.nameAr}');
+    }
   }
 
   void _undo() => setState(() {
@@ -490,10 +529,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
           runSpacing: 6,
           children: [
             ActionTile(
+              key: const ValueKey('inventory-new-item'),
               icon: fluent.FluentIcons.add,
               label: 'جديد',
               glyphColor: AppColors.green,
-              onTap: editing ? null : _new,
+              onTap: _new,
             ),
             ActionTile(
               glyph: '🖊️',
@@ -537,7 +577,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
       children: [
         FieldRow(
           label: 'رقم المجموعة',
-          child: TextBox(controller: f['group']!, enabled: e),
+          child: TextBox(
+            key: const ValueKey('inventory-group-number'),
+            controller: f['group']!,
+            enabled: e,
+          ),
         ),
         FieldRow(
           label: 'اسم الصنف بالعربي',
@@ -737,6 +781,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           ? (v) => setState(() => draft.units[r].quick = v!)
                           : null,
                     ),
+                  );
+                }
+                if (c == 6) {
+                  return DropBox(
+                    key: ValueKey('inventory-unit-type-$r'),
+                    value: draft.units[r].size,
+                    options: _unitTypeOpts,
+                    onChanged: editing
+                        ? (value) => setState(() {
+                            draft.units[r].size = value;
+                            unitCtl[r][6].text = value;
+                          })
+                        : null,
                   );
                 }
                 return CellField(

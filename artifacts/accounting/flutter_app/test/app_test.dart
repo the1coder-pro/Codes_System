@@ -527,7 +527,91 @@ void main() {
     expect(find.text('صنف مصور'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('invoice-item-add-P-1')));
     await tester.pumpAndSettle();
-    expect(find.text('صنف مصور').evaluate().length, greaterThan(1));
+    expect(find.text('صنف مصور • حبة'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('inventory adds a same-group item with its own unit data', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final original = (await Store.loadItems()).first;
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: InventoryScreen(onExit: () {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('تعديل').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('inventory-name-ar')),
+      'اسم محدث',
+    );
+
+    await tester.tap(find.byKey(const ValueKey('inventory-new-item')));
+    await tester.pumpAndSettle();
+    final groupField = tester.widget<fluent.TextBox>(
+      find.descendant(
+        of: find.byKey(const ValueKey('inventory-group-number')),
+        matching: find.byType(fluent.TextBox),
+      ),
+    );
+    expect(groupField.controller!.text, original.group);
+    expect(
+      tester
+          .widget<EditableText>(
+            find.descendant(
+              of: find.byKey(const ValueKey('inventory-name-ar')),
+              matching: find.byType(EditableText),
+            ),
+          )
+          .controller
+          .text,
+      isEmpty,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('inventory-name-ar')),
+      'وحدة إضافية',
+    );
+    final unitType = tester.widget<fluent.ComboBox<String>>(
+      find.descendant(
+        of: find.byKey(const ValueKey('inventory-unit-type-0')),
+        matching: find.byType(fluent.ComboBox<String>),
+      ),
+    );
+    unitType.onChanged?.call('كيلوجرام');
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('inventory-unit-cell-0-1')),
+      '42',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('inventory-unit-cell-0-9')),
+      'أحمر',
+    );
+    await tester.tap(find.text('حفظ').first);
+    await tester.pumpAndSettle();
+
+    final savedItems = await Store.loadItems();
+    expect(savedItems.first.nameAr, 'اسم محدث');
+    final sibling = savedItems.last;
+    expect(sibling.group, original.group);
+    expect(sibling.nameAr, 'وحدة إضافية');
+    expect(sibling.units.single.size, 'كيلوجرام');
+    expect(sibling.units.single.priceBefore, '42');
+    expect(sibling.units.single.color, 'أحمر');
     await tester.pump(const Duration(seconds: 3));
     expect(tester.takeException(), isNull);
   });
@@ -588,6 +672,56 @@ void main() {
       find.byKey(const ValueKey('invoice-item-card-REGULAR-1')),
       findsOneWidget,
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('invoice shows each unit type with its own price', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await Store.saveItems([
+      Item(
+        id: 'MULTI-1',
+        nameAr: 'صنف متعدد',
+        units: [
+          UnitRow(unitNo: '1', size: 'حبة', priceBefore: '5', quick: true),
+          UnitRow(unitNo: '2', size: 'كرتون', priceBefore: '50', quick: true),
+        ],
+      ),
+    ]);
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: InvoiceScreen(typeIndex: 0, onExit: () {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('اختيار الأصناف'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('invoice-item-card-MULTI-1-1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('invoice-item-card-MULTI-1-2')),
+      findsOneWidget,
+    );
+    expect(find.text('MULTI-1 • كرتون'), findsOneWidget);
+    expect(find.text('50.00'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('invoice-item-add-MULTI-1-2')));
+    await tester.pumpAndSettle();
+    expect(find.text('صنف متعدد • كرتون'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
     expect(tester.takeException(), isNull);
   });
 

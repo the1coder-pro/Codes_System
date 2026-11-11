@@ -103,12 +103,18 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     }
   }
 
-  void _addLine({String code = '', String name = '', double price = 0}) {
+  void _addLine({
+    String code = '',
+    String name = '',
+    String unit = '',
+    double price = 0,
+  }) {
     selectedLineIds.clear();
     final l = InvoiceLine(
       id: '${DateTime.now().microsecondsSinceEpoch}',
       code: code,
       name: name,
+      unit: unit,
       price: price,
     );
     lines.add(l);
@@ -669,6 +675,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       GridColumn('اسم الصنف', 220),
       GridColumn('الكمية', 80),
       GridColumn('السعر', 100),
+      GridColumn('الوحدة', 90),
       GridColumn('الإجمالي', 110),
     ];
     return Column(
@@ -736,6 +743,15 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                     cell: (r, c) {
                       final l = lines[r];
                       if (c == 4) {
+                        return Center(
+                          child: Text(
+                            l.unit,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        );
+                      }
+                      if (c == 5) {
                         return Padding(
                           padding: const EdgeInsets.all(6),
                           child: Text(
@@ -770,13 +786,23 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   Widget _pickTab() {
     final q = h['pick']!.text.trim();
     final query = q.toLowerCase();
-    final list = catalog.where((item) {
-      if (query.isEmpty) return item.units.any((unit) => unit.quick);
-      final barcodes = item.units.map((unit) => unit.barcode).join(' ');
-      final searchable =
-          '${item.id} ${item.group} ${item.nameAr} ${item.nameEn} ${item.shortName} $barcodes';
-      return searchable.toLowerCase().contains(query);
-    }).toList();
+    final list = <({Item item, UnitRow unit})>[];
+    for (final item in catalog) {
+      final units = item.units.isEmpty ? [UnitRow()] : item.units;
+      final itemFields =
+          '${item.id} ${item.group} ${item.nameAr} ${item.nameEn} ${item.shortName}';
+      for (final unit in units) {
+        if (query.isEmpty) {
+          if (unit.quick) list.add((item: item, unit: unit));
+          continue;
+        }
+        final searchable =
+            '$itemFields ${unit.unitNo} ${unit.size} ${unit.barcode} ${unit.color}';
+        if (searchable.toLowerCase().contains(query)) {
+          list.add((item: item, unit: unit));
+        }
+      }
+    }
     return Column(
       children: [
         Padding(
@@ -810,20 +836,26 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                   ),
                   itemCount: list.length,
                   itemBuilder: (context, i) {
-                    final it = list[i];
+                    final it = list[i].item;
+                    final unit = list[i].unit;
+                    final variantKey = it.units.length <= 1
+                        ? it.id
+                        : '${it.id}-${unit.unitNo}';
+                    final unitPrice = double.tryParse(unit.priceBefore) ?? 0;
                     void addItem() {
                       setState(
                         () => _addLine(
                           code: it.id,
                           name: it.nameAr,
-                          price: it.price,
+                          unit: unit.size,
+                          price: unitPrice,
                         ),
                       );
                       toast(context, 'أضيف ${it.nameAr}');
                     }
 
                     return Card(
-                      key: ValueKey('invoice-item-card-${it.id}'),
+                      key: ValueKey('invoice-item-card-$variantKey'),
                       margin: EdgeInsets.zero,
                       clipBehavior: Clip.antiAlias,
                       child: InkWell(
@@ -859,7 +891,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          it.id,
+                                          '${it.id} • ${unit.size}',
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
                                             fontSize: 11,
@@ -868,7 +900,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                                         ),
                                       ),
                                       Text(
-                                        money(it.price),
+                                        money(unitPrice),
                                         style: const TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w700,
@@ -882,7 +914,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                                     height: 30,
                                     child: fluent.Button(
                                       key: ValueKey(
-                                        'invoice-item-add-${it.id}',
+                                        'invoice-item-add-$variantKey',
                                       ),
                                       onPressed: addItem,
                                       child: const Text('إضافة'),
@@ -1009,7 +1041,13 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  l.name.isEmpty ? '—' : l.name,
+                                  l.name.isEmpty
+                                      ? l.unit.isEmpty
+                                            ? '—'
+                                            : l.unit
+                                      : l.unit.isEmpty
+                                      ? l.name
+                                      : '${l.name} • ${l.unit}',
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(fontSize: 12),
                                 ),
