@@ -18,9 +18,27 @@ class AccountingApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: buildFluentTheme(),
       locale: const Locale('ar'),
-      builder: (context, child) => ScaffoldMessenger(
-        child: Directionality(textDirection: TextDirection.rtl, child: child!),
-      ),
+      builder: (context, child) {
+        final baseTheme = Theme.of(context);
+        final arabicTheme = baseTheme.copyWith(
+          textTheme: baseTheme.textTheme.apply(fontFamily: appFontFamily),
+          primaryTextTheme: baseTheme.primaryTextTheme.apply(
+            fontFamily: appFontFamily,
+          ),
+        );
+        return Theme(
+          data: arabicTheme,
+          child: DefaultTextStyle.merge(
+            style: const TextStyle(fontFamily: appFontFamily),
+            child: ScaffoldMessenger(
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: child!,
+              ),
+            ),
+          ),
+        );
+      },
       home: const AppShell(),
     );
   }

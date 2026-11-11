@@ -1,6 +1,8 @@
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/material.dart';
 
+const appFontFamily = 'IBMPlexSansArabic';
+
 /// Palette lifted from the desktop software, tuned for legibility.
 class AppColors {
   static const canvasBlue = Color(0xFF1D5FA6);
@@ -22,7 +24,7 @@ class AppColors {
 }
 
 fluent.FluentThemeData buildFluentTheme() => fluent.FluentThemeData(
-  fontFamily: 'IBMPlexSansArabic',
+  fontFamily: appFontFamily,
   accentColor: fluent.AccentColor.swatch({'normal': AppColors.canvasBlue}),
   scaffoldBackgroundColor: AppColors.chrome,
   cardColor: Colors.white,

@@ -16,6 +16,12 @@ void main() {
     await tester.pump();
     expect(find.text('القائمة الرئيسية'), findsOneWidget);
     expect(find.textContaining('مؤسسة العيدان'), findsOneWidget);
+    final textContext = tester.element(find.text('القائمة الرئيسية'));
+    expect(
+      Theme.of(textContext).textTheme.bodyMedium?.fontFamily,
+      appFontFamily,
+    );
+    expect(DefaultTextStyle.of(textContext).style.fontFamily, appFontFamily);
   });
 
   testWidgets('screen navigation uses Fluent fade and slide transitions', (
