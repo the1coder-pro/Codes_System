@@ -62,6 +62,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   String sField = 'جميع الحقول';
   final sText = TextEditingController();
   List<Item> results = [];
+  bool _searchSectionCollapsed = false;
 
   @override
   void initState() {
@@ -284,23 +285,82 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Expanded(child: grid),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 236,
-                  child: ResizableSplit(
-                    dividerKey: const ValueKey('splitter-inventory-search'),
-                    collapseToggleKey: const ValueKey(
-                      'splitter-inventory-search-toggle',
-                    ),
-                    first: _searchPanel(),
-                    second: _resultsPanel(),
-                    initialFirstFraction: .31,
-                    minFirstWidth: 220,
-                    minSecondWidth: 380,
-                    collapsibleFirst: true,
-                    collapsedLabel: 'التصفية',
+                Expanded(
+                  child: Container(
+                    key: const ValueKey('inventory-items-grid-area'),
+                    child: grid,
                   ),
+                ),
+                const SizedBox(height: 8),
+                Column(
+                  children: [
+                    SizedBox(
+                      height: 30,
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: fluent.Button(
+                          key: const ValueKey(
+                            'inventory-search-section-toggle',
+                          ),
+                          style: fluent.ButtonStyle(
+                            padding: const WidgetStatePropertyAll(
+                              EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            ),
+                          ),
+                          onPressed: () => setState(
+                            () => _searchSectionCollapsed =
+                                !_searchSectionCollapsed,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _searchSectionCollapsed
+                                    ? Icons.keyboard_arrow_up
+                                    : Icons.keyboard_arrow_down,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _searchSectionCollapsed
+                                    ? 'إظهار البحث والتصفية'
+                                    : 'إخفاء البحث والتصفية',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    AnimatedSize(
+                      key: const ValueKey('inventory-search-section-size'),
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeInOut,
+                      alignment: Alignment.topCenter,
+                      child: Visibility(
+                        visible: !_searchSectionCollapsed,
+                        maintainState: true,
+                        child: SizedBox(
+                          height: 236,
+                          child: ResizableSplit(
+                            dividerKey: const ValueKey(
+                              'splitter-inventory-search',
+                            ),
+                            collapseToggleKey: const ValueKey(
+                              'splitter-inventory-search-toggle',
+                            ),
+                            first: _searchPanel(),
+                            second: _resultsPanel(),
+                            initialFirstFraction: .31,
+                            minFirstWidth: 220,
+                            minSecondWidth: 380,
+                            collapsibleFirst: true,
+                            collapsedLabel: 'التصفية',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

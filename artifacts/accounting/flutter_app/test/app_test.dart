@@ -270,6 +270,24 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('ribbon-الأصناف')));
     await tester.pumpAndSettle();
 
+    final gridArea = find.byKey(const ValueKey('inventory-items-grid-area'));
+    final searchSection = find.byKey(
+      const ValueKey('inventory-search-section-size'),
+    );
+    final sectionToggle = find.byKey(
+      const ValueKey('inventory-search-section-toggle'),
+    );
+    final gridHeightBeforeFold = tester.getSize(gridArea).height;
+    await tester.tap(sectionToggle);
+    await tester.pumpAndSettle();
+    expect(find.text('إظهار البحث والتصفية'), findsOneWidget);
+    expect(tester.getSize(searchSection).height, 0);
+    expect(tester.getSize(gridArea).height, greaterThan(gridHeightBeforeFold));
+    await tester.tap(sectionToggle);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(searchSection).height, greaterThan(0));
+    expect(tester.getSize(gridArea).height, gridHeightBeforeFold);
+
     final searchPanel = find.byKey(const ValueKey('inventory-search-panel'));
     final searchToggle = find.byKey(
       const ValueKey('splitter-inventory-search-toggle'),
