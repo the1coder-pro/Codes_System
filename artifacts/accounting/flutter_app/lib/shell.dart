@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
+import 'accounts_screen.dart';
+import 'barcode_screen.dart';
 import 'inventory_screen.dart';
 import 'invoice_menu.dart';
 import 'invoice_screen.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
-enum ShellView { home, inventory, invoiceMenu, invoice }
+enum ShellView { home, inventory, invoiceMenu, invoice, accounts, barcode }
 
 /// Window chrome: title strip, menu bar, ribbon, content canvas, status bar.
 class AppShell extends StatefulWidget {
@@ -107,6 +109,8 @@ class _AppShellState extends State<AppShell> {
             ('الشاشة الرئيسية', () => go(ShellView.home)),
             ('الفواتير وأوامر الصرف', () => go(ShellView.invoiceMenu)),
             ('الأصناف / المخزون', () => go(ShellView.inventory)),
+            ('الحسابات', () => go(ShellView.accounts)),
+            ('طباعة الباركود', () => go(ShellView.barcode)),
           ]),
           _menu('إدارة', [
             ('المستخدمون والصلاحيات', () => soon('المستخدمون')),
@@ -118,7 +122,7 @@ class _AppShellState extends State<AppShell> {
           ]),
           _menu('الأصناف', [
             ('بطاقة صنف', () => go(ShellView.inventory)),
-            ('طباعة الباركود', () => soon('طباعة الباركود')),
+            ('طباعة الباركود', () => go(ShellView.barcode)),
           ]),
         ],
       ),
@@ -138,13 +142,15 @@ class _AppShellState extends State<AppShell> {
         glyph: '▥',
         label: 'طباعة\nالباركود',
         color: AppColors.muted,
-        onTap: () => soon('طباعة الباركود'),
+          active: view == ShellView.barcode,
+          onTap: () => go(ShellView.barcode),
       ),
       _RibbonButton(
         glyph: '◎',
         label: 'الحسابات',
         color: AppColors.navy,
-        onTap: () => soon('الحسابات'),
+          active: view == ShellView.accounts,
+          onTap: () => go(ShellView.accounts),
       ),
       _RibbonButton(
         glyph: '▦',
@@ -250,6 +256,10 @@ class _AppShellState extends State<AppShell> {
           typeIndex: invoiceType,
           onExit: () => go(ShellView.invoiceMenu),
         );
+      case ShellView.accounts:
+        return AccountsScreen(onExit: () => go(ShellView.home));
+      case ShellView.barcode:
+        return BarcodeScreen(onExit: () => go(ShellView.home));
     }
   }
 }

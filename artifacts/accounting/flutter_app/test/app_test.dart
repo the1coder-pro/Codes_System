@@ -1,4 +1,5 @@
 import 'package:accounting_ui/main.dart';
+import 'package:accounting_ui/barcode_screen.dart';
 import 'package:accounting_ui/invoice_screen.dart';
 import 'package:accounting_ui/theme.dart';
 import 'package:flutter/material.dart';
@@ -109,4 +110,68 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('accounts can be added and searched', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const AccountingApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('ribbon-الحسابات')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('الشيكات المستلمة'), findsOneWidget);
+    await tester.tap(find.text('جديد'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('account-field-nameAr')),
+      'حساب اختبار',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('account-field-nameEn')),
+      'Test account',
+    );
+    await tester.tap(find.text('حفظ'));
+    await tester.pumpAndSettle();
+    const newAccountRow = ValueKey('account-row-1000006');
+    expect(find.byKey(newAccountRow), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('accounts-search')),
+      'الشيكات',
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('الشيكات المستلمة'), findsOneWidget);
+    expect(find.byKey(newAccountRow), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('barcode selection works on a narrow screen', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(400, 850);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: BarcodeScreen(onExit: () {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('طباعة الباركود'), findsOneWidget);
+    expect(find.text('ورق تصوير A4'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('barcode-row-2004')));
+    await tester.pumpAndSettle();
+    final barcodeField = tester.widget<TextField>(
+      find.byKey(const ValueKey('barcode-value')),
+    );
+    expect(barcodeField.controller!.text, '4006381333931');
+    expect(tester.takeException(), isNull);
+  });
 }

@@ -119,6 +119,116 @@ class Item {
       double.tryParse(units.isEmpty ? '' : units.first.priceBefore) ?? 0;
 }
 
+class Account {
+  String code;
+  String nameAr;
+  String nameEn;
+  String type;
+  String paymentType;
+  String branch;
+  String notes;
+  String streetAr;
+  String streetEn;
+  String cityAr;
+  String cityEn;
+  String districtAr;
+  String districtEn;
+  String nationality;
+  String country;
+  String postalCode;
+  String extraNumber;
+  String buildingNumber;
+  String commercialNumber;
+  String taxNumber;
+  String identityNumber;
+  String phone;
+  String mobile;
+  String email;
+
+  Account({
+    this.code = '',
+    this.nameAr = '',
+    this.nameEn = '',
+    this.type = 'الحسابات المالية',
+    this.paymentType = 'حساب نقدي',
+    this.branch = 'المركز الرئيسي',
+    this.notes = '',
+    this.streetAr = '',
+    this.streetEn = '',
+    this.cityAr = '',
+    this.cityEn = '',
+    this.districtAr = '',
+    this.districtEn = '',
+    this.nationality = 'سعودي',
+    this.country = 'السعودية',
+    this.postalCode = '',
+    this.extraNumber = '',
+    this.buildingNumber = '',
+    this.commercialNumber = '',
+    this.taxNumber = '',
+    this.identityNumber = '',
+    this.phone = '',
+    this.mobile = '',
+    this.email = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+    'code': code,
+    'nameAr': nameAr,
+    'nameEn': nameEn,
+    'type': type,
+    'paymentType': paymentType,
+    'branch': branch,
+    'notes': notes,
+    'streetAr': streetAr,
+    'streetEn': streetEn,
+    'cityAr': cityAr,
+    'cityEn': cityEn,
+    'districtAr': districtAr,
+    'districtEn': districtEn,
+    'nationality': nationality,
+    'country': country,
+    'postalCode': postalCode,
+    'extraNumber': extraNumber,
+    'buildingNumber': buildingNumber,
+    'commercialNumber': commercialNumber,
+    'taxNumber': taxNumber,
+    'identityNumber': identityNumber,
+    'phone': phone,
+    'mobile': mobile,
+    'email': email,
+  };
+
+  factory Account.fromJson(Map<String, dynamic> json) => Account(
+    code: json['code'] ?? '',
+    nameAr: json['nameAr'] ?? '',
+    nameEn: json['nameEn'] ?? '',
+    type: json['type'] ?? 'الحسابات المالية',
+    paymentType: json['paymentType'] ?? 'حساب نقدي',
+    branch: json['branch'] ?? 'المركز الرئيسي',
+    notes: json['notes'] ?? '',
+    streetAr: json['streetAr'] ?? '',
+    streetEn: json['streetEn'] ?? '',
+    cityAr: json['cityAr'] ?? '',
+    cityEn: json['cityEn'] ?? '',
+    districtAr: json['districtAr'] ?? '',
+    districtEn: json['districtEn'] ?? '',
+    nationality: json['nationality'] ?? 'سعودي',
+    country: json['country'] ?? 'السعودية',
+    postalCode: json['postalCode'] ?? '',
+    extraNumber: json['extraNumber'] ?? '',
+    buildingNumber: json['buildingNumber'] ?? '',
+    commercialNumber: json['commercialNumber'] ?? '',
+    taxNumber: json['taxNumber'] ?? '',
+    identityNumber: json['identityNumber'] ?? '',
+    phone: json['phone'] ?? '',
+    mobile: json['mobile'] ?? '',
+    email: json['email'] ?? '',
+  );
+
+  Account copy() => Account.fromJson(toJson());
+}
+
 class InvoiceLine {
   final String id;
   String code;

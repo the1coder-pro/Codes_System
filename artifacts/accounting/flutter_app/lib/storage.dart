@@ -7,6 +7,38 @@ import 'models.dart';
 /// Local persistence (shared_preferences). Failures fall back silently.
 class Store {
   static const _itemsKey = 'items_v1';
+  static const _accountsKey = 'accounts_v1';
+
+  static List<Account> _seedAccounts() => [
+    Account(code: '1000001', nameAr: 'النقدية'),
+    Account(code: '1000002', nameAr: 'الشيكات المستلمة'),
+    Account(code: '1000003', nameAr: 'البنك'),
+    Account(code: '1000004', nameAr: 'نقدية المدير'),
+    Account(code: '1000005', nameAr: 'رصيد مسترجعات'),
+  ];
+
+  static Future<List<Account>> loadAccounts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_accountsKey);
+      if (raw == null) return _seedAccounts();
+      return (jsonDecode(raw) as List)
+          .map((entry) => Account.fromJson(Map<String, dynamic>.from(entry)))
+          .toList();
+    } catch (_) {
+      return _seedAccounts();
+    }
+  }
+
+  static Future<void> saveAccounts(List<Account> accounts) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _accountsKey,
+        jsonEncode(accounts.map((account) => account.toJson()).toList()),
+      );
+    } catch (_) {}
+  }
 
   static Future<List<Item>> loadItems() async {
     try {
