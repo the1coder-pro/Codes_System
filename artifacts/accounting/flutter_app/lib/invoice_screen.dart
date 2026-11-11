@@ -798,15 +798,14 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
 
   Widget _pickTab() {
     final q = h['pick']!.text.trim();
-    final list = catalog
-        .where(
-          (e) =>
-              q.isEmpty ||
-              e.nameAr.contains(q) ||
-              e.id.contains(q) ||
-              e.units.any((u) => u.barcode.contains(q)),
-        )
-        .toList();
+    final query = q.toLowerCase();
+    final list = catalog.where((item) {
+      if (query.isEmpty) return item.units.any((unit) => unit.quick);
+      final barcodes = item.units.map((unit) => unit.barcode).join(' ');
+      final searchable =
+          '${item.id} ${item.group} ${item.nameAr} ${item.nameEn} ${item.shortName} $barcodes';
+      return searchable.toLowerCase().contains(query);
+    }).toList();
     return Column(
       children: [
         Padding(
@@ -815,6 +814,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             label: 'بحث عن صنف',
             labelWidth: 90,
             child: TextBox(
+              key: const ValueKey('invoice-item-search'),
               controller: h['pick']!,
               onChanged: (_) => setState(() {}),
             ),
@@ -824,7 +824,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           child: list.isEmpty
               ? const Center(
                   child: Text(
-                    'لا توجد أصناف مطابقة في المخزون',
+                    'لا توجد أصناف سريعة. ابحث لعرض بقية الأصناف',
                     style: TextStyle(color: AppColors.muted),
                   ),
                 )

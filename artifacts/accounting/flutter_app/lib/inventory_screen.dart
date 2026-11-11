@@ -1,11 +1,11 @@
 import 'dart:typed_data';
 import 'dart:async';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'item_image.dart';
+import 'item_image_picker.dart';
 import 'models.dart';
 import 'resizable_split.dart';
 import 'storage.dart';
@@ -141,6 +141,42 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
+  double? _effectiveTaxRate() {
+    if (draft.taxCat != 'غير معفاة') return 0;
+    final rate = double.tryParse(f['taxRate']!.text.trim());
+    if (rate == null || rate < 0) return null;
+    return rate > 1 ? rate / 100 : rate;
+  }
+
+  void _syncPricePair(int row, int sourceColumn, String value) {
+    if (row < 0 || row >= unitCtl.length) return;
+    final target = unitCtl[row][sourceColumn == 1 ? 4 : 1];
+    final text = value.trim();
+    if (text.isEmpty) {
+      target.clear();
+      return;
+    }
+    final amount = double.tryParse(text);
+    final rate = _effectiveTaxRate();
+    if (amount == null || amount < 0 || rate == null) return;
+
+    final factor = 1 + rate;
+    target.text = money(sourceColumn == 1 ? amount * factor : amount / factor);
+  }
+
+  void _syncAllPricePairs() {
+    if (_effectiveTaxRate() == null) return;
+    for (var row = 0; row < unitCtl.length; row++) {
+      final beforeTax = unitCtl[row][1].text.trim();
+      final includingTax = unitCtl[row][4].text.trim();
+      if (beforeTax.isNotEmpty) {
+        _syncPricePair(row, 1, beforeTax);
+      } else if (includingTax.isNotEmpty) {
+        _syncPricePair(row, 4, includingTax);
+      }
+    }
+  }
+
   void _new() => setState(() {
     final next =
         items.fold<int>(1000, (m, e) {
@@ -148,7 +184,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           return n > m ? n : m;
         }) +
         1;
-    draft = Item(id: '$next');
+    draft = Item(id: '$next', units: [UnitRow(unitNo: '$next')]);
     currentId = null;
     isNew = true;
     editing = true;
@@ -168,20 +204,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
       toast(context, 'تم تحميل صورة الصنف');
     } on FormatException catch (error) {
       if (mounted) toast(context, error.message.toString());
-    } catch (_) {
-      if (mounted) toast(context, 'تعذر اختيار الصورة');
+    } catch (error) {
+      debugPrint('Item image selection failed: $error');
+      if (mounted) {
+        toast(context, 'تعذر اختيار الصورة. جرّب JPG أو PNG أو WebP');
+      }
     }
   }
 
   Future<Uint8List?> _pickImageBytesFromFile() async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
-      allowMultiple: false,
-      withData: true,
-    );
-    if (result == null || result.files.isEmpty) return null;
-    return result.files.single.bytes;
+    return pickItemImageBytes();
   }
 
   Future<void> _save() async {
@@ -274,7 +306,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   void _addUnit() => setState(() {
-    final u = UnitRow(unitNo: '${draft.units.length + 1}');
+    final lastUnitNumber = draft.units.fold<int>(0, (max, unit) {
+      final value = int.tryParse(unit.unitNo) ?? 0;
+      return value > max ? value : max;
+    });
+    final u = UnitRow(
+      unitNo: '${lastUnitNumber == 0 ? draft.units.length : lastUnitNumber + 1}',
+    );
     draft.units.add(u);
     unitCtl.add(_rowCtl(u));
   });
@@ -499,7 +537,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
         ),
         FieldRow(
           label: 'اسم الصنف بالعربي',
-          child: TextBox(controller: f['nameAr']!, enabled: e),
+          child: TextBox(
+            key: const ValueKey('inventory-name-ar'),
+            controller: f['nameAr']!,
+            enabled: e,
+          ),
         ),
         FieldRow(
           label: 'اسم الصنف بالانجليزي',
@@ -541,13 +583,22 @@ class _InventoryScreenState extends State<InventoryScreen> {
           child: DropBox(
             value: draft.taxCat,
             options: _taxOpts,
-            onChanged: e ? (v) => setState(() => draft.taxCat = v) : null,
+            onChanged: e
+                ? (v) => setState(() {
+                    draft.taxCat = v;
+                    _syncAllPricePairs();
+                  })
+                : null,
           ),
         ),
         FieldRow(
           label: 'نسبة الضريبة',
           labelWidth: 100,
-          child: TextBox(controller: f['taxRate']!, enabled: e),
+          child: TextBox(
+            controller: f['taxRate']!,
+            enabled: e,
+            onChanged: e ? (_) => setState(_syncAllPricePairs) : null,
+          ),
         ),
         Row(
           children: [
@@ -676,6 +727,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 if (c == 8) {
                   return Center(
                     child: fluent.Checkbox(
+                      key: ValueKey('inventory-unit-quick-$r'),
                       checked: draft.units[r].quick,
                       onChanged: editing
                           ? (v) => setState(() => draft.units[r].quick = v!)
@@ -683,7 +735,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     ),
                   );
                 }
-                return CellField(controller: unitCtl[r][c], enabled: editing);
+                return CellField(
+                  key: ValueKey('inventory-unit-cell-$r-$c'),
+                  controller: unitCtl[r][c],
+                  enabled: editing,
+                  onChanged: editing && (c == 1 || c == 4)
+                      ? (value) => _syncPricePair(r, c, value)
+                      : null,
+                );
               },
             ),
           ),
