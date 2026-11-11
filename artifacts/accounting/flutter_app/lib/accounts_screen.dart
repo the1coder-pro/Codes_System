@@ -1,22 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'models.dart';
 import 'storage.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
-const _accountTypes = [
-  'الحسابات المالية',
-  'العملاء',
-  'الموردون',
-  'الموظفون',
-];
-const _paymentTypes = [
-  'حساب نقدي',
-  'حساب شبكة',
-  'حساب بنكي',
-  'حساب آجل',
-];
+const _accountTypes = ['الحسابات المالية', 'العملاء', 'الموردون', 'الموظفون'];
+const _paymentTypes = ['حساب نقدي', 'حساب شبكة', 'حساب بنكي', 'حساب آجل'];
 
 /// Arabic account directory and editor. Account changes are saved locally.
 class AccountsScreen extends StatefulWidget {
@@ -315,54 +306,67 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   itemBuilder: (context, index) {
                     final account = visibleAccounts[index];
                     final selected = account.code == currentCode;
-                    return Material(
-                      color: selected
-                          ? AppColors.navy
-                          : index.isEven
-                          ? Colors.white
-                          : const Color(0xFFE5E5E5),
-                      child: InkWell(
-                        key: ValueKey('account-row-${account.code}'),
-                        onTap: () => setState(() => _load(account)),
-                        child: SizedBox(
-                          height: 28,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                flex: 4,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 5,
-                                  ),
-                                  child: Text(
-                                    account.nameAr,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: selected
-                                          ? Colors.white
-                                          : AppColors.ink,
-                                    ),
-                                  ),
+                    final rowColor = selected
+                        ? AppColors.navy
+                        : index.isEven
+                        ? Colors.white
+                        : const Color(0xFFE5E5E5);
+                    return fluent.Button(
+                      key: ValueKey('account-row-${account.code}'),
+                      onPressed: () => setState(() => _load(account)),
+                      style: fluent.ButtonStyle(
+                        padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+                        backgroundColor: WidgetStateProperty.resolveWith(
+                          (states) =>
+                              states.contains(WidgetState.hovered) && !selected
+                              ? const Color(0xFFEAF2FB)
+                              : rowColor,
+                        ),
+                        shape: const WidgetStatePropertyAll(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.zero,
+                          ),
+                        ),
+                      ),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 28,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 4,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 5,
                                 ),
-                              ),
-                              SizedBox(
-                                width: 92,
                                 child: Text(
-                                  account.code,
-                                  textAlign: TextAlign.center,
+                                  account.nameAr,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: selected
                                         ? Colors.white
                                         : AppColors.ink,
-                                    fontFeatures: const [
-                                      FontFeature.tabularFigures(),
-                                    ],
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                            SizedBox(
+                              width: 92,
+                              child: Text(
+                                account.code,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: selected
+                                      ? Colors.white
+                                      : AppColors.ink,
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures(),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -384,11 +388,11 @@ class _AccountsScreenState extends State<AccountsScreen> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: TextField(
+              child: TextBox(
                 key: const ValueKey('accounts-search'),
                 controller: search,
                 onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(hintText: 'بحث عن حساب'),
+                placeholder: 'بحث عن حساب',
               ),
             ),
           ],
@@ -403,7 +407,12 @@ class _AccountsScreenState extends State<AccountsScreen> {
             _action('🖊', 'تعديل', _edit, enabled: !editing),
             _action('💾', 'حفظ', editing ? _save : null),
             _action('↶', 'تراجع', editing ? _undo : null),
-            _action('🗑', 'حذف', !editing ? _delete : null, color: AppColors.red),
+            _action(
+              '🗑',
+              'حذف',
+              !editing ? _delete : null,
+              color: AppColors.red,
+            ),
             _action('🚪', 'خروج', widget.onExit),
           ],
         ),
@@ -439,7 +448,12 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   _field('branch', 'الفرع', width: fieldWidth),
                   _field('nameAr', 'الاسم بالعربي', width: fieldWidth),
                   _field('nameEn', 'الاسم بالإنجليزي', width: fieldWidth),
-                  _field('notes', 'ملاحظات', width: bounds.maxWidth, maxLines: 2),
+                  _field(
+                    'notes',
+                    'ملاحظات',
+                    width: bounds.maxWidth,
+                    maxLines: 2,
+                  ),
                 ],
               );
             },
@@ -449,20 +463,33 @@ class _AccountsScreenState extends State<AccountsScreen> {
         Wrap(
           children: [
             for (var i = 0; i < 3; i++)
-              InkWell(
-                onTap: () => setState(() => tab = i),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 5,
+              Container(
+                decoration: BoxDecoration(
+                  color: tab == i ? AppColors.cyan : AppColors.chrome,
+                  border: Border.all(color: AppColors.line),
+                ),
+                child: fluent.Button(
+                  onPressed: () => setState(() => tab = i),
+                  style: fluent.ButtonStyle(
+                    padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+                    backgroundColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.hovered)
+                          ? const Color(0xFFEAF2FB)
+                          : Colors.transparent,
+                    ),
+                    shape: const WidgetStatePropertyAll(
+                      RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: tab == i ? AppColors.cyan : AppColors.chrome,
-                    border: Border.all(color: AppColors.line),
-                  ),
-                  child: Text(
-                    ['العنوان', 'الوثائق والمستندات', 'وسائل التواصل'][i],
-                    style: const TextStyle(fontSize: 12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 5,
+                    ),
+                    child: Text(
+                      ['العنوان', 'الوثائق والمستندات', 'وسائل التواصل'][i],
+                      style: const TextStyle(fontSize: 12),
+                    ),
                   ),
                 ),
               ),
@@ -534,8 +561,9 @@ class _AccountsScreenState extends State<AccountsScreen> {
         color: AppColors.cyan,
         child: LayoutBuilder(
           builder: (context, bounds) {
-            final fieldWidth =
-                bounds.maxWidth < 500 ? bounds.maxWidth : (bounds.maxWidth - 18) / 2;
+            final fieldWidth = bounds.maxWidth < 500
+                ? bounds.maxWidth
+                : (bounds.maxWidth - 18) / 2;
             return Wrap(
               spacing: 9,
               runSpacing: 8,
@@ -564,13 +592,11 @@ class _AccountsScreenState extends State<AccountsScreen> {
           padding: const EdgeInsets.only(bottom: 4),
           child: Text(label, style: const TextStyle(fontSize: 13)),
         ),
-        TextField(
+        TextBox(
           key: ValueKey('account-field-$key'),
-          controller: fields[key],
+          controller: fields[key]!,
           enabled: editing,
           maxLines: maxLines,
-          style: const TextStyle(fontSize: 14),
-          decoration: const InputDecoration(),
         ),
       ],
     ),

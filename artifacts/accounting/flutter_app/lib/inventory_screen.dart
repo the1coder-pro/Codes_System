@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'models.dart';
 import 'storage.dart';
@@ -527,22 +528,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  Widget _smallBtn(String t, Color bg, VoidCallback onTap) => Material(
-    color: bg,
-    shape: RoundedRectangleBorder(
-      side: const BorderSide(color: AppColors.line),
-      borderRadius: BorderRadius.circular(2),
-    ),
-    child: InkWell(
-      onTap: editing ? onTap : null,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text(
-          t,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 13),
-        ),
+  Widget _smallBtn(String t, Color bg, VoidCallback onTap) => fluent.Button(
+    onPressed: editing ? onTap : null,
+    style: fluent.ButtonStyle(
+      backgroundColor: WidgetStatePropertyAll(bg),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 8)),
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
+    ),
+    child: Text(
+      t,
+      textAlign: TextAlign.center,
+      style: const TextStyle(fontSize: 13),
     ),
   );
 
@@ -581,11 +579,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               child: Row(
                 children: [
-                  TextButton(
+                  fluent.Button(
                     onPressed: _addUnit,
                     child: const Text('+ إضافة وحدة'),
                   ),
-                  TextButton(
+                  fluent.Button(
                     onPressed: selectedUnit == null ? null : _removeUnit,
                     child: const Text('− حذف السطر المحدد'),
                   ),
@@ -639,22 +637,24 @@ class _InventoryScreenState extends State<InventoryScreen> {
           FieldRow(
             label: 'البحث عن',
             labelWidth: 96,
-            child: TextField(
+            child: TextBox(
               controller: sText,
               onSubmitted: (_) => setState(_search),
-              style: const TextStyle(fontSize: 14),
             ),
           ),
           const SizedBox(height: 4),
           SizedBox(
             width: double.infinity,
             height: 42,
-            child: OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                backgroundColor: const Color(0xFFF4F8FA),
-                foregroundColor: AppColors.ink,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(2),
+            child: fluent.Button(
+              style: fluent.ButtonStyle(
+                backgroundColor: const WidgetStatePropertyAll(
+                  Color(0xFFF4F8FA),
+                ),
+                shape: WidgetStatePropertyAll(
+                  RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
               ),
               onPressed: () => setState(_search),
@@ -690,10 +690,23 @@ class _InventoryScreenState extends State<InventoryScreen> {
               itemBuilder: (_, i) {
                 final it = results[i];
                 final sel = it.id == currentId;
-                return Material(
-                  color: sel ? const Color(0xFFDDEBFA) : Colors.white,
-                  child: InkWell(
-                    onTap: editing ? null : () => setState(() => _load(it)),
+                return fluent.Button(
+                  onPressed: editing ? null : () => setState(() => _load(it)),
+                  style: fluent.ButtonStyle(
+                    padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+                    backgroundColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.hovered)
+                          ? const Color(0xFFEAF2FB)
+                          : sel
+                          ? const Color(0xFFDDEBFA)
+                          : Colors.white,
+                    ),
+                    shape: const WidgetStatePropertyAll(
+                      RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                    ),
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'barcode_print_stub.dart'
-    if (dart.library.js_interop) 'barcode_print_web.dart' as printer;
+    if (dart.library.js_interop) 'barcode_print_web.dart'
+    as printer;
 import 'models.dart';
 import 'storage.dart';
 import 'theme.dart';
@@ -122,9 +124,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
       'بطاقة رف 30 * 60 مل - 3' => ('60mm', '30mm', 2),
       _ => ('50mm', '25mm', 3),
     };
-    final labels = List.filled(
-      copies,
-      '''
+    final labels = List.filled(copies, '''
       <article class="label">
         <div class="name" dir="rtl">$safeName</div>
         <svg viewBox="0 0 ${svg.$2} 44" role="img" aria-label="باركود $safeCode">
@@ -137,8 +137,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
           <span>انتهاء ${_dateText(expiryDate)}</span>
         </div>
       </article>
-      ''',
-    ).join();
+      ''').join();
     return '''
       <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
       <title>طباعة باركود</title>
@@ -195,8 +194,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
     return (bars.toString(), x);
   }
 
-  String _dateText(DateTime date) =>
-      '${date.day}/${date.month}/${date.year}';
+  String _dateText(DateTime date) => '${date.day}/${date.month}/${date.year}';
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -249,13 +247,12 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 5),
-              TextField(
+              TextBox(
                 key: const ValueKey('barcode-value'),
                 controller: barcode,
                 textDirection: TextDirection.ltr,
-                textAlign: TextAlign.end,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(),
+                align: TextAlign.end,
+                keyboard: TextInputType.number,
               ),
               const SizedBox(height: 10),
               const Text('نموذج الباركود:', textAlign: TextAlign.end),
@@ -296,13 +293,12 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
               const SizedBox(height: 8),
               const Text('العدد:', textAlign: TextAlign.end),
               const SizedBox(height: 4),
-              TextField(
+              TextBox(
                 key: const ValueKey('barcode-count'),
                 controller: count,
                 textDirection: TextDirection.ltr,
-                textAlign: TextAlign.end,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(),
+                align: TextAlign.end,
+                keyboard: TextInputType.number,
               ),
             ],
           ),
@@ -362,16 +358,22 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   Widget _dateButton(String label, DateTime date, VoidCallback onTap) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Text(label, textAlign: TextAlign.end, style: const TextStyle(fontSize: 13)),
+      Text(
+        label,
+        textAlign: TextAlign.end,
+        style: const TextStyle(fontSize: 13),
+      ),
       const SizedBox(height: 4),
-      OutlinedButton(
+      fluent.Button(
         onPressed: onTap,
-        style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: AppColors.ink,
-          side: const BorderSide(color: AppColors.line),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+        style: fluent.ButtonStyle(
+          backgroundColor: const WidgetStatePropertyAll(Colors.white),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+          ),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          ),
         ),
         child: Text(_dateText(date), textAlign: TextAlign.center),
       ),
@@ -400,10 +402,9 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                 children: [
                   const Text('تصنيف الأسماء'),
                   const SizedBox(height: 4),
-                  TextField(
+                  TextBox(
                     controller: search,
                     onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(),
                   ),
                 ],
               ),
@@ -423,7 +424,10 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                   children: [
                     Expanded(flex: 2, child: _HeaderCell('السعر قبل الضريبة')),
                     Expanded(flex: 2, child: _HeaderCell('السعر شامل الضريبة')),
-                    Expanded(flex: 3, child: _HeaderCell('اسم الصنف بالإنجليزي')),
+                    Expanded(
+                      flex: 3,
+                      child: _HeaderCell('اسم الصنف بالإنجليزي'),
+                    ),
                     Expanded(flex: 4, child: _HeaderCell('اسم الصنف بالعربي')),
                   ],
                 ),
@@ -441,37 +445,62 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                             final unit = item.units.isEmpty
                                 ? null
                                 : item.units.first;
-                            return Material(
-                              color: active
-                                  ? const Color(0xFF1680C9)
-                                  : index.isEven
-                                  ? Colors.white
-                                  : const Color(0xFFF3F3F3),
-                              child: InkWell(
-                                key: ValueKey('barcode-row-${item.id}'),
-                                onTap: () => setState(() => _select(item)),
-                                child: SizedBox(
-                                  height: 33,
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        flex: 2,
-                                        child: _itemCell(unit?.priceBefore ?? '', active),
-                                      ),
-                                      Expanded(
-                                        flex: 2,
-                                        child: _itemCell(unit?.priceInc ?? '', active),
-                                      ),
-                                      Expanded(
-                                        flex: 3,
-                                        child: _itemCell(item.nameEn, active),
-                                      ),
-                                      Expanded(
-                                        flex: 4,
-                                        child: _itemCell(item.nameAr, active),
-                                      ),
-                                    ],
+                            final rowColor = active
+                                ? const Color(0xFF1680C9)
+                                : index.isEven
+                                ? Colors.white
+                                : const Color(0xFFF3F3F3);
+                            return fluent.Button(
+                              key: ValueKey('barcode-row-${item.id}'),
+                              onPressed: () => setState(() => _select(item)),
+                              style: fluent.ButtonStyle(
+                                padding: const WidgetStatePropertyAll(
+                                  EdgeInsets.zero,
+                                ),
+                                backgroundColor:
+                                    WidgetStateProperty.resolveWith(
+                                      (states) =>
+                                          states.contains(
+                                                WidgetState.hovered,
+                                              ) &&
+                                              !active
+                                          ? const Color(0xFFEAF2FB)
+                                          : rowColor,
+                                    ),
+                                shape: const WidgetStatePropertyAll(
+                                  RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.zero,
                                   ),
+                                ),
+                              ),
+                              child: SizedBox(
+                                width: double.infinity,
+                                height: 33,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 2,
+                                      child: _itemCell(
+                                        unit?.priceBefore ?? '',
+                                        active,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: _itemCell(
+                                        unit?.priceInc ?? '',
+                                        active,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 3,
+                                      child: _itemCell(item.nameEn, active),
+                                    ),
+                                    Expanded(
+                                      flex: 4,
+                                      child: _itemCell(item.nameAr, active),
+                                    ),
+                                  ],
                                 ),
                               ),
                             );

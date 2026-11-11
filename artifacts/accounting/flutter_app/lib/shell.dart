@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'accounts_screen.dart';
 import 'barcode_screen.dart';
@@ -34,7 +35,10 @@ class _AppShellState extends State<AppShell> {
   void soon(String name) => toast(context, '$name — غير متاحة في هذه النسخة');
 
   Future<void> calculator() async {
-    await showDialog(context: context, builder: (_) => const _CalcDialog());
+    await fluent.showDialog(
+      context: context,
+      builder: (_) => const _CalcDialog(),
+    );
   }
 
   @override
@@ -79,18 +83,20 @@ class _AppShellState extends State<AppShell> {
   );
 
   Widget _menu(String title, List<(String, VoidCallback)> entries) {
-    return PopupMenuButton<int>(
-      tooltip: '',
-      position: PopupMenuPosition.under,
-      onSelected: (i) => entries[i].$2(),
-      itemBuilder: (_) => [
-        for (var i = 0; i < entries.length; i++)
-          PopupMenuItem(value: i, height: 38, child: Text(entries[i].$1)),
-      ],
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        child: Text(title, style: const TextStyle(fontSize: 14)),
+    return fluent.DropDownButton(
+      title: Text(title, style: const TextStyle(fontSize: 13)),
+      style: fluent.ButtonStyle(
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        ),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        ),
       ),
+      items: [
+        for (final entry in entries)
+          fluent.MenuFlyoutItem(text: Text(entry.$1), onPressed: entry.$2),
+      ],
     );
   }
 
@@ -284,39 +290,48 @@ class _RibbonButton extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: SizedBox(
         height: 74,
-        child: Material(
-          key: ValueKey('ribbon-$label'),
-          color: active ? const Color(0xFFDDEBFA) : Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(3),
-            side: BorderSide(
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(
               color: active ? const Color(0xFF8DB6E2) : Colors.transparent,
             ),
+            borderRadius: BorderRadius.circular(4),
           ),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(3),
-            hoverColor: const Color(0xFFE8F1FB),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    glyph,
-                    style: TextStyle(
-                      fontSize: 22,
-                      color: color,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    label,
-                    style: const TextStyle(fontSize: 12.5, height: 1.2),
-                  ),
-                ],
+          child: fluent.Button(
+            key: ValueKey('ribbon-$label'),
+            onPressed: onTap,
+            style: fluent.ButtonStyle(
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               ),
+              backgroundColor: WidgetStateProperty.resolveWith(
+                (states) => active
+                    ? const Color(0xFFDDEBFA)
+                    : states.contains(WidgetState.hovered)
+                    ? const Color(0xFFE8F1FB)
+                    : Colors.transparent,
+              ),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  glyph,
+                  style: TextStyle(
+                    fontSize: 22,
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 12.5, height: 1.2),
+                ),
+              ],
             ),
           ),
         ),
@@ -409,7 +424,7 @@ class _CalcDialogState extends State<_CalcDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return fluent.ContentDialog(
       title: const Text('آلة حاسبة'),
       content: SizedBox(
         width: 300,
@@ -418,11 +433,11 @@ class _CalcDialogState extends State<_CalcDialog> {
           children: [
             Directionality(
               textDirection: TextDirection.ltr,
-              child: TextField(
+              child: fluent.TextBox(
                 controller: ctl,
                 autofocus: true,
                 onSubmitted: (_) => eval(),
-                decoration: const InputDecoration(hintText: '125.40 * 3 + 18'),
+                placeholder: '125.40 * 3 + 18',
               ),
             ),
             const SizedBox(height: 12),
@@ -434,11 +449,11 @@ class _CalcDialogState extends State<_CalcDialog> {
         ),
       ),
       actions: [
-        TextButton(
+        fluent.Button(
           onPressed: () => Navigator.pop(context),
           child: const Text('إغلاق'),
         ),
-        FilledButton(onPressed: eval, child: const Text('احسب')),
+        fluent.FilledButton(onPressed: eval, child: const Text('احسب')),
       ],
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'shell.dart';
 import 'theme.dart';
@@ -12,13 +13,14 @@ class AccountingApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return fluent.FluentApp(
       title: 'المحاسبة المالية العامة',
       debugShowCheckedModeBanner: false,
-      theme: buildTheme(),
+      theme: buildFluentTheme(),
       locale: const Locale('ar'),
-      builder: (context, child) =>
-          Directionality(textDirection: TextDirection.rtl, child: child!),
+      builder: (context, child) => ScaffoldMessenger(
+        child: Directionality(textDirection: TextDirection.rtl, child: child!),
+      ),
       home: const AppShell(),
     );
   }

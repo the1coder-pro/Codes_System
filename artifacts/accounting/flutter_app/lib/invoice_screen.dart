@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'models.dart';
 import 'storage.dart';
@@ -218,9 +219,9 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   void _print() {
-    showDialog(
+    fluent.showDialog(
       context: context,
-      builder: (c) => AlertDialog(
+      builder: (c) => fluent.ContentDialog(
         title: Text('معاينة طباعة — ${type.ar}'),
         content: SizedBox(
           width: 360,
@@ -250,7 +251,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           ),
         ),
         actions: [
-          TextButton(
+          fluent.Button(
             onPressed: () => Navigator.pop(c),
             child: const Text('إغلاق'),
           ),
@@ -266,13 +267,38 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   Future<void> _pickDate(bool invoice) async {
-    final r = await showDatePicker(
+    final initialDate = invoice ? invDate : delivDate;
+    var chosen = initialDate;
+    final confirmed = await fluent.showDialog<bool>(
       context: context,
-      initialDate: invoice ? invDate : delivDate,
-      firstDate: DateTime(2015),
-      lastDate: DateTime(2035),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => fluent.ContentDialog(
+          title: Text(invoice ? 'تاريخ الفاتورة' : 'تاريخ التسليم'),
+          content: SizedBox(
+            width: 340,
+            child: fluent.DatePicker(
+              selected: chosen,
+              startDate: DateTime(2015),
+              endDate: DateTime(2035),
+              onChanged: (date) => setDialogState(() => chosen = date),
+            ),
+          ),
+          actions: [
+            fluent.Button(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('إلغاء'),
+            ),
+            fluent.FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('اختيار'),
+            ),
+          ],
+        ),
+      ),
     );
-    if (r != null) setState(() => invoice ? invDate = r : delivDate = r);
+    if (confirmed == true && mounted) {
+      setState(() => invoice ? invDate = chosen : delivDate = chosen);
+    }
   }
 
   @override
@@ -551,20 +577,26 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     );
   }
 
-  Widget _dateBox(String text, VoidCallback onTap) => InkWell(
-    onTap: onTap,
-    child: Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppColors.line),
+  Widget _dateBox(String text, VoidCallback onTap) => fluent.Button(
+    onPressed: onTap,
+    style: fluent.ButtonStyle(
+      padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+      backgroundColor: const WidgetStatePropertyAll(Colors.white),
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
-      child: Row(
-        children: [
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
-          const Text('▾', style: TextStyle(color: AppColors.muted)),
-        ],
+    ),
+    child: SizedBox(
+      height: 36,
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          children: [
+            Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
+            const Text('▾', style: TextStyle(color: AppColors.muted)),
+          ],
+        ),
       ),
     ),
   );
@@ -597,18 +629,22 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           padding: const EdgeInsets.all(8),
           child: Row(
             children: [
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.green,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(2),
+              fluent.FilledButton(
+                style: fluent.ButtonStyle(
+                  backgroundColor: const WidgetStatePropertyAll(
+                    AppColors.green,
+                  ),
+                  shape: WidgetStatePropertyAll(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                   ),
                 ),
                 onPressed: () => setState(() => _addLine()),
                 child: const Text('+ سطر جديد'),
               ),
               const SizedBox(width: 8),
-              OutlinedButton(
+              fluent.Button(
                 onPressed: _deleteLine,
                 child: const Text('حذف السطر'),
               ),
@@ -692,10 +728,9 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           child: FieldRow(
             label: 'بحث عن صنف',
             labelWidth: 90,
-            child: TextField(
-              controller: h['pick'],
+            child: TextBox(
+              controller: h['pick']!,
               onChanged: (_) => setState(() {}),
-              style: const TextStyle(fontSize: 14),
             ),
           ),
         ),
@@ -727,7 +762,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                         children: [
                           Text(money(it.price)),
                           const SizedBox(width: 10),
-                          OutlinedButton(
+                          fluent.Button(
                             onPressed: () {
                               setState(
                                 () => _addLine(
@@ -970,7 +1005,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             ),
           ),
           const SizedBox(height: 6),
-          TextButton(
+          fluent.Button(
             onPressed: _discard,
             child: const Text('مسح المسودة وبدء فاتورة جديدة'),
           ),
@@ -981,21 +1016,26 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
 
   Widget _greenBtn(String t, VoidCallback onTap) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 1.5),
-    child: Material(
-      color: AppColors.green,
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox(
-          width: 44,
-          height: 34,
-          child: Center(
-            child: Text(
-              t,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-              ),
+    child: fluent.Button(
+      onPressed: onTap,
+      style: fluent.ButtonStyle(
+        backgroundColor: const WidgetStatePropertyAll(AppColors.green),
+        foregroundColor: const WidgetStatePropertyAll(Colors.white),
+        padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        ),
+      ),
+      child: SizedBox(
+        width: 44,
+        height: 34,
+        child: Center(
+          child: Text(
+            t,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ),
@@ -1022,7 +1062,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   Future<void> _editPayment(String label, String key) async {
     final form = GlobalKey<FormState>();
     var amount = h[key]!.text;
-    final result = await showDialog<String>(
+    final result = await fluent.showDialog<String>(
       context: context,
       builder: (dialogContext) {
         void apply() {
@@ -1031,13 +1071,13 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           }
         }
 
-        return AlertDialog(
+        return fluent.ContentDialog(
           title: Text('مبلغ الدفع — $label'),
           content: SizedBox(
             width: 320,
             child: Form(
               key: form,
-              child: TextFormField(
+              child: fluent.TextFormBox(
                 key: const ValueKey('payment-amount'),
                 initialValue: amount,
                 autofocus: true,
@@ -1046,7 +1086,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                   decimal: true,
                 ),
                 textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(labelText: 'المبلغ'),
+                placeholder: 'المبلغ',
                 onChanged: (value) => amount = value.trim(),
                 onFieldSubmitted: (_) => apply(),
                 validator: (value) {
@@ -1060,11 +1100,14 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             ),
           ),
           actions: [
-            TextButton(
+            fluent.Button(
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('إلغاء'),
             ),
-            FilledButton(onPressed: apply, child: const Text('تأكيد المبلغ')),
+            fluent.FilledButton(
+              onPressed: apply,
+              child: const Text('تأكيد المبلغ'),
+            ),
           ],
         );
       },
@@ -1083,19 +1126,31 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
         button: true,
         selected: selectedPayment == key,
         label: '$label، ${h[key]!.text}',
-        child: Material(
+        child: Container(
           key: ValueKey('payment-$key'),
-          color: selectedPayment == key ? AppColors.mint : Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(3),
-            side: BorderSide(
+          decoration: BoxDecoration(
+            color: selectedPayment == key ? AppColors.mint : Colors.white,
+            border: Border.all(
               color: selectedPayment == key ? AppColors.green : AppColors.line,
               width: selectedPayment == key ? 2 : 1,
             ),
+            borderRadius: BorderRadius.circular(4),
           ),
-          child: InkWell(
-            onTap: () => _editPayment(label, key),
-            borderRadius: BorderRadius.circular(3),
+          child: fluent.Button(
+            onPressed: () => _editPayment(label, key),
+            style: fluent.ButtonStyle(
+              padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+              backgroundColor: WidgetStateProperty.resolveWith(
+                (states) => selectedPayment == key
+                    ? AppColors.mint
+                    : states.contains(WidgetState.hovered)
+                    ? const Color(0xFFEAF2FB)
+                    : Colors.white,
+              ),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
+            ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
               child: Column(

@@ -2,6 +2,7 @@ import 'package:accounting_ui/main.dart';
 import 'package:accounting_ui/barcode_screen.dart';
 import 'package:accounting_ui/invoice_screen.dart';
 import 'package:accounting_ui/theme.dart';
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -56,8 +57,8 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(
-        MaterialApp(
-          theme: buildTheme(),
+        fluent.FluentApp(
+          theme: buildFluentTheme(),
           home: Directionality(
             textDirection: TextDirection.rtl,
             child: Scaffold(body: InvoiceScreen(typeIndex: 0, onExit: () {})),
@@ -102,8 +103,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('-150.50'), findsOneWidget);
       expect(
-        tester
-            .widget<Material>(find.byKey(const ValueKey('payment-network')))
+        (tester
+                    .widget<Container>(
+                      find.byKey(const ValueKey('payment-network')),
+                    )
+                    .decoration!
+                as BoxDecoration)
             .color,
         AppColors.mint,
       );
@@ -155,8 +160,8 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      MaterialApp(
-        theme: buildTheme(),
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
         home: Directionality(
           textDirection: TextDirection.rtl,
           child: Scaffold(body: BarcodeScreen(onExit: () {})),
@@ -168,10 +173,13 @@ void main() {
     expect(find.text('ورق تصوير A4'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('barcode-row-2004')));
     await tester.pumpAndSettle();
-    final barcodeField = tester.widget<TextField>(
-      find.byKey(const ValueKey('barcode-value')),
+    final barcodeField = tester.widget<EditableText>(
+      find.descendant(
+        of: find.byKey(const ValueKey('barcode-value')),
+        matching: find.byType(EditableText),
+      ),
     );
-    expect(barcodeField.controller!.text, '4006381333931');
+    expect(barcodeField.controller.text, '4006381333931');
     expect(tester.takeException(), isNull);
   });
 }

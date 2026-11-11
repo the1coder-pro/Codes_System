@@ -1,3 +1,4 @@
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/material.dart';
 
 /// Palette lifted from the desktop software, tuned for legibility.
@@ -20,45 +21,17 @@ class AppColors {
   static const grid = Color(0xFFDCE1E6);
 }
 
-ThemeData buildTheme() {
-  final base = ThemeData(
-    useMaterial3: true,
-    fontFamily: 'NotoSansArabic',
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: AppColors.canvasBlue,
-      surface: AppColors.paper,
-    ),
-    scaffoldBackgroundColor: AppColors.chrome,
-    visualDensity: VisualDensity.compact,
-  );
-  const border = OutlineInputBorder(
-    borderRadius: BorderRadius.all(Radius.circular(2)),
-    borderSide: BorderSide(color: AppColors.line),
-  );
-  return base.copyWith(
-    textTheme: base.textTheme.apply(
-      bodyColor: AppColors.ink,
-      displayColor: AppColors.ink,
-    ),
-    inputDecorationTheme: const InputDecorationTheme(
-      isDense: true,
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 9),
-      border: border,
-      enabledBorder: border,
-      disabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(2)),
-        borderSide: BorderSide(color: Color(0xFFD3D8DD)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(2)),
-        borderSide: BorderSide(color: AppColors.canvasBlue, width: 1.6),
-      ),
-    ),
-    snackBarTheme: const SnackBarThemeData(
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: AppColors.ink,
-    ),
-  );
-}
+fluent.FluentThemeData buildFluentTheme() => fluent.FluentThemeData(
+  fontFamily: 'NotoSansArabic',
+  accentColor: fluent.AccentColor.swatch({'normal': AppColors.canvasBlue}),
+  scaffoldBackgroundColor: AppColors.chrome,
+  cardColor: Colors.white,
+  menuColor: Colors.white,
+  inactiveColor: AppColors.ink,
+  activeColor: Colors.white,
+  selectionColor: const Color(0x553B82C4),
+  visualDensity: VisualDensity.compact,
+  animationCurve: Curves.easeOutCubic,
+  fastAnimationDuration: const Duration(milliseconds: 160),
+  mediumAnimationDuration: const Duration(milliseconds: 220),
+);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'theme.dart';
 
@@ -45,7 +46,12 @@ class TextBox extends StatelessWidget {
   final int maxLines;
   final TextAlign align;
   final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
   final TextInputType? keyboard;
+  final String? placeholder;
+  final TextDirection? textDirection;
+  final bool autofocus;
+  final bool readOnly;
   const TextBox({
     super.key,
     required this.controller,
@@ -53,21 +59,43 @@ class TextBox extends StatelessWidget {
     this.maxLines = 1,
     this.align = TextAlign.start,
     this.onChanged,
+    this.onSubmitted,
     this.keyboard,
+    this.placeholder,
+    this.textDirection,
+    this.autofocus = false,
+    this.readOnly = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return fluent.TextBox(
       controller: controller,
       enabled: enabled,
       maxLines: maxLines,
       textAlign: align,
+      textDirection: textDirection,
       onChanged: onChanged,
+      onSubmitted: onSubmitted,
       keyboardType: keyboard,
+      placeholder: placeholder,
+      autofocus: autofocus,
+      readOnly: readOnly,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
       style: const TextStyle(fontSize: 14),
-      decoration: InputDecoration(
-        fillColor: enabled ? Colors.white : const Color(0xFFEDEFF1),
+      decoration: WidgetStateProperty.resolveWith(
+        (states) => BoxDecoration(
+          color: states.contains(WidgetState.disabled)
+              ? const Color(0xFFF1F3F5)
+              : Colors.white,
+          border: Border.all(
+            color: states.contains(WidgetState.focused)
+                ? AppColors.canvasBlue
+                : AppColors.line,
+            width: states.contains(WidgetState.focused) ? 1.4 : 1,
+          ),
+          borderRadius: BorderRadius.circular(4),
+        ),
       ),
     );
   }
@@ -87,26 +115,22 @@ class DropBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final opts = options.contains(value) ? options : [value, ...options];
-    return Container(
+    return SizedBox(
       height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: onChanged == null ? const Color(0xFFEDEFF1) : Colors.white,
-        border: Border.all(color: AppColors.line),
-        borderRadius: BorderRadius.circular(2),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          isDense: true,
-          icon: const Text('▾', style: TextStyle(fontSize: 14)),
-          style: const TextStyle(fontSize: 14, color: AppColors.ink),
-          items: opts
-              .map((o) => DropdownMenuItem(value: o, child: Text(o)))
-              .toList(),
-          onChanged: onChanged == null ? null : (v) => onChanged!(v!),
-        ),
+      child: fluent.ComboBox<String>(
+        value: value,
+        isExpanded: true,
+        items: opts
+            .map(
+              (option) =>
+                  fluent.ComboBoxItem(value: option, child: Text(option)),
+            )
+            .toList(),
+        onChanged: onChanged == null
+            ? null
+            : (value) {
+                if (value != null) onChanged!(value);
+              },
       ),
     );
   }
@@ -135,16 +159,25 @@ class ActionTile extends StatelessWidget {
     final enabled = onTap != null;
     return Opacity(
       opacity: enabled ? 1 : 0.42,
-      child: Material(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: AppColors.line),
-          borderRadius: BorderRadius.circular(3),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: AppColors.line),
+          borderRadius: BorderRadius.circular(4),
         ),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(3),
-          hoverColor: const Color(0xFFE3EEF9),
+        child: fluent.Button(
+          onPressed: onTap,
+          style: fluent.ButtonStyle(
+            padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+            backgroundColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.hovered)
+                  ? const Color(0xFFEAF2FB)
+                  : Colors.white,
+            ),
+            shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+          ),
           child: SizedBox(
             width: width,
             height: height,
@@ -320,20 +353,24 @@ class CellField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return fluent.TextBox(
       controller: controller,
       enabled: enabled,
       onChanged: onChanged,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
       style: const TextStyle(fontSize: 13),
-      decoration: const InputDecoration(
-        filled: false,
-        border: InputBorder.none,
-        enabledBorder: InputBorder.none,
-        disabledBorder: InputBorder.none,
-        focusedBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: AppColors.canvasBlue, width: 2),
+      decoration: WidgetStateProperty.resolveWith(
+        (states) => BoxDecoration(
+          color: Colors.transparent,
+          border: Border(
+            bottom: BorderSide(
+              color: states.contains(WidgetState.focused)
+                  ? AppColors.canvasBlue
+                  : Colors.transparent,
+              width: 2,
+            ),
+          ),
         ),
-        contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 10),
       ),
     );
   }
@@ -344,19 +381,20 @@ Future<bool> confirmDialog(
   String title,
   String message,
 ) async {
-  final r = await showDialog<bool>(
+  final r = await fluent.showDialog<bool>(
     context: context,
-    builder: (c) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+    builder: (c) => fluent.ContentDialog(
+      title: Text(title),
       content: Text(message),
       actions: [
-        TextButton(
+        fluent.Button(
           onPressed: () => Navigator.pop(c, false),
           child: const Text('إلغاء'),
         ),
-        FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: AppColors.red),
+        fluent.FilledButton(
+          style: fluent.ButtonStyle(
+            backgroundColor: const WidgetStatePropertyAll(AppColors.red),
+          ),
           onPressed: () => Navigator.pop(c, true),
           child: const Text('نعم، تأكيد'),
         ),
