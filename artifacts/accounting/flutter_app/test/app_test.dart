@@ -639,6 +639,20 @@ void main() {
         ],
       ),
     ]);
+    await Store.saveDraft(0, {
+      'number': '999999',
+      'lines': [
+        {
+          'id': 'stale-line',
+          'code': 'OLD-1',
+          'name': 'صنف من مسودة سابقة',
+          'unitNo': '1',
+          'unit': 'حبة',
+          'qty': 1,
+          'price': 99,
+        },
+      ],
+    });
 
     await tester.pumpWidget(
       fluent.FluentApp(
@@ -650,6 +664,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    expect(find.text('000001'), findsOneWidget);
+    expect(find.byKey(const ValueKey('invoice-side-row-0')), findsNothing);
+    expect(find.text('صنف من مسودة سابقة'), findsNothing);
+    expect(await Store.loadDraft(0), isNull);
     await tester.tap(find.text('اختيار الأصناف'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('invoice-item-add-SAVE-1')));
@@ -671,10 +689,16 @@ void main() {
       ),
     );
     expect(savedLines.single['name'], 'صنف للحفظ');
+    expect(invoice['number'], '000001');
+    expect(DateTime.tryParse(invoice['invDate'] as String), isNotNull);
     expect(await Store.loadDraft(0), isNull);
     expect(find.byKey(const ValueKey('invoice-side-row-0')), findsNothing);
     expect(find.text('مسح المسودة وبدء فاتورة جديدة'), findsNothing);
     expect(find.text('حفظ+طبع'), findsOneWidget);
+    expect(find.textContaining('طباعة F7'), findsNothing);
+    await tester.tap(find.text('بيانات الفاتورة'));
+    await tester.pumpAndSettle();
+    expect(find.text('000002'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 3));
     expect(tester.takeException(), isNull);
@@ -867,6 +891,12 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('invoice-item-add-MULTI-1-2')));
     await tester.pumpAndSettle();
     expect(find.text('صنف متعدد • كرتون'), findsOneWidget);
+    await tester.tap(find.text('إضافة الأصناف'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('invoice-line-index-0')), findsOneWidget);
+    expect(find.text('MULTI-1'), findsNothing);
+    expect(find.text('سعر الوحدة قبل الضريبة'), findsOneWidget);
+    expect(find.text('الإجمالي قبل الضريبة'), findsOneWidget);
     await tester.pump(const Duration(seconds: 3));
     expect(tester.takeException(), isNull);
   });

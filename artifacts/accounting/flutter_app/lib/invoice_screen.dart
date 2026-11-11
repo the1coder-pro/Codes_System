@@ -35,7 +35,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   final selectedLineIds = <String>{};
   int? selected;
   List<Item> catalog = [];
-  bool draftLoaded = false;
   String? selectedPayment = 'cash';
   bool paymentAuto = true;
 
@@ -68,21 +67,31 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   @override
   void initState() {
     super.initState();
+    h['number']!.text = '000001';
     h['taxRate']!.text = '0.15';
     h['discount']!.text = '0';
     for (final k in _paymentKeys) {
       h[k]!.text = '0';
     }
-    Store.loadItems().then((v) {
-      if (mounted) setState(() => catalog = v);
+    _initializeInvoice();
+  }
+
+  Future<void> _initializeInvoice() async {
+    final draftCleared = await Store.clearDraft(widget.typeIndex);
+    final loadedCatalog = await Store.loadItems();
+    final number = await Store.nextInvoiceNumber();
+    if (!mounted) return;
+    setState(() {
+      catalog = loadedCatalog;
+      h['number']!.text = number;
     });
-    Store.loadDraft(widget.typeIndex).then((d) {
-      if (d == null || !mounted) return;
-      setState(() {
-        _apply(d);
-        draftLoaded = true;
-      });
-    });
+    if (!draftCleared) {
+      toast(
+        context,
+        'تعذر مسح بيانات الفاتورة السابقة',
+        severity: fluent.InfoBarSeverity.warning,
+      );
+    }
   }
 
   @override
@@ -154,7 +163,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     );
     lines.add(l);
     lineCtl[l.id] = [
-      TextEditingController(text: code),
       TextEditingController(text: name),
       TextEditingController(text: '1'),
       TextEditingController(text: money(price)),
@@ -163,7 +171,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   void _syncQty(InvoiceLine l) {
-    lineCtl[l.id]![2].text = l.qty % 1 == 0
+    lineCtl[l.id]![1].text = l.qty % 1 == 0
         ? l.qty.toInt().toString()
         : '${l.qty}';
   }
@@ -244,42 +252,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     'lines': lines.map((l) => l.toJson()).toList(),
   };
 
-  void _apply(Map<String, dynamic> d) {
-    invDate = DateTime.tryParse(d['invDate'] ?? '') ?? invDate;
-    delivDate = DateTime.tryParse(d['delivDate'] ?? '') ?? delivDate;
-    for (final e in h.entries) {
-      if (d[e.key] is String) e.value.text = d[e.key];
-    }
-    creditor = d['creditor'] ?? creditor;
-    debtor = d['debtor'] ?? debtor;
-    storeCredit = d['storeCredit'] ?? storeCredit;
-    storeDebit = d['storeDebit'] ?? storeDebit;
-    taxable = d['taxable'] ?? taxable;
-    selectedPayment = d['selectedPayment'] as String? ?? 'cash';
-    lines.clear();
-    lineCtl.clear();
-    selectedLineIds.clear();
-    for (final raw in (d['lines'] as List? ?? [])) {
-      final l = InvoiceLine.fromJson(Map<String, dynamic>.from(raw));
-      lines.add(l);
-      lineCtl[l.id] = [
-        TextEditingController(text: l.code),
-        TextEditingController(text: l.name),
-        TextEditingController(),
-        TextEditingController(text: money(l.price)),
-      ];
-      _syncQty(l);
-    }
-    final activePayments = _paymentKeys
-        .where((key) => _n(key).abs() >= .005)
-        .toList();
-    paymentAuto =
-        d['paymentAuto'] as bool? ??
-        (activePayments.isEmpty ||
-            (activePayments.length == 1 &&
-                (_n(activePayments.single) - net).abs() < .005));
-  }
-
   Future<bool> _saveInvoiceAndReset() async {
     if (lines.isEmpty) {
       toast(
@@ -300,8 +272,12 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       return false;
     }
     final draftCleared = await Store.clearDraft(widget.typeIndex);
+    final nextNumber = await Store.nextInvoiceNumber();
     if (!mounted) return false;
-    setState(_resetInvoiceForm);
+    setState(() {
+      _resetInvoiceForm();
+      h['number']!.text = nextNumber;
+    });
     if (!draftCleared) {
       toast(
         context,
@@ -339,7 +315,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     storeCredit = 'مشتريات بضاعة بعرض البيع';
     storeDebit = '-';
     taxable = 'خاضع للضريبة';
-    draftLoaded = false;
   }
 
   Future<void> _save() async {
@@ -348,41 +323,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
         context,
         'تم حفظ الفاتورة ${type.ar}',
         severity: fluent.InfoBarSeverity.success,
-      );
-    }
-  }
-
-  void _print() {
-    if (lines.isEmpty) {
-      toast(
-        context,
-        'أضف صنفاً قبل طباعة الفاتورة',
-        severity: fluent.InfoBarSeverity.warning,
-      );
-      return;
-    }
-    final printWindow = printer.openPrintWindow();
-    if (printWindow == null) {
-      toast(
-        context,
-        'تعذر فتح نافذة الطباعة في المتصفح',
-        severity: fluent.InfoBarSeverity.error,
-      );
-      return;
-    }
-    try {
-      printWindow.writeAndPrint(_printDocument());
-      toast(
-        context,
-        'تم فتح نافذة طباعة الفاتورة',
-        severity: fluent.InfoBarSeverity.success,
-      );
-    } catch (_) {
-      printWindow.close();
-      toast(
-        context,
-        'تعذرت طباعة الفاتورة',
-        severity: fluent.InfoBarSeverity.error,
       );
     }
   }
@@ -441,13 +381,15 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
 
-    final rows = lines.map((line) {
+    final rows = lines.asMap().entries.map((entry) {
+      final index = entry.key + 1;
+      final line = entry.value;
       final quantity = line.qty == line.qty.roundToDouble()
           ? line.qty.toStringAsFixed(0)
           : line.qty.toString();
       return '''
         <tr>
-          <td>${escape(line.code)}</td>
+          <td>$index</td>
           <td>${escape(line.name)}</td>
           <td>${escape(line.unit)}</td>
           <td>$quantity</td>
@@ -514,7 +456,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           </header>
           <section class="details">
             <div><div class="detail-label">رقم الفاتورة</div><div class="detail-value">${number.isEmpty ? '—' : escape(number)}</div></div>
-            <div><div class="detail-label">تاريخ الفاتورة</div><div class="detail-value">${_fmt(invDate)}</div></div>
+            <div><div class="detail-label">تاريخ ووقت الفاتورة</div><div class="detail-value">${_fmt(invDate)} ${_time(invDate)}</div></div>
             <div><div class="detail-label">تاريخ التسليم</div><div class="detail-value">${_fmt(delivDate)}</div></div>
             <div><div class="detail-label">اسم الحساب</div><div class="detail-value">${account.isEmpty ? '—' : escape(account)}</div></div>
             <div><div class="detail-label">الرقم الضريبي</div><div class="detail-value">${taxNumber.isEmpty ? '—' : escape(taxNumber)}</div></div>
@@ -522,8 +464,8 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           </section>
           <table>
             <thead><tr>
-              <th>رقم الصنف</th><th>اسم الصنف</th><th>الوحدة</th>
-              <th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th>
+              <th>م</th><th>اسم الصنف</th><th>الوحدة</th>
+              <th>الكمية</th><th>سعر الوحدة قبل الضريبة</th><th>الإجمالي قبل الضريبة</th>
             </tr></thead>
             <tbody>$rows</tbody>
           </table>
@@ -715,9 +657,9 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           child: _readonly(_time(invDate)),
         ),
         FieldRow(
-          label: 'رقم الفاتورة اليدوي',
+          label: 'رقم الفاتورة',
           labelWidth: 108,
-          child: TextBox(controller: h['number']!),
+          child: _readonly(h['number']!.text),
         ),
         FieldRow(
           label: 'الدائن',
@@ -832,11 +774,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                   ),
                 ),
               ),
-              if (draftLoaded)
-                const Text(
-                  '● مسودة محفوظة',
-                  style: TextStyle(color: AppColors.green, fontSize: 12),
-                ),
             ],
           ),
           const SizedBox(height: 12),
@@ -899,12 +836,12 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
 
   Widget _linesTab() {
     const cols = [
-      GridColumn('رمز الصنف', 100),
+      GridColumn('م', 44),
       GridColumn('اسم الصنف', 220),
       GridColumn('الكمية', 80),
-      GridColumn('السعر', 100),
+      GridColumn('سعر الوحدة قبل الضريبة', 140),
       GridColumn('الوحدة', 90),
-      GridColumn('الإجمالي', 110),
+      GridColumn('الإجمالي قبل الضريبة', 130),
     ];
     return Column(
       children: [
@@ -970,6 +907,15 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                     }),
                     cell: (r, c) {
                       final l = lines[r];
+                      if (c == 0) {
+                        return Center(
+                          child: Text(
+                            '${r + 1}',
+                            key: ValueKey('invoice-line-index-$r'),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        );
+                      }
                       if (c == 4) {
                         return Center(
                           child: Text(
@@ -989,11 +935,9 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                         );
                       }
                       return CellField(
-                        controller: lineCtl[l.id]![c],
+                        controller: lineCtl[l.id]![c - 1],
                         onChanged: (v) => setState(() {
                           switch (c) {
-                            case 0:
-                              l.code = v;
                             case 1:
                               l.name = v;
                             case 2:
@@ -1197,14 +1141,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                 onTap: _saveAndPrint,
               ),
               ActionTile(
-                glyph: '🖨️',
-                label: 'طباعة F7',
-                glyphColor: AppColors.muted,
-                width: 54,
-                height: 58,
-                onTap: _print,
-              ),
-              ActionTile(
                 glyph: '🔎',
                 label: 'بحث F2',
                 width: 54,
@@ -1332,7 +1268,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                   child: Text(
                     selected == null
                         ? '0'
-                        : lineCtl[lines[selected!].id]![2].text,
+                        : lineCtl[lines[selected!].id]![1].text,
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ),

@@ -9,6 +9,7 @@ class Store {
   static const _itemsKey = 'items_v1';
   static const _accountsKey = 'accounts_v1';
   static const _invoicesKey = 'invoices_v1';
+  static const _invoiceSequenceKey = 'invoice_next_number_v1';
 
   static List<Account> _seedAccounts() => [
     Account(code: '1000001', nameAr: 'النقدية'),
@@ -98,6 +99,29 @@ class Store {
     }
   }
 
+  static Future<String> nextInvoiceNumber() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getString(_invoicesKey);
+      var next = p.getInt(_invoiceSequenceKey) ?? 1;
+      if (raw != null) {
+        final entries = jsonDecode(raw) as List;
+        if (entries.length + 1 > next) next = entries.length + 1;
+        for (final entry in entries) {
+          final saved = Map<String, dynamic>.from(entry);
+          final invoice = Map<String, dynamic>.from(
+            saved['invoice'] as Map? ?? const {},
+          );
+          final number = int.tryParse('${invoice['number'] ?? ''}');
+          if (number != null && number >= next) next = number + 1;
+        }
+      }
+      return next.toString().padLeft(6, '0');
+    } catch (_) {
+      return '000001';
+    }
+  }
+
   static Future<bool> saveInvoice(int type, Map<String, dynamic> data) async {
     try {
       final p = await SharedPreferences.getInstance();
@@ -112,7 +136,16 @@ class Store {
         'savedAt': DateTime.now().toIso8601String(),
         'invoice': data,
       });
-      return await p.setString(_invoicesKey, jsonEncode(invoices));
+      final saved = await p.setString(_invoicesKey, jsonEncode(invoices));
+      if (!saved) return false;
+      final number = int.tryParse('${data['number'] ?? ''}');
+      if (number != null) {
+        final currentNext = p.getInt(_invoiceSequenceKey) ?? 1;
+        if (number + 1 > currentNext) {
+          await p.setInt(_invoiceSequenceKey, number + 1);
+        }
+      }
+      return true;
     } catch (_) {
       return false;
     }
