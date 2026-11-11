@@ -61,8 +61,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
   String sType = 'الكل';
   String sField = 'جميع الحقول';
   final sText = TextEditingController();
+  final _searchScrollController = ScrollController();
   List<Item> results = [];
-  bool _searchSectionCollapsed = false;
 
   @override
   void initState() {
@@ -241,6 +241,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
   });
 
   @override
+  void dispose() {
+    _searchScrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (loading) {
       return Container(
@@ -286,81 +292,41 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
                 const SizedBox(height: 8),
                 Expanded(
-                  child: Container(
-                    key: const ValueKey('inventory-items-grid-area'),
-                    child: grid,
+                  child: ResizableVerticalSplit(
+                    dividerKey: const ValueKey(
+                      'splitter-inventory-search-section',
+                    ),
+                    collapseToggleKey: const ValueKey(
+                      'splitter-inventory-search-section-toggle',
+                    ),
+                    secondExtentKey: const ValueKey(
+                      'inventory-search-section-size',
+                    ),
+                    initialSecondExtent: 236,
+                    minFirstExtent: 120,
+                    minSecondExtent: 96,
+                    first: Container(
+                      key: const ValueKey('inventory-items-grid-area'),
+                      child: grid,
+                    ),
+                    second: Container(
+                      key: const ValueKey('inventory-search-section'),
+                      color: AppColors.paper,
+                      child: ResizableSplit(
+                        dividerKey: const ValueKey('splitter-inventory-search'),
+                        collapseToggleKey: const ValueKey(
+                          'splitter-inventory-search-toggle',
+                        ),
+                        first: _searchPanel(),
+                        second: _resultsPanel(),
+                        initialFirstFraction: .31,
+                        minFirstWidth: 220,
+                        minSecondWidth: 380,
+                        collapsibleFirst: true,
+                        collapsedLabel: 'التصفية',
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Column(
-                  children: [
-                    SizedBox(
-                      height: 30,
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: fluent.Button(
-                          key: const ValueKey(
-                            'inventory-search-section-toggle',
-                          ),
-                          style: fluent.ButtonStyle(
-                            padding: const WidgetStatePropertyAll(
-                              EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            ),
-                          ),
-                          onPressed: () => setState(
-                            () => _searchSectionCollapsed =
-                                !_searchSectionCollapsed,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _searchSectionCollapsed
-                                    ? Icons.keyboard_arrow_up
-                                    : Icons.keyboard_arrow_down,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _searchSectionCollapsed
-                                    ? 'إظهار البحث والتصفية'
-                                    : 'إخفاء البحث والتصفية',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    AnimatedSize(
-                      key: const ValueKey('inventory-search-section-size'),
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeInOut,
-                      alignment: Alignment.topCenter,
-                      child: Visibility(
-                        visible: !_searchSectionCollapsed,
-                        maintainState: true,
-                        child: SizedBox(
-                          height: 236,
-                          child: ResizableSplit(
-                            dividerKey: const ValueKey(
-                              'splitter-inventory-search',
-                            ),
-                            collapseToggleKey: const ValueKey(
-                              'splitter-inventory-search-toggle',
-                            ),
-                            first: _searchPanel(),
-                            second: _resultsPanel(),
-                            initialFirstFraction: .31,
-                            minFirstWidth: 220,
-                            minSecondWidth: 380,
-                            collapsibleFirst: true,
-                            collapsedLabel: 'التصفية',
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -678,74 +644,79 @@ class _InventoryScreenState extends State<InventoryScreen> {
       key: const ValueKey('inventory-search-panel'),
       color: AppColors.cyan,
       padding: const EdgeInsets.all(8),
-      child: SingleChildScrollView(
-        primary: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FieldRow(
-              label: 'طريقة الاستخدام',
-              labelWidth: 96,
-              child: DropBox(
-                value: sUsage,
-                options: ['الكل', ..._usageOpts],
-                onChanged: (v) => setState(() => sUsage = v),
+      child: Scrollbar(
+        controller: _searchScrollController,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          controller: _searchScrollController,
+          primary: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FieldRow(
+                label: 'طريقة الاستخدام',
+                labelWidth: 96,
+                child: DropBox(
+                  value: sUsage,
+                  options: ['الكل', ..._usageOpts],
+                  onChanged: (v) => setState(() => sUsage = v),
+                ),
               ),
-            ),
-            FieldRow(
-              label: 'نوع الصنف',
-              labelWidth: 96,
-              child: DropBox(
-                value: sType,
-                options: ['الكل', ..._typeOpts],
-                onChanged: (v) => setState(() => sType = v),
+              FieldRow(
+                label: 'نوع الصنف',
+                labelWidth: 96,
+                child: DropBox(
+                  value: sType,
+                  options: ['الكل', ..._typeOpts],
+                  onChanged: (v) => setState(() => sType = v),
+                ),
               ),
-            ),
-            FieldRow(
-              label: 'البحث في',
-              labelWidth: 96,
-              child: DropBox(
-                value: sField,
-                options: const [
-                  'جميع الحقول',
-                  'الاسم',
-                  'الباركود',
-                  'رقم المجموعة',
-                ],
-                onChanged: (v) => setState(() => sField = v),
+              FieldRow(
+                label: 'البحث في',
+                labelWidth: 96,
+                child: DropBox(
+                  value: sField,
+                  options: const [
+                    'جميع الحقول',
+                    'الاسم',
+                    'الباركود',
+                    'رقم المجموعة',
+                  ],
+                  onChanged: (v) => setState(() => sField = v),
+                ),
               ),
-            ),
-            FieldRow(
-              label: 'البحث عن',
-              labelWidth: 96,
-              child: TextBox(
-                controller: sText,
-                onSubmitted: (_) => setState(_search),
+              FieldRow(
+                label: 'البحث عن',
+                labelWidth: 96,
+                child: TextBox(
+                  controller: sText,
+                  onSubmitted: (_) => setState(_search),
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            SizedBox(
-              width: double.infinity,
-              height: 42,
-              child: fluent.Button(
-                style: fluent.ButtonStyle(
-                  backgroundColor: const WidgetStatePropertyAll(
-                    Color(0xFFF4F8FA),
-                  ),
-                  shape: WidgetStatePropertyAll(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
+              const SizedBox(height: 4),
+              SizedBox(
+                width: double.infinity,
+                height: 42,
+                child: fluent.Button(
+                  style: fluent.ButtonStyle(
+                    backgroundColor: const WidgetStatePropertyAll(
+                      Color(0xFFF4F8FA),
+                    ),
+                    shape: WidgetStatePropertyAll(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
                   ),
-                ),
-                onPressed: () => setState(_search),
-                child: const Text(
-                  'بحث',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                  onPressed: () => setState(_search),
+                  child: const Text(
+                    'بحث',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

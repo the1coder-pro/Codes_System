@@ -275,20 +275,68 @@ void main() {
       const ValueKey('inventory-search-section-size'),
     );
     final sectionToggle = find.byKey(
-      const ValueKey('inventory-search-section-toggle'),
+      const ValueKey('splitter-inventory-search-section-toggle'),
     );
+    final verticalDivider = find.byKey(
+      const ValueKey('splitter-inventory-search-section'),
+    );
+    final searchHeightBeforeResize = tester.getSize(searchSection).height;
+    final gridHeightBeforeResize = tester.getSize(gridArea).height;
+    await tester.drag(verticalDivider, const Offset(0, 80));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(searchSection).height,
+      lessThan(searchHeightBeforeResize),
+    );
+    expect(
+      tester.getSize(gridArea).height,
+      greaterThan(gridHeightBeforeResize),
+    );
+    final searchPanel = find.byKey(const ValueKey('inventory-search-panel'));
+    expect(
+      find.descendant(
+        of: searchPanel,
+        matching: find.byType(SingleChildScrollView),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: searchPanel, matching: find.byType(Scrollbar)),
+      findsOneWidget,
+    );
+    final filterScrollView = find.descendant(
+      of: searchPanel,
+      matching: find.byType(SingleChildScrollView),
+    );
+    final filterScrollable = find.descendant(
+      of: filterScrollView,
+      matching: find.byType(Scrollable),
+    );
+    expect(
+      tester
+          .state<ScrollableState>(filterScrollable.first)
+          .position
+          .maxScrollExtent,
+      greaterThan(0),
+    );
+
+    final smallerSearchHeight = tester.getSize(searchSection).height;
+    await tester.drag(verticalDivider, const Offset(0, -40));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(searchSection).height,
+      greaterThan(smallerSearchHeight),
+    );
+
     final gridHeightBeforeFold = tester.getSize(gridArea).height;
     await tester.tap(sectionToggle);
     await tester.pumpAndSettle();
-    expect(find.text('إظهار البحث والتصفية'), findsOneWidget);
     expect(tester.getSize(searchSection).height, 0);
     expect(tester.getSize(gridArea).height, greaterThan(gridHeightBeforeFold));
     await tester.tap(sectionToggle);
     await tester.pumpAndSettle();
     expect(tester.getSize(searchSection).height, greaterThan(0));
-    expect(tester.getSize(gridArea).height, gridHeightBeforeFold);
 
-    final searchPanel = find.byKey(const ValueKey('inventory-search-panel'));
     final searchToggle = find.byKey(
       const ValueKey('splitter-inventory-search-toggle'),
     );

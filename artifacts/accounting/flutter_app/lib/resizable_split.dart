@@ -160,3 +160,142 @@ class _ResizableSplitState extends State<ResizableSplit> {
     },
   );
 }
+
+/// A vertically resizable pair of panels with a fold/expand control.
+class ResizableVerticalSplit extends StatefulWidget {
+  final Widget first;
+  final Widget second;
+  final double initialSecondExtent;
+  final double minFirstExtent;
+  final double minSecondExtent;
+  final Key? dividerKey;
+  final Key? collapseToggleKey;
+  final Key? secondExtentKey;
+
+  const ResizableVerticalSplit({
+    super.key,
+    required this.first,
+    required this.second,
+    required this.initialSecondExtent,
+    required this.minFirstExtent,
+    required this.minSecondExtent,
+    this.dividerKey,
+    this.collapseToggleKey,
+    this.secondExtentKey,
+  });
+
+  @override
+  State<ResizableVerticalSplit> createState() => _ResizableVerticalSplitState();
+}
+
+class _ResizableVerticalSplitState extends State<ResizableVerticalSplit> {
+  static const _dividerHeight = 32.0;
+  double? _secondExtent;
+  bool _secondCollapsed = false;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final available = math.max(0.0, constraints.maxHeight - _dividerHeight);
+      final minSecond = math.min(widget.minSecondExtent, available);
+      final minFirst = math.min(
+        widget.minFirstExtent,
+        math.max(0.0, available - minSecond),
+      );
+      final maxSecond = math.max(minSecond, available - minFirst);
+      final secondExtent = (_secondExtent ?? widget.initialSecondExtent)
+          .clamp(minSecond, maxSecond)
+          .toDouble();
+      final secondHeight = _secondCollapsed ? 0.0 : secondExtent;
+      final firstHeight = math.max(0.0, available - secondHeight);
+
+      void setSecondExtent(double requested) {
+        setState(() {
+          _secondCollapsed = false;
+          _secondExtent = requested.clamp(minSecond, maxSecond).toDouble();
+        });
+      }
+
+      void resizeBy(double delta) {
+        setSecondExtent(secondExtent - delta);
+      }
+
+      return Column(
+        children: [
+          SizedBox(
+            height: firstHeight,
+            width: double.infinity,
+            child: widget.first,
+          ),
+          Semantics(
+            label: 'تغيير ارتفاع قسم البحث والتصفية',
+            value: _secondCollapsed ? 'مطوي' : '${secondHeight.round()} بكسل',
+            increasedValue:
+                '${math.min(maxSecond, secondExtent + 16).round()} بكسل',
+            decreasedValue:
+                '${math.max(minSecond, secondExtent - 16).round()} بكسل',
+            onIncrease: _secondCollapsed
+                ? null
+                : () => setSecondExtent(secondExtent + 16),
+            onDecrease: _secondCollapsed
+                ? null
+                : () => setSecondExtent(secondExtent - 16),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.resizeRow,
+              child: GestureDetector(
+                key: widget.dividerKey,
+                behavior: HitTestBehavior.opaque,
+                onVerticalDragUpdate: (details) => resizeBy(details.delta.dy),
+                child: SizedBox(
+                  height: _dividerHeight,
+                  width: double.infinity,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(height: 1, color: AppColors.line),
+                      Material(
+                        color: AppColors.paper,
+                        child: IconButton(
+                          key: widget.collapseToggleKey,
+                          tooltip: _secondCollapsed
+                              ? 'إظهار البحث والتصفية'
+                              : 'طي البحث والتصفية',
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          constraints: const BoxConstraints.tightFor(
+                            width: 30,
+                            height: 30,
+                          ),
+                          icon: Icon(
+                            _secondCollapsed
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            size: 18,
+                            color: AppColors.ink,
+                          ),
+                          onPressed: () => setState(
+                            () => _secondCollapsed = !_secondCollapsed,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            key: widget.secondExtentKey,
+            height: secondHeight,
+            width: double.infinity,
+            child: Visibility(
+              visible: !_secondCollapsed,
+              maintainState: true,
+              child: widget.second,
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
