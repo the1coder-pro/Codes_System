@@ -10,31 +10,33 @@ class FieldRow extends StatelessWidget {
   final String label;
   final Widget child;
   final double labelWidth;
+  final bool compact;
   const FieldRow({
     super.key,
     required this.label,
     required this.child,
     this.labelWidth = 120,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: compact ? 2 : 4),
       child: Row(
         children: [
           SizedBox(
             width: labelWidth,
             child: Text(
               label,
-              style: const TextStyle(
-                fontSize: 14,
+              style: TextStyle(
+                fontSize: compact ? 12 : 14,
                 fontWeight: FontWeight.w600,
-                height: 1.15,
+                height: compact ? 1 : 1.15,
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: compact ? 6 : 8),
           Expanded(child: child),
         ],
       ),
@@ -54,6 +56,7 @@ class TextBox extends StatelessWidget {
   final TextDirection? textDirection;
   final bool autofocus;
   final bool readOnly;
+  final bool compact;
   const TextBox({
     super.key,
     required this.controller,
@@ -67,6 +70,7 @@ class TextBox extends StatelessWidget {
     this.textDirection,
     this.autofocus = false,
     this.readOnly = false,
+    this.compact = false,
   });
 
   @override
@@ -83,8 +87,8 @@ class TextBox extends StatelessWidget {
       placeholder: placeholder,
       autofocus: autofocus,
       readOnly: readOnly,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-      style: const TextStyle(fontSize: 14),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: compact ? 3 : 7),
+      style: TextStyle(fontSize: compact ? 12 : 14),
       decoration: WidgetStateProperty.resolveWith(
         (states) => BoxDecoration(
           color: states.contains(WidgetState.disabled)
@@ -107,21 +111,24 @@ class DropBox extends StatelessWidget {
   final String value;
   final List<String> options;
   final ValueChanged<String>? onChanged;
+  final bool compact;
   const DropBox({
     super.key,
     required this.value,
     required this.options,
     this.onChanged,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final opts = options.contains(value) ? options : [value, ...options];
     return SizedBox(
-      height: 36,
+      height: compact ? 34 : 36,
       child: fluent.ComboBox<String>(
         value: value,
         isExpanded: true,
+        style: TextStyle(fontSize: compact ? 12 : 14),
         items: opts
             .map(
               (option) =>
@@ -161,6 +168,7 @@ class ActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
+    final multiline = label.contains('\n');
     return Opacity(
       opacity: enabled ? 1 : 0.42,
       child: Container(
@@ -189,25 +197,25 @@ class ActionTile extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (icon != null)
-                  Icon(icon, size: 24, color: glyphColor)
+                  Icon(icon, size: multiline ? 20 : 24, color: glyphColor)
                 else
                   Text(
                     glyph,
                     style: TextStyle(
-                      fontSize: 24,
-                      height: 1.1,
+                      fontSize: multiline ? 21 : 24,
+                      height: multiline ? 1 : 1.1,
                       color: glyphColor,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                const SizedBox(height: 4),
+                SizedBox(height: multiline ? 2 : 4),
                 Text(
                   label,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 13,
+                  style: TextStyle(
+                    fontSize: multiline ? 11 : 13,
                     fontWeight: FontWeight.w600,
-                    height: 1.1,
+                    height: multiline ? 1 : 1.1,
                   ),
                 ),
               ],

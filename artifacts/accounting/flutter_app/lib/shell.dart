@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
@@ -66,9 +68,23 @@ class _AppShellState extends State<AppShell> {
   );
 
   Future<void> calculator() async {
-    await fluent.showDialog(
+    await showGeneralDialog<void>(
       context: context,
-      builder: (_) => const _CalcDialog(),
+      barrierDismissible: true,
+      barrierLabel: 'إغلاق الآلة الحاسبة',
+      barrierColor: Colors.black26,
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (_, _, _) => const _CalcDialog(),
+      transitionBuilder: (context, animation, _, child) {
+        final eased = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+        );
+        return FadeTransition(
+          opacity: eased,
+          child: ScaleTransition(scale: eased, child: child),
+        );
+      },
     );
   }
 
@@ -235,7 +251,8 @@ class _AppShellState extends State<AppShell> {
     ];
     final left = [
       _RibbonButton(
-        glyph: '🧮',
+        glyph: '',
+        icon: fluent.FluentIcons.calculator,
         label: 'آلة حاسبة',
         color: AppColors.muted,
         onTap: calculator,
@@ -416,6 +433,7 @@ class _AppShellState extends State<AppShell> {
 
 class _RibbonButton extends StatelessWidget {
   final String glyph;
+  final IconData? icon;
   final String label;
   final Color color;
   final bool active;
@@ -427,6 +445,7 @@ class _RibbonButton extends StatelessWidget {
     required this.label,
     required this.color,
     required this.onTap,
+    this.icon,
     this.active = false,
     this.stacked = false,
     this.dense = false,
@@ -434,6 +453,7 @@ class _RibbonButton extends StatelessWidget {
 
   _RibbonButton asStacked({bool dense = false}) => _RibbonButton(
     glyph: glyph,
+    icon: icon,
     label: label,
     color: color,
     active: active,
@@ -445,6 +465,17 @@ class _RibbonButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final buttonHeight = stacked ? (dense ? 50.0 : 74.0) : 60.0;
+    Widget iconWidget(double size) => icon == null
+        ? Text(
+            glyph,
+            style: TextStyle(
+              fontSize: size,
+              height: 1.1,
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          )
+        : Icon(icon, size: size, color: color);
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: stacked ? 1 : 2,
@@ -487,14 +518,7 @@ class _RibbonButton extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          glyph,
-                          style: TextStyle(
-                            fontSize: dense ? 17 : 27,
-                            height: 1.05,
-                            color: color,
-                          ),
-                        ),
+                        iconWidget(dense ? 17 : 27),
                         SizedBox(height: dense ? 1 : 2),
                         Text(
                           label.replaceAll('\n', ' '),
@@ -513,14 +537,7 @@ class _RibbonButton extends StatelessWidget {
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        glyph,
-                        style: TextStyle(
-                          fontSize: 22,
-                          color: color,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
+                      iconWidget(22),
                       const SizedBox(width: 6),
                       Text(
                         label,
@@ -779,83 +796,282 @@ class _CalcDialog extends StatefulWidget {
 }
 
 class _CalcDialogState extends State<_CalcDialog> {
-  final ctl = TextEditingController();
-  String result = '';
+  static const _keys = [
+    'C',
+    '⌫',
+    '%',
+    '÷',
+    '7',
+    '8',
+    '9',
+    '×',
+    '4',
+    '5',
+    '6',
+    '−',
+    '1',
+    '2',
+    '3',
+    '+',
+    '±',
+    '0',
+    '.',
+    '=',
+  ];
 
-  void eval() {
-    // Left-to-right with * / precedence over + -.
-    final src = ctl.text.replaceAll(' ', '').replaceAll('×', '*');
-    final tokens = RegExp(
-      r'(\d+\.?\d*|[+\-*/])',
-    ).allMatches(src).map((m) => m[0]!).toList();
-    try {
-      final terms = <double>[];
-      final ops = <String>[];
-      double? cur;
-      String pending = '';
-      for (final t in tokens) {
-        if ('+-*/'.contains(t)) {
-          pending = t;
-          if (t == '+' || t == '-') {
-            terms.add(cur!);
-            ops.add(t);
-            cur = null;
-          }
-        } else {
-          final n = double.parse(t);
-          if (cur != null && pending == '*') {
-            cur = cur * n;
-          } else if (cur != null && pending == '/') {
-            cur = cur / n;
-          } else {
-            cur = n;
-          }
+  String display = '0';
+  String? operation;
+  double? storedValue;
+  bool replaceOnDigit = true;
+  Offset? position;
+
+  String _format(double value) {
+    if (!value.isFinite) return 'خطأ';
+    final fixed = value.toStringAsFixed(8);
+    return fixed
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
+  }
+
+  void _calculate() {
+    final right = double.tryParse(display);
+    final left = storedValue;
+    if (left == null || right == null || operation == null) return;
+    final result = switch (operation) {
+      '+' => left + right,
+      '−' => left - right,
+      '×' => left * right,
+      '÷' => right == 0 ? double.nan : left / right,
+      _ => right,
+    };
+    display = _format(result);
+    storedValue = null;
+    operation = null;
+    replaceOnDigit = true;
+  }
+
+  void _press(String key) {
+    setState(() {
+      if (key.length == 1 && '0123456789'.contains(key)) {
+        if (replaceOnDigit || display == '0' || display == 'خطأ') {
+          display = key;
+        } else if (display.length < 16) {
+          display += key;
         }
+        replaceOnDigit = false;
+        return;
       }
-      terms.add(cur!);
-      var total = terms.first;
-      for (var i = 0; i < ops.length; i++) {
-        total = ops[i] == '+' ? total + terms[i + 1] : total - terms[i + 1];
+      switch (key) {
+        case '.':
+          if (replaceOnDigit || display == 'خطأ') {
+            display = '0.';
+            replaceOnDigit = false;
+          } else if (!display.contains('.')) {
+            display += '.';
+          }
+          break;
+        case 'C':
+          display = '0';
+          storedValue = null;
+          operation = null;
+          replaceOnDigit = true;
+          break;
+        case '⌫':
+          if (!replaceOnDigit && display.length > 1) {
+            display = display.substring(0, display.length - 1);
+          } else {
+            display = '0';
+          }
+          break;
+        case '±':
+          final value = double.tryParse(display);
+          if (value != null) display = _format(-value);
+          break;
+        case '%':
+          final value = double.tryParse(display);
+          if (value != null) display = _format(value / 100);
+          break;
+        case '+':
+        case '−':
+        case '×':
+        case '÷':
+          if (storedValue != null && operation != null && !replaceOnDigit) {
+            _calculate();
+          }
+          storedValue ??= double.tryParse(display);
+          operation = key;
+          replaceOnDigit = true;
+          break;
+        case '=':
+          _calculate();
+          break;
       }
-      setState(() => result = money(total));
-    } catch (_) {
-      setState(() => result = 'تعبير غير صالح');
-    }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return fluent.ContentDialog(
-      title: const Text('آلة حاسبة'),
-      content: SizedBox(
-        width: 300,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = math
+            .min(360.0, constraints.maxWidth - 24)
+            .clamp(0.0, double.infinity)
+            .toDouble();
+        final height = math
+            .min(460.0, constraints.maxHeight - 24)
+            .clamp(0.0, double.infinity)
+            .toDouble();
+        final defaultPosition = Offset(
+          (constraints.maxWidth - width) / 2,
+          (constraints.maxHeight - height) / 2,
+        );
+        final current = position ?? defaultPosition;
+        final maxLeft = math.max(0.0, constraints.maxWidth - width);
+        final maxTop = math.max(0.0, constraints.maxHeight - height);
+        final left = current.dx.clamp(0.0, maxLeft).toDouble();
+        final top = current.dy.clamp(0.0, maxTop).toDouble();
+
+        return Stack(
+          fit: StackFit.expand,
           children: [
-            Directionality(
-              textDirection: TextDirection.ltr,
-              child: fluent.TextBox(
-                controller: ctl,
-                autofocus: true,
-                onSubmitted: (_) => eval(),
-                placeholder: '125.40 * 3 + 18',
+            Positioned(
+              left: left,
+              top: top,
+              child: SizedBox(
+                key: const ValueKey('calculator-window'),
+                width: width,
+                height: height,
+                child: Material(
+                  color: Colors.white,
+                  elevation: 18,
+                  borderRadius: BorderRadius.circular(8),
+                  clipBehavior: Clip.antiAlias,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: Column(
+                      children: [
+                        GestureDetector(
+                          key: const ValueKey('calculator-drag-handle'),
+                          behavior: HitTestBehavior.opaque,
+                          onPanUpdate: (details) {
+                            setState(() {
+                              position = Offset(
+                                (left + details.delta.dx)
+                                    .clamp(0.0, maxLeft)
+                                    .toDouble(),
+                                (top + details.delta.dy)
+                                    .clamp(0.0, maxTop)
+                                    .toDouble(),
+                              );
+                            });
+                          },
+                          child: Container(
+                            height: 38,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            color: AppColors.ribbon,
+                            child: Row(
+                              children: [
+                                const Expanded(
+                                  child: Text(
+                                    'آلة حاسبة',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                fluent.Button(
+                                  key: const ValueKey('calculator-close'),
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  child: const Icon(
+                                    fluent.FluentIcons.chrome_close,
+                                    size: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          key: const ValueKey('calculator-display'),
+                          width: double.infinity,
+                          height: 54,
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F5F7),
+                            border: Border.all(color: AppColors.line),
+                          ),
+                          child: Text(
+                            display,
+                            key: const ValueKey('calculator-display-value'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textDirection: TextDirection.ltr,
+                            style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: GridView.count(
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: 4,
+                            mainAxisSpacing: 6,
+                            crossAxisSpacing: 6,
+                            childAspectRatio: 1.45,
+                            children: [
+                              for (final key in _keys) _calculatorKey(key),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              result.isEmpty ? '=' : '= $result',
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-            ),
           ],
-        ),
+        );
+      },
+    );
+  }
+
+  Widget _calculatorKey(String key) {
+    final isEquals = key == '=';
+    final isOperator = const {'÷', '×', '−', '+'}.contains(key);
+    final style = fluent.ButtonStyle(
+      padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+      backgroundColor: WidgetStatePropertyAll(
+        isOperator ? const Color(0xFFE8F1FB) : const Color(0xFFF3F5F7),
       ),
-      actions: [
-        fluent.Button(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('إغلاق'),
-        ),
-        fluent.FilledButton(onPressed: eval, child: const Text('احسب')),
-      ],
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      ),
+    );
+    final child = Text(
+      key,
+      style: TextStyle(
+        fontSize: key.length > 1 ? 14 : 20,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+    return SizedBox.expand(
+      child: isEquals
+          ? fluent.FilledButton(
+              key: ValueKey('calculator-key-$key'),
+              onPressed: () => _press(key),
+              child: child,
+            )
+          : fluent.Button(
+              key: ValueKey('calculator-key-$key'),
+              style: style,
+              onPressed: () => _press(key),
+              child: child,
+            ),
     );
   }
 }

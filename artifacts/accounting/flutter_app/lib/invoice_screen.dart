@@ -581,44 +581,58 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   Widget _tabs() {
-    const names = ['بيانات الفاتورة', 'إضافة الأصناف', 'اختيار الأصناف'];
+    const names = [
+      'بيانات الفاتورة',
+      'إضافة الأصناف',
+      'اختيار الأصناف',
+      'بنود الفاتورة',
+    ];
     return Container(
+      key: const ValueKey('invoice-tabs-strip'),
+      width: double.infinity,
       color: const Color(0xFFEFF1F3),
-      padding: const EdgeInsets.only(top: 6, right: 6),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            for (var i = 0; i < 3; i++)
-              GestureDetector(
-                onTap: () => setState(() => tab = i),
-                child: Container(
-                  margin: const EdgeInsets.only(left: 2),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 9,
-                  ),
-                  decoration: BoxDecoration(
-                    color: tab == i ? Colors.white : const Color(0xFFE2E5E8),
-                    border: Border(
-                      top: BorderSide(
-                        color: tab == i ? AppColors.green : AppColors.line,
-                        width: tab == i ? 2.5 : 1,
-                      ),
-                      left: const BorderSide(color: AppColors.line),
-                      right: const BorderSide(color: AppColors.line),
+      padding: const EdgeInsets.only(top: 6, left: 6),
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (var i = 0; i < names.length; i++)
+                GestureDetector(
+                  key: ValueKey('invoice-tab-$i'),
+                  onTap: () => setState(() => tab = i),
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 7,
                     ),
-                  ),
-                  child: Text(
-                    names[i],
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: tab == i ? FontWeight.w800 : FontWeight.w500,
+                    decoration: BoxDecoration(
+                      color: tab == i ? Colors.white : const Color(0xFFE2E5E8),
+                      border: Border(
+                        top: BorderSide(
+                          color: tab == i ? AppColors.green : AppColors.line,
+                          width: tab == i ? 2.5 : 1,
+                        ),
+                        left: const BorderSide(color: AppColors.line),
+                        right: const BorderSide(color: AppColors.line),
+                      ),
+                    ),
+                    child: Text(
+                      names[i],
+                      textDirection: TextDirection.rtl,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: tab == i
+                            ? FontWeight.w800
+                            : FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -627,12 +641,13 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   Widget _mainArea(bool wide) {
     Widget body;
     if (tab == 0) {
-      body = _headerTab(wide);
-      body = wide ? SingleChildScrollView(child: body) : body;
+      body = _headerTab();
     } else if (tab == 1) {
-      body = _linesTab();
+      body = _itemsTab(quickOnly: true);
+    } else if (tab == 2) {
+      body = _itemsTab(quickOnly: false);
     } else {
-      body = _pickTab();
+      body = _linesTab();
     }
     return Column(
       mainAxisSize: wide ? MainAxisSize.max : MainAxisSize.min,
@@ -643,27 +658,31 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     );
   }
 
-  Widget _headerTab(bool wide) {
+  Widget _headerTab() {
     final right = Column(
       children: [
         FieldRow(
           label: 'تاريخ الفاتورة',
-          labelWidth: 108,
+          labelWidth: 92,
+          compact: true,
           child: _dateBox(_fmt(invDate), () => _pickDate(true)),
         ),
         FieldRow(
           label: 'وقت الفاتورة',
-          labelWidth: 108,
+          labelWidth: 92,
+          compact: true,
           child: _readonly(_time(invDate)),
         ),
         FieldRow(
           label: 'رقم الفاتورة',
-          labelWidth: 108,
+          labelWidth: 92,
+          compact: true,
           child: _readonly(h['number']!.text),
         ),
         FieldRow(
           label: 'الدائن',
-          labelWidth: 108,
+          labelWidth: 92,
+          compact: true,
           child: DropBox(
             value: creditor,
             options: const [
@@ -671,12 +690,14 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               'مؤسسة الرواد للتموين',
               'شركة النخبة',
             ],
+            compact: true,
             onChanged: (v) => setState(() => creditor = v),
           ),
         ),
         FieldRow(
           label: 'المدين',
-          labelWidth: 108,
+          labelWidth: 92,
+          compact: true,
           child: DropBox(
             value: debtor,
             options: const [
@@ -684,22 +705,30 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               'مصروفات عمومية',
               'الصندوق',
             ],
+            compact: true,
             onChanged: (v) => setState(() => debtor = v),
           ),
         ),
         FieldRow(
           label: 'اسم الحساب',
-          labelWidth: 108,
-          child: TextBox(controller: h['account']!),
+          labelWidth: 92,
+          compact: true,
+          child: TextBox(
+            key: const ValueKey('invoice-account-field'),
+            controller: h['account']!,
+            compact: true,
+          ),
         ),
         FieldRow(
           label: 'الرقم الضريبي',
-          labelWidth: 108,
-          child: TextBox(controller: h['taxNo']!),
+          labelWidth: 92,
+          compact: true,
+          child: TextBox(controller: h['taxNo']!, compact: true),
         ),
         FieldRow(
           label: 'المخزون دائن',
-          labelWidth: 108,
+          labelWidth: 92,
+          compact: true,
           child: DropBox(
             value: storeCredit,
             options: const [
@@ -707,15 +736,18 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               'المستودع الرئيسي',
               '-',
             ],
+            compact: true,
             onChanged: (v) => setState(() => storeCredit = v),
           ),
         ),
         FieldRow(
           label: 'المخزون مدين',
-          labelWidth: 108,
+          labelWidth: 92,
+          compact: true,
           child: DropBox(
             value: storeDebit,
             options: const ['-', 'المستودع الرئيسي', 'مستودع الفرع'],
+            compact: true,
             onChanged: (v) => setState(() => storeDebit = v),
           ),
         ),
@@ -725,73 +757,87 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       children: [
         FieldRow(
           label: 'خاضع للضريبة',
-          labelWidth: 96,
+          labelWidth: 82,
+          compact: true,
           child: DropBox(
             value: taxable,
             options: const ['خاضع للضريبة', 'غير خاضع'],
+            compact: true,
             onChanged: (v) => setState(() => taxable = v),
           ),
         ),
         FieldRow(
           label: 'نسبة الضريبة',
-          labelWidth: 96,
+          labelWidth: 82,
+          compact: true,
           child: TextBox(
             controller: h['taxRate']!,
+            compact: true,
             onChanged: (_) => setState(() {}),
           ),
         ),
         FieldRow(
           label: 'تاريخ التسليم',
-          labelWidth: 96,
+          labelWidth: 82,
+          compact: true,
           child: _dateBox(_fmt(delivDate), () => _pickDate(false)),
         ),
         FieldRow(
           label: 'وقت التسليم',
-          labelWidth: 96,
+          labelWidth: 82,
+          compact: true,
           child: _readonly(_time(delivDate)),
         ),
         FieldRow(
           label: 'ملاحظات',
-          labelWidth: 96,
-          child: TextBox(controller: h['notes']!, maxLines: 4),
+          labelWidth: 82,
+          compact: true,
+          child: TextBox(controller: h['notes']!, maxLines: 4, compact: true),
         ),
       ],
     );
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              if (wide) const SizedBox(width: 190),
-              Expanded(
-                child: Text(
-                  type.ar,
-                  textAlign: wide ? TextAlign.start : TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final panelWidth = constraints.maxWidth.clamp(0.0, 540.0).toDouble();
+          final twoColumns = panelWidth >= 440;
+          return Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              key: const ValueKey('invoice-details-panel'),
+              width: panelWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    type.ar,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  if (twoColumns)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: right),
+                        const SizedBox(width: 10),
+                        Expanded(child: left),
+                      ],
+                    )
+                  else ...[
+                    right,
+                    const SizedBox(height: 6),
+                    left,
+                  ],
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (wide)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: right),
-                const SizedBox(width: 28),
-                Expanded(child: left),
-              ],
-            )
-          else ...[
-            right,
-            const SizedBox(height: 8),
-            left,
-          ],
-        ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -806,13 +852,13 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       ),
     ),
     child: SizedBox(
-      height: 36,
+      height: 30,
       width: double.infinity,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Row(
           children: [
-            Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
+            Expanded(child: Text(text, style: const TextStyle(fontSize: 12))),
             const Text('▾', style: TextStyle(color: AppColors.muted)),
           ],
         ),
@@ -821,7 +867,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   );
 
   Widget _readonly(String text) => Container(
-    height: 36,
+    height: 30,
     alignment: AlignmentDirectional.centerStart,
     padding: const EdgeInsets.symmetric(horizontal: 8),
     decoration: BoxDecoration(
@@ -830,7 +876,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     ),
     child: Text(
       text,
-      style: const TextStyle(fontSize: 14, color: AppColors.muted),
+      style: const TextStyle(fontSize: 12, color: AppColors.muted),
     ),
   );
 
@@ -955,7 +1001,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     );
   }
 
-  Widget _pickTab() {
+  Widget _itemsTab({required bool quickOnly}) {
     final q = h['pick']!.text.trim();
     final query = q.toLowerCase();
     final list = <({Item item, UnitRow unit})>[];
@@ -964,10 +1010,11 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       final itemFields =
           '${item.id} ${item.group} ${item.nameAr} ${item.nameEn} ${item.shortName}';
       for (final unit in units) {
-        if (query.isEmpty) {
+        if (quickOnly) {
           if (unit.quick) list.add((item: item, unit: unit));
           continue;
         }
+        if (query.isEmpty) continue;
         final searchable =
             '$itemFields ${unit.unitNo} ${unit.size} ${unit.barcode} ${unit.color}';
         if (searchable.toLowerCase().contains(query)) {
@@ -977,24 +1024,31 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     }
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: FieldRow(
-            label: 'بحث عن صنف',
-            labelWidth: 90,
-            child: TextBox(
-              key: const ValueKey('invoice-item-search'),
-              controller: h['pick']!,
-              onChanged: (_) => setState(() {}),
+        if (!quickOnly)
+          Padding(
+            padding: const EdgeInsets.all(6),
+            child: FieldRow(
+              label: 'بحث عن صنف',
+              labelWidth: 78,
+              compact: true,
+              child: TextBox(
+                key: const ValueKey('invoice-item-search'),
+                controller: h['pick']!,
+                compact: true,
+                onChanged: (_) => setState(() {}),
+              ),
             ),
           ),
-        ),
         Expanded(
           child: list.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text(
-                    'لا توجد أصناف سريعة. ابحث لعرض بقية الأصناف',
-                    style: TextStyle(color: AppColors.muted),
+                    quickOnly
+                        ? 'لا توجد أصناف سريعة'
+                        : query.isEmpty
+                        ? 'ابحث عن صنف بالاسم أو الرمز'
+                        : 'لا توجد أصناف مطابقة للبحث',
+                    style: const TextStyle(color: AppColors.muted),
                   ),
                 )
               : GridView.builder(
@@ -1135,7 +1189,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               ),
               ActionTile(
                 glyph: '💾',
-                label: 'حفظ+طبع',
+                label: 'حفظ\nوطباعة',
                 width: 54,
                 height: 58,
                 onTap: _saveAndPrint,

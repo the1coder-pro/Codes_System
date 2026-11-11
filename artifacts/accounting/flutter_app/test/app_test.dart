@@ -170,6 +170,92 @@ void main() {
     expect(DefaultTextStyle.of(textContext).style.fontFamily, appFontFamily);
   });
 
+  testWidgets('calculator can move and perform basic arithmetic', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1024, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await _launchAndLogin(tester);
+
+    final calculatorButton = find.byKey(const ValueKey('ribbon-آلة حاسبة'));
+    final icon = tester.widget<Icon>(
+      find.descendant(of: calculatorButton, matching: find.byType(Icon)),
+    );
+    expect(icon.icon, fluent.FluentIcons.calculator);
+    await tester.tap(calculatorButton);
+    await tester.pumpAndSettle();
+
+    final window = find.byKey(const ValueKey('calculator-window'));
+    final before = tester.getRect(window);
+    await tester.drag(
+      find.byKey(const ValueKey('calculator-drag-handle')),
+      const Offset(70, 45),
+    );
+    await tester.pumpAndSettle();
+    final after = tester.getRect(window);
+    expect(after.left, greaterThan(before.left));
+    expect(after.top, greaterThan(before.top));
+
+    for (final key in ['7', '+', '3', '=']) {
+      await tester.tap(find.byKey(ValueKey('calculator-key-$key')));
+      await tester.pump();
+    }
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('calculator-display-value')))
+          .data,
+      '10',
+    );
+    await tester.tap(find.byKey(const ValueKey('calculator-close')));
+    await tester.pumpAndSettle();
+    expect(window, findsNothing);
+  });
+
+  testWidgets('invoice tabs and compact fields align on the left', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: InvoiceScreen(typeIndex: 0, onExit: () {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final tabStrip = tester.getRect(
+      find.byKey(const ValueKey('invoice-tabs-strip')),
+    );
+    final firstTab = tester.getRect(
+      find.byKey(const ValueKey('invoice-tab-0')),
+    );
+    final secondTab = tester.getRect(
+      find.byKey(const ValueKey('invoice-tab-1')),
+    );
+    final details = tester.getRect(
+      find.byKey(const ValueKey('invoice-details-panel')),
+    );
+    final accountField = tester.getRect(
+      find.byKey(const ValueKey('invoice-account-field')),
+    );
+    expect(firstTab.left, lessThan(secondTab.left));
+    expect(firstTab.left, closeTo(tabStrip.left + 6, 2));
+    expect(details.left, closeTo(tabStrip.left + 8, 2));
+    expect(details.width, lessThanOrEqualTo(540));
+    expect(details.right, lessThan(tabStrip.right - 100));
+    expect(accountField.width, lessThan(180));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('screen navigation uses Fluent fade and slide transitions', (
     tester,
   ) async {
@@ -613,7 +699,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('اختيار الأصناف'));
+    await tester.tap(find.text('إضافة الأصناف'));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('invoice-item-grid')), findsOneWidget);
@@ -674,7 +760,7 @@ void main() {
     expect(find.byKey(const ValueKey('invoice-side-row-0')), findsNothing);
     expect(find.text('صنف من مسودة سابقة'), findsNothing);
     expect(await Store.loadDraft(0), isNull);
-    await tester.tap(find.text('اختيار الأصناف'));
+    await tester.tap(find.text('إضافة الأصناف'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('invoice-item-add-SAVE-1')));
     await tester.pumpAndSettle();
@@ -700,7 +786,7 @@ void main() {
     expect(await Store.loadDraft(0), isNull);
     expect(find.byKey(const ValueKey('invoice-side-row-0')), findsNothing);
     expect(find.text('مسح المسودة وبدء فاتورة جديدة'), findsNothing);
-    expect(find.text('حفظ+طبع'), findsOneWidget);
+    expect(find.text('حفظ\nوطباعة'), findsOneWidget);
     expect(find.textContaining('طباعة F7'), findsNothing);
     await tester.tap(find.text('بيانات الفاتورة'));
     await tester.pumpAndSettle();
@@ -823,7 +909,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('اختيار الأصناف'));
+    await tester.tap(find.text('إضافة الأصناف'));
     await tester.pumpAndSettle();
 
     expect(
@@ -835,6 +921,9 @@ void main() {
       findsNothing,
     );
 
+    await tester.tap(find.text('اختيار الأصناف'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('invoice-item-grid')), findsNothing);
     await tester.enterText(
       find.byKey(const ValueKey('invoice-item-search')),
       'REGULAR-1',
@@ -880,7 +969,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('اختيار الأصناف'));
+    await tester.tap(find.text('إضافة الأصناف'));
     await tester.pumpAndSettle();
 
     expect(
@@ -897,7 +986,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('invoice-item-add-MULTI-1-2')));
     await tester.pumpAndSettle();
     expect(find.text('صنف متعدد • كرتون'), findsOneWidget);
-    await tester.tap(find.text('إضافة الأصناف'));
+    await tester.tap(find.text('بنود الفاتورة'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('invoice-line-index-0')), findsOneWidget);
     expect(find.text('MULTI-1'), findsNothing);
@@ -935,7 +1024,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('اختيار الأصناف'));
+    await tester.tap(find.text('إضافة الأصناف'));
     await tester.pumpAndSettle();
     final addButton = find.byKey(const ValueKey('invoice-item-add-REPEAT-1'));
     await tester.tap(addButton);
