@@ -108,6 +108,13 @@ void main() {
     expect(find.text('القائمة الرئيسية'), findsOneWidget);
     expect(find.textContaining('مؤسسة العيدان'), findsOneWidget);
     expect(find.text('25.08.18 - (cashier1)'), findsOneWidget);
+    final backupInfo = tester.getRect(
+      find.text('آخر نسخة احتياطية: 2025/08/30'),
+    );
+    final companyInfo = tester.getRect(
+      find.text('نسخة خاصة بـ : مؤسسة العيدان التجارية'),
+    );
+    expect(backupInfo.center.dx, lessThan(companyInfo.center.dx));
     expect(
       tester.getSize(find.byKey(const ValueKey('bottom-status-bar'))).width,
       tester.getSize(find.byKey(const ValueKey('top-menu-bar'))).width,
@@ -248,6 +255,53 @@ void main() {
       find.descendant(of: ribbon, matching: find.byType(SingleChildScrollView)),
       findsNothing,
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('inventory side panels can be collapsed and reopened', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await _launchAndLogin(tester);
+    await tester.tap(find.byKey(const ValueKey('ribbon-الأصناف')));
+    await tester.pumpAndSettle();
+
+    final searchPanel = find.byKey(const ValueKey('inventory-search-panel'));
+    final searchToggle = find.byKey(
+      const ValueKey('splitter-inventory-search-toggle'),
+    );
+    expect(searchPanel, findsOneWidget);
+    final searchWidthBefore = tester.getSize(searchPanel).width;
+    await tester.drag(
+      find.byKey(const ValueKey('splitter-inventory-search')),
+      const Offset(-40, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.getSize(searchPanel).width, greaterThan(searchWidthBefore));
+    await tester.tap(searchToggle);
+    await tester.pumpAndSettle();
+    expect(searchPanel, findsNothing);
+    expect(find.text('التصفية'), findsOneWidget);
+    await tester.tap(searchToggle);
+    await tester.pumpAndSettle();
+    expect(searchPanel, findsOneWidget);
+
+    final actionsPanel = find.byKey(const ValueKey('inventory-actions-panel'));
+    final actionsToggle = find.byKey(
+      const ValueKey('splitter-inventory-header-toggle'),
+    );
+    expect(actionsPanel, findsOneWidget);
+    await tester.tap(actionsToggle);
+    await tester.pumpAndSettle();
+    expect(actionsPanel, findsNothing);
+    expect(find.text('الإجراءات'), findsOneWidget);
+    await tester.tap(actionsToggle);
+    await tester.pumpAndSettle();
+    expect(actionsPanel, findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

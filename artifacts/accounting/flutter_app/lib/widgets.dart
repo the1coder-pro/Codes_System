@@ -226,7 +226,7 @@ class GridColumn {
 }
 
 /// Spreadsheet-like grid with fixed column widths; scrolls horizontally.
-class EditableGrid extends StatelessWidget {
+class EditableGrid extends StatefulWidget {
   final List<GridColumn> columns;
   final int rowCount;
   final Widget Function(int row, int col) cell;
@@ -245,34 +245,50 @@ class EditableGrid extends StatelessWidget {
   });
 
   @override
+  State<EditableGrid> createState() => _EditableGridState();
+}
+
+class _EditableGridState extends State<EditableGrid> {
+  final _horizontalController = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontalController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final total = columns.fold<double>(24, (s, c) => s + c.width);
+    final total = widget.columns.fold<double>(24, (s, c) => s + c.width);
     return LayoutBuilder(
       builder: (context, box) {
         final width = total < box.maxWidth ? box.maxWidth : total;
         return Scrollbar(
+          controller: _horizontalController,
           thumbVisibility: true,
           notificationPredicate: (n) => n.depth == 0,
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
+            controller: _horizontalController,
+            primary: false,
             child: SizedBox(
               width: width,
               child: Column(
                 children: [
                   Container(
-                    color: headerColor,
+                    color: widget.headerColor,
                     child: Row(
                       children: [
                         _cellBox(24, const SizedBox()),
-                        for (var c = 0; c < columns.length; c++)
+                        for (var c = 0; c < widget.columns.length; c++)
                           _cellBox(
-                            c == columns.length - 1
-                                ? columns[c].width + (width - total)
-                                : columns[c].width,
+                            c == widget.columns.length - 1
+                                ? widget.columns[c].width + (width - total)
+                                : widget.columns[c].width,
                             Padding(
                               padding: const EdgeInsets.all(6),
                               child: Text(
-                                columns[c].title,
+                                widget.columns[c].title,
                                 style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
@@ -286,13 +302,14 @@ class EditableGrid extends StatelessWidget {
                   ),
                   Expanded(
                     child: ListView.builder(
-                      itemCount: rowCount,
+                      primary: false,
+                      itemCount: widget.rowCount,
                       itemBuilder: (context, r) {
-                        final sel = r == selectedRow;
+                        final sel = r == widget.selectedRow;
                         return GestureDetector(
-                          onTap: onSelectRow == null
+                          onTap: widget.onSelectRow == null
                               ? null
-                              : () => onSelectRow!(r),
+                              : () => widget.onSelectRow!(r),
                           child: Container(
                             color: sel ? const Color(0xFFDDEBFA) : null,
                             child: Row(
@@ -309,12 +326,13 @@ class EditableGrid extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                for (var c = 0; c < columns.length; c++)
+                                for (var c = 0; c < widget.columns.length; c++)
                                   _cellBox(
-                                    c == columns.length - 1
-                                        ? columns[c].width + (width - total)
-                                        : columns[c].width,
-                                    cell(r, c),
+                                    c == widget.columns.length - 1
+                                        ? widget.columns[c].width +
+                                              (width - total)
+                                        : widget.columns[c].width,
+                                    widget.cell(r, c),
                                   ),
                               ],
                             ),

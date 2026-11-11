@@ -12,6 +12,9 @@ class ResizableSplit extends StatefulWidget {
   final double minFirstWidth;
   final double minSecondWidth;
   final Key? dividerKey;
+  final bool collapsibleFirst;
+  final String collapsedLabel;
+  final Key? collapseToggleKey;
 
   const ResizableSplit({
     super.key,
@@ -21,6 +24,9 @@ class ResizableSplit extends StatefulWidget {
     required this.minFirstWidth,
     required this.minSecondWidth,
     this.dividerKey,
+    this.collapsibleFirst = false,
+    this.collapsedLabel = 'لوحة',
+    this.collapseToggleKey,
   });
 
   @override
@@ -29,13 +35,19 @@ class ResizableSplit extends StatefulWidget {
 
 class _ResizableSplitState extends State<ResizableSplit> {
   static const _dividerHitWidth = 10.0;
+  static const _collapsibleDividerWidth = 36.0;
+  static const _collapsedRailWidth = 32.0;
   double? _firstFraction;
+  bool _firstCollapsed = false;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       final width = constraints.maxWidth;
-      final available = math.max(0.0, width - _dividerHitWidth);
+      final dividerWidth = widget.collapsibleFirst
+          ? _collapsibleDividerWidth
+          : _dividerHitWidth;
+      final available = math.max(0.0, width - dividerWidth);
       final minFirst = math.min(widget.minFirstWidth, available);
       final minSecond = math.min(widget.minSecondWidth, available);
       final maxFirst = math.max(minFirst, available - minSecond);
@@ -43,9 +55,9 @@ class _ResizableSplitState extends State<ResizableSplit> {
         0.0,
         1.0,
       );
-      final firstWidth = (available * fraction)
-          .clamp(minFirst, maxFirst)
-          .toDouble();
+      final firstWidth = _firstCollapsed
+          ? math.min(_collapsedRailWidth, available)
+          : (available * fraction).clamp(minFirst, maxFirst).toDouble();
 
       void setFirstWidth(double requestedWidth) {
         if (available <= 0) return;
@@ -62,27 +74,81 @@ class _ResizableSplitState extends State<ResizableSplit> {
 
       final increased = math.min(maxFirst, firstWidth + 16);
       final decreased = math.max(minFirst, firstWidth - 16);
+      final firstPanel = _firstCollapsed
+          ? Container(
+              color: AppColors.cyan,
+              alignment: Alignment.center,
+              child: RotatedBox(
+                quarterTurns: 3,
+                child: Text(
+                  widget.collapsedLabel,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            )
+          : widget.first;
       return Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(width: firstWidth, child: widget.first),
+          SizedBox(width: firstWidth, child: firstPanel),
           Semantics(
-            label: 'تغيير عرض اللوحتين',
+            label: widget.collapsibleFirst
+                ? 'تغيير أو إخفاء اللوحة ${widget.collapsedLabel}'
+                : 'تغيير عرض اللوحتين',
             value: '${firstWidth.round()} بكسل',
             increasedValue: '${increased.round()} بكسل',
             decreasedValue: '${decreased.round()} بكسل',
-            onIncrease: () => setFirstWidth(firstWidth + 16),
-            onDecrease: () => setFirstWidth(firstWidth - 16),
+            onIncrease: _firstCollapsed
+                ? null
+                : () => setFirstWidth(firstWidth + 16),
+            onDecrease: _firstCollapsed
+                ? null
+                : () => setFirstWidth(firstWidth - 16),
             child: MouseRegion(
               cursor: SystemMouseCursors.resizeColumn,
               child: GestureDetector(
                 key: widget.dividerKey,
                 behavior: HitTestBehavior.opaque,
-                onHorizontalDragUpdate: (details) => resizeBy(details.delta.dx),
+                onHorizontalDragUpdate: _firstCollapsed
+                    ? null
+                    : (details) => resizeBy(details.delta.dx),
                 child: SizedBox(
-                  width: _dividerHitWidth,
-                  child: Center(
-                    child: Container(width: 1, color: AppColors.line),
+                  width: dividerWidth,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(width: 1, color: AppColors.line),
+                      if (widget.collapsibleFirst)
+                        Material(
+                          color: AppColors.paper,
+                          child: IconButton(
+                            key: widget.collapseToggleKey,
+                            tooltip: _firstCollapsed
+                                ? 'إظهار ${widget.collapsedLabel}'
+                                : 'إخفاء ${widget.collapsedLabel}',
+                            padding: EdgeInsets.zero,
+                            visualDensity: VisualDensity.compact,
+                            constraints: const BoxConstraints.tightFor(
+                              width: 30,
+                              height: 30,
+                            ),
+                            icon: Icon(
+                              _firstCollapsed
+                                  ? Icons.chevron_right
+                                  : Icons.chevron_left,
+                              size: 18,
+                              color: AppColors.ink,
+                            ),
+                            onPressed: () => setState(
+                              () => _firstCollapsed = !_firstCollapsed,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),

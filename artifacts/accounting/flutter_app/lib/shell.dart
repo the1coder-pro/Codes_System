@@ -70,7 +70,6 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final narrow = MediaQuery.sizeOf(context).width < 1100;
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -80,7 +79,7 @@ class _AppShellState extends State<AppShell> {
             _ribbon(),
             const Divider(height: 1, color: AppColors.line),
             Expanded(child: _content()),
-            _StatusBar(narrow: narrow),
+            const _StatusBar(),
           ],
         ),
       ),
@@ -518,33 +517,82 @@ class _RibbonButton extends StatelessWidget {
 }
 
 class _StatusBar extends StatelessWidget {
-  final bool narrow;
-  const _StatusBar({required this.narrow});
+  const _StatusBar();
 
   @override
   Widget build(BuildContext context) {
     const style = TextStyle(fontSize: 11.5, color: AppColors.green);
-    final parts = [
-      const Text('نسخة خاصة بـ : مؤسسة العيدان التجارية', style: style),
-      const Text('تاريخ نهاية الضمان: 2015/03/01', style: style),
-      const Text('آخر نسخة احتياطية: 2025/08/30', style: style),
-      const Text('------', style: style),
-      Container(width: 54, height: 10, color: AppColors.red),
-      Container(width: 54, height: 10, color: AppColors.red),
-    ];
+    final backupInfo = Row(
+      textDirection: TextDirection.ltr,
+      children: [
+        const Expanded(
+          child: Text(
+            'آخر نسخة احتياطية: 2025/08/30',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          ),
+        ),
+        const SizedBox(width: 16),
+        const Text('------', style: style),
+        const SizedBox(width: 16),
+        Container(width: 54, height: 10, color: AppColors.red),
+        const SizedBox(width: 12),
+        Container(width: 54, height: 10, color: AppColors.red),
+      ],
+    );
+    final otherInfo = Directionality(
+      textDirection: TextDirection.rtl,
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'نسخة خاصة بـ : مؤسسة العيدان التجارية',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: style,
+            ),
+          ),
+          const SizedBox(width: 16),
+          const Expanded(
+            child: Text(
+              'تاريخ نهاية الضمان: 2015/03/01',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: style,
+            ),
+          ),
+        ],
+      ),
+    );
     return Container(
       key: const ValueKey('bottom-status-bar'),
       width: double.infinity,
       height: 26,
       color: const Color(0xFFF6F6F4),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Row(
-          children: [
-            for (final p in parts) ...[p, const SizedBox(width: 16)],
-          ],
-        ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final contentWidth = constraints.maxWidth < 900
+              ? 900.0
+              : constraints.maxWidth;
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: contentWidth,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  textDirection: TextDirection.ltr,
+                  children: [
+                    Expanded(child: backupInfo),
+                    const SizedBox(width: 16),
+                    Expanded(child: otherInfo),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

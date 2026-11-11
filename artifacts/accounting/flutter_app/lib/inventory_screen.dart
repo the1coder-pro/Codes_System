@@ -271,11 +271,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   height: 236,
                   child: ResizableSplit(
                     dividerKey: const ValueKey('splitter-inventory-header'),
+                    collapseToggleKey: const ValueKey(
+                      'splitter-inventory-header-toggle',
+                    ),
                     first: _actions(),
                     second: _headerForm(true),
                     initialFirstFraction: .27,
                     minFirstWidth: 210,
                     minSecondWidth: 480,
+                    collapsibleFirst: true,
+                    collapsedLabel: 'الإجراءات',
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -285,11 +290,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   height: 236,
                   child: ResizableSplit(
                     dividerKey: const ValueKey('splitter-inventory-search'),
+                    collapseToggleKey: const ValueKey(
+                      'splitter-inventory-search-toggle',
+                    ),
                     first: _searchPanel(),
                     second: _resultsPanel(),
                     initialFirstFraction: .31,
                     minFirstWidth: 220,
                     minSecondWidth: 380,
+                    collapsibleFirst: true,
+                    collapsedLabel: 'التصفية',
                   ),
                 ),
               ],
@@ -320,6 +330,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   Widget _actions() {
     final hasCurrent = currentId != null;
     return Column(
+      key: const ValueKey('inventory-actions-panel'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
@@ -511,9 +522,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ? Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(flex: 5, child: colA),
+                Expanded(
+                  flex: 5,
+                  child: SingleChildScrollView(primary: false, child: colA),
+                ),
                 const SizedBox(width: 16),
-                Expanded(flex: 4, child: colB),
+                Expanded(
+                  flex: 4,
+                  child: SingleChildScrollView(primary: false, child: colB),
+                ),
                 const SizedBox(width: 16),
                 image,
               ],
@@ -598,74 +615,78 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   Widget _searchPanel() {
     return Container(
+      key: const ValueKey('inventory-search-panel'),
       color: AppColors.cyan,
       padding: const EdgeInsets.all(8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FieldRow(
-            label: 'طريقة الاستخدام',
-            labelWidth: 96,
-            child: DropBox(
-              value: sUsage,
-              options: ['الكل', ..._usageOpts],
-              onChanged: (v) => setState(() => sUsage = v),
+      child: SingleChildScrollView(
+        primary: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FieldRow(
+              label: 'طريقة الاستخدام',
+              labelWidth: 96,
+              child: DropBox(
+                value: sUsage,
+                options: ['الكل', ..._usageOpts],
+                onChanged: (v) => setState(() => sUsage = v),
+              ),
             ),
-          ),
-          FieldRow(
-            label: 'نوع الصنف',
-            labelWidth: 96,
-            child: DropBox(
-              value: sType,
-              options: ['الكل', ..._typeOpts],
-              onChanged: (v) => setState(() => sType = v),
+            FieldRow(
+              label: 'نوع الصنف',
+              labelWidth: 96,
+              child: DropBox(
+                value: sType,
+                options: ['الكل', ..._typeOpts],
+                onChanged: (v) => setState(() => sType = v),
+              ),
             ),
-          ),
-          FieldRow(
-            label: 'البحث في',
-            labelWidth: 96,
-            child: DropBox(
-              value: sField,
-              options: const [
-                'جميع الحقول',
-                'الاسم',
-                'الباركود',
-                'رقم المجموعة',
-              ],
-              onChanged: (v) => setState(() => sField = v),
+            FieldRow(
+              label: 'البحث في',
+              labelWidth: 96,
+              child: DropBox(
+                value: sField,
+                options: const [
+                  'جميع الحقول',
+                  'الاسم',
+                  'الباركود',
+                  'رقم المجموعة',
+                ],
+                onChanged: (v) => setState(() => sField = v),
+              ),
             ),
-          ),
-          FieldRow(
-            label: 'البحث عن',
-            labelWidth: 96,
-            child: TextBox(
-              controller: sText,
-              onSubmitted: (_) => setState(_search),
+            FieldRow(
+              label: 'البحث عن',
+              labelWidth: 96,
+              child: TextBox(
+                controller: sText,
+                onSubmitted: (_) => setState(_search),
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          SizedBox(
-            width: double.infinity,
-            height: 42,
-            child: fluent.Button(
-              style: fluent.ButtonStyle(
-                backgroundColor: const WidgetStatePropertyAll(
-                  Color(0xFFF4F8FA),
-                ),
-                shape: WidgetStatePropertyAll(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
+            const SizedBox(height: 4),
+            SizedBox(
+              width: double.infinity,
+              height: 42,
+              child: fluent.Button(
+                style: fluent.ButtonStyle(
+                  backgroundColor: const WidgetStatePropertyAll(
+                    Color(0xFFF4F8FA),
+                  ),
+                  shape: WidgetStatePropertyAll(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                   ),
                 ),
-              ),
-              onPressed: () => setState(_search),
-              child: const Text(
-                'بحث',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                onPressed: () => setState(_search),
+                child: const Text(
+                  'بحث',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -685,6 +706,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               ),
             )
           : ListView.separated(
+              primary: false,
               itemCount: results.length,
               separatorBuilder: (_, _) =>
                   const Divider(height: 1, color: AppColors.grid),
