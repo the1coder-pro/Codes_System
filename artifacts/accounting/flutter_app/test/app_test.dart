@@ -216,12 +216,13 @@ void main() {
       'خروج',
     ];
     for (final label in buttons) {
-      expect(tester.getSize(find.byKey(ValueKey('ribbon-$label'))).height, 92);
+      expect(tester.getSize(find.byKey(ValueKey('ribbon-$label'))).height, 74);
       final rect = tester.getRect(find.byKey(ValueKey('ribbon-$label')));
       expect(rect.left, greaterThanOrEqualTo(0));
       expect(rect.right, lessThanOrEqualTo(1024));
     }
     final ribbon = find.byKey(const ValueKey('ribbon-container'));
+    expect(tester.getSize(ribbon).height, 80);
     expect(
       find.descendant(of: ribbon, matching: find.byType(SingleChildScrollView)),
       findsNothing,
@@ -296,6 +297,10 @@ void main() {
     final invoiceAction = tester.getRect(
       find.byKey(const ValueKey('ribbon-الفواتير\nوأوامر الصرف')),
     );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('ribbon-container'))).height,
+      72,
+    );
 
     expect(calculatorAction.right - exitAction.left, lessThan(700));
     expect(exitAction.right, lessThan(divider.left));
@@ -320,6 +325,7 @@ void main() {
     await _launchAndLogin(tester);
 
     final ribbon = find.byKey(const ValueKey('ribbon-container'));
+    expect(tester.getSize(ribbon).height, 108);
     for (final label in [
       'الفواتير\nوأوامر الصرف',
       'طباعة\nالباركود',

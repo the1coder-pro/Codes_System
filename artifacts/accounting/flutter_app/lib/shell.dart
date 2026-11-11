@@ -281,7 +281,7 @@ class _AppShellState extends State<AppShell> {
           if (width >= 1400) {
             return SizedBox(
               width: width,
-              height: 86,
+              height: 72,
               child: Row(
                 children: [
                   Expanded(
@@ -297,7 +297,7 @@ class _AppShellState extends State<AppShell> {
                   Container(
                     key: const ValueKey('ribbon-divider'),
                     width: 1,
-                    height: 44,
+                    height: 38,
                     color: AppColors.line,
                   ),
                   const SizedBox(width: 4),
@@ -324,7 +324,7 @@ class _AppShellState extends State<AppShell> {
 
           if (width < 700) {
             return SizedBox(
-              height: 124,
+              height: 108,
               child: Column(
                 children: [
                   Expanded(child: compactGroup(right, dense: true)),
@@ -335,7 +335,7 @@ class _AppShellState extends State<AppShell> {
           }
 
           return SizedBox(
-            height: 98,
+            height: 80,
             child: Row(
               children: [
                 Expanded(
@@ -348,7 +348,7 @@ class _AppShellState extends State<AppShell> {
                 Container(
                   key: const ValueKey('ribbon-divider'),
                   width: 1,
-                  height: 46,
+                  height: 38,
                   color: AppColors.line,
                 ),
                 const SizedBox(width: 4),
@@ -444,11 +444,11 @@ class _RibbonButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final buttonHeight = stacked ? (dense ? 58.0 : 92.0) : 74.0;
+    final buttonHeight = stacked ? (dense ? 50.0 : 74.0) : 60.0;
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: stacked ? 1 : 2,
-        vertical: stacked ? (dense ? 0 : 1) : 6,
+        vertical: stacked ? (dense ? 0 : 1) : 4,
       ),
       child: SizedBox(
         key: ValueKey('ribbon-$label'),
