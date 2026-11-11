@@ -351,7 +351,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           runSpacing: 6,
           children: [
             ActionTile(
-              glyph: '➕',
+              icon: fluent.FluentIcons.add,
               label: 'جديد',
               glyphColor: AppColors.green,
               onTap: editing ? null : _new,
@@ -381,7 +381,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               onTap: editing || !hasCurrent ? null : _delete,
             ),
             ActionTile(
-              glyph: '↩️',
+              icon: fluent.FluentIcons.undo,
               label: 'تراجع',
               glyphColor: AppColors.muted,
               onTap: editing ? _undo : null,

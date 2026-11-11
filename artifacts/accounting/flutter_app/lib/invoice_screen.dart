@@ -943,8 +943,12 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           const SizedBox(height: 6),
           Row(
             children: [
-              _greenBtn('⬆️', () => _move(-1)),
-              _greenBtn('➕', () => _changeQty(1)),
+              _greenBtn(fluent.FluentIcons.up, 'تحريك لأعلى', () => _move(-1)),
+              _greenBtn(
+                fluent.FluentIcons.add,
+                'زيادة الكمية',
+                () => _changeQty(1),
+              ),
               Expanded(
                 child: Container(
                   height: 34,
@@ -962,8 +966,12 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                   ),
                 ),
               ),
-              _greenBtn('➖', () => _changeQty(-1)),
-              _greenBtn('⬇️', () => _move(1)),
+              _greenBtn(
+                fluent.FluentIcons.remove,
+                'تقليل الكمية',
+                () => _changeQty(-1),
+              ),
+              _greenBtn(fluent.FluentIcons.down, 'تحريك لأسفل', () => _move(1)),
             ],
           ),
           const SizedBox(height: 8),
@@ -1039,7 +1047,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     );
   }
 
-  Widget _greenBtn(String t, VoidCallback onTap) => Padding(
+  Widget _greenBtn(IconData icon, String label, VoidCallback onTap) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 1.5),
     child: fluent.Button(
       onPressed: onTap,
@@ -1055,13 +1063,9 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
         width: 44,
         height: 34,
         child: Center(
-          child: Text(
-            t,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-            ),
+          child: Tooltip(
+            message: label,
+            child: Icon(icon, color: Colors.white, size: 19),
           ),
         ),
       ),

@@ -37,6 +37,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byType(InventoryScreen), findsOneWidget);
+    expect(find.text('➕'), findsNothing);
+    expect(find.text('↩️'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -154,6 +156,19 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      for (final icon in [
+        fluent.FluentIcons.up,
+        fluent.FluentIcons.down,
+        fluent.FluentIcons.add,
+        fluent.FluentIcons.remove,
+      ]) {
+        expect(find.byIcon(icon), findsOneWidget);
+      }
+      expect(find.text('⬆️'), findsNothing);
+      expect(find.text('⬇️'), findsNothing);
+      expect(find.text('➕'), findsNothing);
+      expect(find.text('➖'), findsNothing);
+
       String amount(String key) => tester
           .widget<fluent.TextBox>(find.byKey(ValueKey('payment-field-$key')))
           .controller!
@@ -258,6 +273,8 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('ribbon-الحسابات')));
     await tester.pumpAndSettle();
 
+    expect(find.text('➕'), findsNothing);
+    expect(find.text('↶'), findsNothing);
     expect(find.text('الشيكات المستلمة'), findsOneWidget);
     await tester.tap(find.text('جديد'));
     await tester.pumpAndSettle();

@@ -405,10 +405,21 @@ class _AccountsScreenState extends State<AccountsScreen> {
           spacing: 4,
           runSpacing: 4,
           children: [
-            _action('➕', 'جديد', _new, color: AppColors.greenLight),
+            _action(
+              '',
+              'جديد',
+              _new,
+              color: AppColors.greenLight,
+              icon: fluent.FluentIcons.add,
+            ),
             _action('🖊', 'تعديل', _edit, enabled: !editing),
             _action('💾', 'حفظ', editing ? _save : null),
-            _action('↶', 'تراجع', editing ? _undo : null),
+            _action(
+              '',
+              'تراجع',
+              editing ? _undo : null,
+              icon: fluent.FluentIcons.undo,
+            ),
             _action(
               '🗑',
               'حذف',
@@ -626,8 +637,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
     VoidCallback? onTap, {
     Color color = AppColors.navy,
     bool enabled = true,
+    IconData? icon,
   }) => ActionTile(
     glyph: glyph,
+    icon: icon,
     label: label,
     glyphColor: color,
     width: 56,

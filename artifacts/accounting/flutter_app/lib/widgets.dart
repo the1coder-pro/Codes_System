@@ -141,6 +141,7 @@ class DropBox extends StatelessWidget {
 /// Square desktop-style action tile with a unicode glyph.
 class ActionTile extends StatelessWidget {
   final String glyph;
+  final IconData? icon;
   final String label;
   final Color glyphColor;
   final VoidCallback? onTap;
@@ -148,7 +149,8 @@ class ActionTile extends StatelessWidget {
   final double height;
   const ActionTile({
     super.key,
-    required this.glyph,
+    this.glyph = '',
+    this.icon,
     required this.label,
     this.glyphColor = AppColors.navy,
     this.onTap,
@@ -186,15 +188,18 @@ class ActionTile extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  glyph,
-                  style: TextStyle(
-                    fontSize: 24,
-                    height: 1.1,
-                    color: glyphColor,
-                    fontWeight: FontWeight.w700,
+                if (icon != null)
+                  Icon(icon, size: 24, color: glyphColor)
+                else
+                  Text(
+                    glyph,
+                    style: TextStyle(
+                      fontSize: 24,
+                      height: 1.1,
+                      color: glyphColor,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
                 const SizedBox(height: 4),
                 Text(
                   label,
