@@ -201,12 +201,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
-  Future<void> _new() async {
-    final group = f['group']!.text.trim();
-    if (editing && (!isNew || f['nameAr']!.text.trim().isNotEmpty)) {
-      if (!await _persistDraft() || !mounted) return;
-      toast(context, 'تم حفظ التعديلات؛ أضف الصنف الجديد في نفس المجموعة');
+  void _new() {
+    if (editing) {
+      _collect();
+      _addUnit();
+      return;
     }
+    final group = f['group']!.text.trim();
     final next =
         items.fold<int>(1000, (m, e) {
           final n = int.tryParse(e.id) ?? 0;
@@ -237,13 +238,27 @@ class _InventoryScreenState extends State<InventoryScreen> {
       if (bytes == null || !mounted) return;
       final imageData = optimizeItemImage(bytes);
       setState(() => draft.imageBase64 = imageData);
-      toast(context, 'تم تحميل صورة الصنف');
+      toast(
+        context,
+        'تم تحميل صورة الصنف',
+        severity: fluent.InfoBarSeverity.success,
+      );
     } on FormatException catch (error) {
-      if (mounted) toast(context, error.message.toString());
+      if (mounted) {
+        toast(
+          context,
+          error.message.toString(),
+          severity: fluent.InfoBarSeverity.warning,
+        );
+      }
     } catch (error) {
       debugPrint('Item image selection failed: $error');
       if (mounted) {
-        toast(context, 'تعذر اختيار الصورة. جرّب JPG أو PNG أو WebP');
+        toast(
+          context,
+          'تعذر اختيار الصورة. جرّب JPG أو PNG أو WebP',
+          severity: fluent.InfoBarSeverity.error,
+        );
       }
     }
   }
@@ -255,7 +270,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
   Future<bool> _persistDraft() async {
     _collect();
     if (draft.nameAr.isEmpty) {
-      toast(context, 'اسم الصنف بالعربي مطلوب');
+      toast(
+        context,
+        'اسم الصنف بالعربي مطلوب',
+        severity: fluent.InfoBarSeverity.warning,
+      );
       return false;
     }
     final updatedItems = List<Item>.of(items);
@@ -268,7 +287,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final saved = await Store.saveItems(updatedItems);
     if (!mounted) return false;
     if (!saved) {
-      toast(context, 'تعذر حفظ الصنف. قد تكون مساحة تخزين المتصفح ممتلئة');
+      toast(
+        context,
+        'تعذر حفظ الصنف. قد تكون مساحة تخزين المتصفح ممتلئة',
+        severity: fluent.InfoBarSeverity.error,
+      );
       return false;
     }
     setState(() {
@@ -283,7 +306,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   Future<void> _save() async {
     if (await _persistDraft() && mounted) {
-      toast(context, 'تم حفظ الصنف ${draft.nameAr}');
+      toast(
+        context,
+        'تم حفظ الصنف ${draft.nameAr}',
+        severity: fluent.InfoBarSeverity.success,
+      );
     }
   }
 
@@ -323,10 +350,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final saved = await Store.saveItems(items);
     if (!mounted) return;
     if (!saved) {
-      toast(context, 'تعذر حفظ التغييرات. قد تكون مساحة تخزين المتصفح ممتلئة');
+      toast(
+        context,
+        'تعذر حفظ التغييرات. قد تكون مساحة تخزين المتصفح ممتلئة',
+        severity: fluent.InfoBarSeverity.error,
+      );
       return;
     }
-    toast(context, 'تم حذف الصنف');
+    toast(context, 'تم حذف الصنف', severity: fluent.InfoBarSeverity.success);
   }
 
   void _search() {
@@ -358,6 +389,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
     draft.units.add(u);
     unitCtl.add(_rowCtl(u));
+    selectedUnit = draft.units.length - 1;
   });
 
   void _removeUnit() => setState(() {
@@ -459,6 +491,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           ),
                           first: _searchPanel(),
                           second: _resultsPanel(),
+                          firstOnLeft: true,
                           initialFirstFraction: .31,
                           minFirstWidth: 220,
                           minSecondWidth: 380,
@@ -914,6 +947,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   Widget _resultsPanel() {
     return Container(
+      key: const ValueKey('inventory-search-results-panel'),
       decoration: BoxDecoration(
         color: const Color(0xFFEDEFF1),
         border: Border.all(color: AppColors.line),

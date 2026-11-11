@@ -7,6 +7,7 @@ import 'package:accounting_ui/models.dart';
 import 'package:accounting_ui/resizable_split.dart';
 import 'package:accounting_ui/storage.dart';
 import 'package:accounting_ui/theme.dart';
+import 'package:accounting_ui/widgets.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
@@ -56,6 +57,44 @@ Future<void> _launchAndLogin(
 }
 
 void main() {
+  testWidgets('important messages use a top-right Fluent InfoBar', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: fluent.Button(
+                onPressed: () => toast(context, 'تم الحفظ'),
+                child: const Text('عرض رسالة'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('عرض رسالة'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+
+    final infoBar = find.byType(fluent.InfoBar);
+    expect(infoBar, findsOneWidget);
+    final infoBarRect = tester.getRect(infoBar);
+    expect(infoBarRect.right, greaterThan(1200));
+    expect(infoBarRect.top, lessThan(200));
+
+    await tester.pump(const Duration(seconds: 3));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('login dialog places the fields left of the lock', (
     tester,
   ) async {
@@ -205,7 +244,16 @@ void main() {
     final utilityAction = tester.getRect(
       find.byKey(const ValueKey('ribbon-خروج')),
     );
+    final calculatorAction = tester.getRect(
+      find.byKey(const ValueKey('ribbon-آلة حاسبة')),
+    );
+    final divider = tester.getRect(
+      find.byKey(const ValueKey('ribbon-divider')),
+    );
     expect(mainAction.center.dx, greaterThan(utilityAction.center.dx));
+    expect(calculatorAction.right - utilityAction.left, lessThan(380));
+    expect(utilityAction.right, lessThan(divider.left));
+    expect(divider.right, lessThan(mainAction.left));
     final hoveredButton = find.byKey(
       const ValueKey('ribbon-الفواتير\nوأوامر الصرف'),
     );
@@ -224,6 +272,41 @@ void main() {
     );
     await mouse.removePointer();
     expect(buildFluentTheme().typography.body!.fontFamily, 'IBMPlexSansArabic');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('wide ribbon keeps utility buttons grouped before the divider', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1920, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await _launchAndLogin(tester);
+
+    final exitAction = tester.getRect(
+      find.byKey(const ValueKey('ribbon-خروج')),
+    );
+    final calculatorAction = tester.getRect(
+      find.byKey(const ValueKey('ribbon-آلة حاسبة')),
+    );
+    final divider = tester.getRect(
+      find.byKey(const ValueKey('ribbon-divider')),
+    );
+    final invoiceAction = tester.getRect(
+      find.byKey(const ValueKey('ribbon-الفواتير\nوأوامر الصرف')),
+    );
+
+    expect(calculatorAction.right - exitAction.left, lessThan(700));
+    expect(exitAction.right, lessThan(divider.left));
+    expect(divider.right, lessThan(invoiceAction.left));
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('ribbon-container')),
+        matching: find.byType(SingleChildScrollView),
+      ),
+      findsNothing,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -293,6 +376,13 @@ void main() {
     final smallerSearchHeight = tester.getSize(searchSection).height;
     expect(smallerSearchHeight, lessThan(searchHeightBeforeResize));
     final searchPanel = find.byKey(const ValueKey('inventory-search-panel'));
+    final resultsPanel = find.byKey(
+      const ValueKey('inventory-search-results-panel'),
+    );
+    expect(
+      tester.getTopLeft(searchPanel).dx,
+      lessThan(tester.getTopLeft(resultsPanel).dx),
+    );
     expect(
       find.descendant(
         of: searchPanel,
@@ -346,7 +436,7 @@ void main() {
     final searchWidthBefore = tester.getSize(searchPanel).width;
     await tester.drag(
       find.byKey(const ValueKey('splitter-inventory-search')),
-      const Offset(-40, 0),
+      const Offset(40, 0),
     );
     await tester.pumpAndSettle();
     expect(tester.getSize(searchPanel).width, greaterThan(searchWidthBefore));
@@ -532,7 +622,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('inventory adds a same-group item with its own unit data', (
+  testWidgets('saving an invoice stores it and starts a blank invoice', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -540,7 +630,66 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final original = (await Store.loadItems()).first;
+    await Store.saveItems([
+      Item(
+        id: 'SAVE-1',
+        nameAr: 'صنف للحفظ',
+        units: [
+          UnitRow(unitNo: '1', size: 'حبة', priceBefore: '8.5', quick: true),
+        ],
+      ),
+    ]);
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: InvoiceScreen(typeIndex: 0, onExit: () {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('اختيار الأصناف'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('invoice-item-add-SAVE-1')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('invoice-side-row-0')), findsOneWidget);
+    await tester.tap(find.text('حفظ F8'));
+    await tester.pumpAndSettle();
+
+    final savedInvoices = await Store.loadInvoices();
+    expect(savedInvoices, hasLength(1));
+    expect(savedInvoices.single['typeIndex'], 0);
+    final invoice = Map<String, dynamic>.from(
+      savedInvoices.single['invoice'] as Map,
+    );
+    final savedLines = List<Map<String, dynamic>>.from(
+      (invoice['lines'] as List).map(
+        (line) => Map<String, dynamic>.from(line as Map),
+      ),
+    );
+    expect(savedLines.single['name'], 'صنف للحفظ');
+    expect(await Store.loadDraft(0), isNull);
+    expect(find.byKey(const ValueKey('invoice-side-row-0')), findsNothing);
+    expect(find.text('مسح المسودة وبدء فاتورة جديدة'), findsNothing);
+    expect(find.text('حفظ+طبع'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 3));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('inventory adds a unit row without clearing item fields', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final startingItems = await Store.loadItems();
+    final original = startingItems.first;
 
     await tester.pumpWidget(
       fluent.FluentApp(
@@ -561,6 +710,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('inventory-new-item')));
     await tester.pumpAndSettle();
+    final newUnitRow = original.units.length;
     final groupField = tester.widget<fluent.TextBox>(
       find.descendant(
         of: find.byKey(const ValueKey('inventory-group-number')),
@@ -578,27 +728,23 @@ void main() {
           )
           .controller
           .text,
-      isEmpty,
+      'اسم محدث',
     );
 
-    await tester.enterText(
-      find.byKey(const ValueKey('inventory-name-ar')),
-      'وحدة إضافية',
-    );
     final unitType = tester.widget<fluent.ComboBox<String>>(
       find.descendant(
-        of: find.byKey(const ValueKey('inventory-unit-type-0')),
+        of: find.byKey(ValueKey('inventory-unit-type-$newUnitRow')),
         matching: find.byType(fluent.ComboBox<String>),
       ),
     );
     unitType.onChanged?.call('كيلوجرام');
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.byKey(const ValueKey('inventory-unit-cell-0-1')),
+      find.byKey(ValueKey('inventory-unit-cell-$newUnitRow-1')),
       '42',
     );
     await tester.enterText(
-      find.byKey(const ValueKey('inventory-unit-cell-0-9')),
+      find.byKey(ValueKey('inventory-unit-cell-$newUnitRow-9')),
       'أحمر',
     );
     await tester.tap(find.text('حفظ').first);
@@ -606,12 +752,12 @@ void main() {
 
     final savedItems = await Store.loadItems();
     expect(savedItems.first.nameAr, 'اسم محدث');
-    final sibling = savedItems.last;
-    expect(sibling.group, original.group);
-    expect(sibling.nameAr, 'وحدة إضافية');
-    expect(sibling.units.single.size, 'كيلوجرام');
-    expect(sibling.units.single.priceBefore, '42');
-    expect(sibling.units.single.color, 'أحمر');
+    expect(savedItems.length, startingItems.length);
+    expect(savedItems.first.group, original.group);
+    expect(savedItems.first.units.length, original.units.length + 1);
+    expect(savedItems.first.units.last.size, 'كيلوجرام');
+    expect(savedItems.first.units.last.priceBefore, '42');
+    expect(savedItems.first.units.last.color, 'أحمر');
     await tester.pump(const Duration(seconds: 3));
     expect(tester.takeException(), isNull);
   });
@@ -725,6 +871,57 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('adding the same invoice unit increases its quantity', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await Store.saveItems([
+      Item(
+        id: 'REPEAT-1',
+        nameAr: 'صنف متكرر',
+        units: [
+          UnitRow(unitNo: '1', size: 'علبة', priceBefore: '12', quick: true),
+        ],
+      ),
+    ]);
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: InvoiceScreen(typeIndex: 0, onExit: () {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('اختيار الأصناف'));
+    await tester.pumpAndSettle();
+    final addButton = find.byKey(const ValueKey('invoice-item-add-REPEAT-1'));
+    await tester.tap(addButton);
+    await tester.pumpAndSettle();
+    await tester.tap(addButton);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('invoice-side-row-0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('invoice-side-row-1')), findsNothing);
+    expect(find.text('صنف متكرر • علبة'), findsOneWidget);
+    expect(find.byType(fluent.InfoBar), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('invoice-side-row-0')),
+        matching: find.text('24.00'),
+      ),
+      findsOneWidget,
+    );
+    await tester.pump(const Duration(seconds: 3));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('invoice deletes all mouse-selected rows in one action', (
     tester,
   ) async {
@@ -752,6 +949,11 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('إضافة').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('invoice-item-search')),
+      '1002',
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('إضافة').first);
     await tester.pumpAndSettle();
@@ -919,6 +1121,37 @@ void main() {
     expect(find.text('↶'), findsNothing);
     expect(find.text('الشيكات المستلمة'), findsOneWidget);
     await tester.tap(find.text('جديد'));
+    await tester.pumpAndSettle();
+    final addressTab = tester.widget<Container>(
+      find.byKey(const ValueKey('account-tab-0')),
+    );
+    final addressStyle = addressTab.decoration! as BoxDecoration;
+    expect(addressStyle.color, Colors.white);
+    expect(addressStyle.border!.top.color, AppColors.green);
+    final documentsStyle =
+        tester
+                .widget<Container>(find.byKey(const ValueKey('account-tab-1')))
+                .decoration!
+            as BoxDecoration;
+    expect(documentsStyle.color, const Color(0xFFE2E5E8));
+
+    await tester.tap(find.byKey(const ValueKey('account-tab-1')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('account-field-commercialNumber')),
+      findsOneWidget,
+    );
+    expect(
+      (tester
+                  .widget<Container>(
+                    find.byKey(const ValueKey('account-tab-1')),
+                  )
+                  .decoration!
+              as BoxDecoration)
+          .color,
+      Colors.white,
+    );
+    await tester.tap(find.byKey(const ValueKey('account-tab-0')));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('account-field-nameAr')),

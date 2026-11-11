@@ -2,4 +2,4 @@
 - [Flutter publishing dependencies](flutter-publishing.md) — release builds must restore Dart packages explicitly; the preview's home-directory cache is absent during publishing.
 - [Fluent UI SDK compatibility](fluent-ui-sdk-compatibility.md) — recent package releases may use Flutter APIs newer than their declared minimum; verify with tests and a web release build.
 - [Browser file selection](web-file-selection.md) — accounting image uploads use a browser-native picker because the generated web build omitted FilePickerWeb registration.
-- [Inventory group variants](inventory-groups.md) — sibling items keep the group's number but own their unit data; invoices show each unit with its own price and label.
+- [Inventory unit rows](inventory-groups.md) — New while editing preserves item fields and adds an independent unit row; invoices bill each unit at its own price.

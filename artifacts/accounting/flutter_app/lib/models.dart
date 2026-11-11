@@ -237,6 +237,7 @@ class InvoiceLine {
   final String id;
   String code;
   String name;
+  String unitNo;
   String unit;
   double qty;
   double price;
@@ -245,6 +246,7 @@ class InvoiceLine {
     required this.id,
     this.code = '',
     this.name = '',
+    this.unitNo = '',
     this.unit = '',
     this.qty = 1,
     this.price = 0,
@@ -256,6 +258,7 @@ class InvoiceLine {
     'id': id,
     'code': code,
     'name': name,
+    'unitNo': unitNo,
     'unit': unit,
     'qty': qty,
     'price': price,
@@ -265,6 +268,7 @@ class InvoiceLine {
     id: j['id'],
     code: j['code'] ?? '',
     name: j['name'] ?? '',
+    unitNo: j['unitNo'] ?? '',
     unit: j['unit'] ?? '',
     qty: (j['qty'] as num?)?.toDouble() ?? 1,
     price: (j['price'] as num?)?.toDouble() ?? 0,

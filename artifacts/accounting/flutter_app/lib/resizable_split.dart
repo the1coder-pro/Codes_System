@@ -13,6 +13,7 @@ class ResizableSplit extends StatefulWidget {
   final double minSecondWidth;
   final Key? dividerKey;
   final bool collapsibleFirst;
+  final bool firstOnLeft;
   final String collapsedLabel;
   final Key? collapseToggleKey;
 
@@ -25,6 +26,7 @@ class ResizableSplit extends StatefulWidget {
     required this.minSecondWidth,
     this.dividerKey,
     this.collapsibleFirst = false,
+    this.firstOnLeft = false,
     this.collapsedLabel = 'لوحة',
     this.collapseToggleKey,
   });
@@ -44,6 +46,9 @@ class _ResizableSplitState extends State<ResizableSplit> {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       final width = constraints.maxWidth;
+      final rowDirection = widget.firstOnLeft
+          ? TextDirection.ltr
+          : Directionality.of(context);
       final dividerWidth = widget.collapsibleFirst
           ? _collapsibleDividerWidth
           : _dividerHitWidth;
@@ -66,9 +71,7 @@ class _ResizableSplitState extends State<ResizableSplit> {
       }
 
       void resizeBy(double delta) {
-        final direction = Directionality.of(context) == TextDirection.rtl
-            ? -1.0
-            : 1.0;
+        final direction = rowDirection == TextDirection.rtl ? -1.0 : 1.0;
         setFirstWidth(firstWidth + delta * direction);
       }
 
@@ -92,6 +95,7 @@ class _ResizableSplitState extends State<ResizableSplit> {
             )
           : widget.first;
       return Row(
+        textDirection: rowDirection,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(width: firstWidth, child: firstPanel),

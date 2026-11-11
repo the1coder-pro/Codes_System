@@ -59,7 +59,11 @@ class _AppShellState extends State<AppShell> {
     view = ShellView.invoice;
   });
 
-  void soon(String name) => toast(context, '$name — غير متاحة في هذه النسخة');
+  void soon(String name) => toast(
+    context,
+    '$name — غير متاحة في هذه النسخة',
+    severity: fluent.InfoBarSeverity.warning,
+  );
 
   Future<void> calculator() async {
     await fluent.showDialog(
@@ -242,7 +246,11 @@ class _AppShellState extends State<AppShell> {
         color: AppColors.green,
         onTap: () {
           setState(() => invoiceSession++);
-          toast(context, 'تم تحديث البيانات');
+          toast(
+            context,
+            'تم تحديث البيانات',
+            severity: fluent.InfoBarSeverity.success,
+          );
         },
       ),
       _RibbonButton(
@@ -255,7 +263,7 @@ class _AppShellState extends State<AppShell> {
         glyph: '🗣️',
         label: 'Arabic',
         color: AppColors.ink,
-        onTap: () => toast(context, 'اللغة الحالية: العربية'),
+        onTap: () {},
       ),
       _RibbonButton(
         glyph: '🚪',
@@ -272,34 +280,32 @@ class _AppShellState extends State<AppShell> {
           final width = constraints.maxWidth;
           if (width >= 1400) {
             return SizedBox(
+              width: width,
               height: 86,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: width),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [const SizedBox(width: 6), ...right],
                       ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 1,
-                            height: 44,
-                            color: AppColors.line,
-                          ),
-                          ...left,
-                          const SizedBox(width: 6),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 16),
+                  Container(
+                    key: const ValueKey('ribbon-divider'),
+                    width: 1,
+                    height: 44,
+                    color: AppColors.line,
+                  ),
+                  const SizedBox(width: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [...left, const SizedBox(width: 6)],
+                  ),
+                ],
               ),
             );
           }
@@ -332,9 +338,22 @@ class _AppShellState extends State<AppShell> {
             height: 98,
             child: Row(
               children: [
-                Expanded(child: compactGroup(right)),
-                Container(width: 1, height: 46, color: AppColors.line),
-                Expanded(child: compactGroup(left)),
+                Expanded(
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: compactGroup(right),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Container(
+                  key: const ValueKey('ribbon-divider'),
+                  width: 1,
+                  height: 46,
+                  color: AppColors.line,
+                ),
+                const SizedBox(width: 4),
+                SizedBox(width: 340, child: compactGroup(left)),
+                const SizedBox(width: 6),
               ],
             ),
           );

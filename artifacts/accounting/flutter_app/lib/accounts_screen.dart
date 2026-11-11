@@ -144,11 +144,19 @@ class _AccountsScreenState extends State<AccountsScreen> {
   Future<void> _save() async {
     _collect();
     if (draft.code.isEmpty || draft.nameAr.isEmpty) {
-      toast(context, 'رقم الحساب والاسم بالعربي مطلوبان');
+      toast(
+        context,
+        'رقم الحساب والاسم بالعربي مطلوبان',
+        severity: fluent.InfoBarSeverity.warning,
+      );
       return;
     }
     if (accounts.any((a) => a.code == draft.code && a.code != currentCode)) {
-      toast(context, 'رقم الحساب مستخدم من قبل');
+      toast(
+        context,
+        'رقم الحساب مستخدم من قبل',
+        severity: fluent.InfoBarSeverity.warning,
+      );
       return;
     }
     setState(() {
@@ -163,7 +171,13 @@ class _AccountsScreenState extends State<AccountsScreen> {
       isNew = false;
     });
     await Store.saveAccounts(accounts);
-    if (mounted) toast(context, 'تم حفظ الحساب ${draft.nameAr}');
+    if (mounted) {
+      toast(
+        context,
+        'تم حفظ الحساب ${draft.nameAr}',
+        severity: fluent.InfoBarSeverity.success,
+      );
+    }
   }
 
   void _undo() {
@@ -203,7 +217,9 @@ class _AccountsScreenState extends State<AccountsScreen> {
       }
     });
     await Store.saveAccounts(accounts);
-    if (mounted) toast(context, 'تم حذف الحساب');
+    if (mounted) {
+      toast(context, 'تم حذف الحساب', severity: fluent.InfoBarSeverity.success);
+    }
   }
 
   List<Account> get visibleAccounts {
@@ -473,41 +489,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Wrap(
-          children: [
-            for (var i = 0; i < 3; i++)
-              Container(
-                decoration: BoxDecoration(
-                  color: tab == i ? AppColors.cyan : AppColors.chrome,
-                  border: Border.all(color: AppColors.line),
-                ),
-                child: fluent.Button(
-                  onPressed: () => setState(() => tab = i),
-                  style: fluent.ButtonStyle(
-                    padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-                    backgroundColor: WidgetStateProperty.resolveWith(
-                      (states) => states.contains(WidgetState.hovered)
-                          ? const Color(0xFFEAF2FB)
-                          : Colors.transparent,
-                    ),
-                    shape: const WidgetStatePropertyAll(
-                      RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 5,
-                    ),
-                    child: Text(
-                      ['العنوان', 'الوثائق والمستندات', 'وسائل التواصل'][i],
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
+        _accountTabs(),
         Expanded(child: _tabContent()),
       ],
     );
@@ -537,6 +519,51 @@ class _AccountsScreenState extends State<AccountsScreen> {
           border: Border.all(color: AppColors.line),
         ),
         child: content,
+      ),
+    );
+  }
+
+  Widget _accountTabs() {
+    const names = ['العنوان', 'الوثائق والمستندات', 'وسائل التواصل'];
+    return Container(
+      color: const Color(0xFFEFF1F3),
+      padding: const EdgeInsets.only(top: 6, right: 6),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (var i = 0; i < names.length; i++)
+              GestureDetector(
+                onTap: () => setState(() => tab = i),
+                child: Container(
+                  key: ValueKey('account-tab-$i'),
+                  margin: const EdgeInsets.only(left: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: tab == i ? Colors.white : const Color(0xFFE2E5E8),
+                    border: Border(
+                      top: BorderSide(
+                        color: tab == i ? AppColors.green : AppColors.line,
+                        width: tab == i ? 2.5 : 1,
+                      ),
+                      left: const BorderSide(color: AppColors.line),
+                      right: const BorderSide(color: AppColors.line),
+                    ),
+                  ),
+                  child: Text(
+                    names[i],
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: tab == i ? FontWeight.w800 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

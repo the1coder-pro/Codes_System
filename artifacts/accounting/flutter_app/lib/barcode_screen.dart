@@ -118,22 +118,46 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
     final copies = int.tryParse(count.text.trim());
     final code = barcode.text.trim();
     if (item == null) {
-      toast(context, 'اختر صنفاً أولاً');
+      toast(
+        context,
+        'اختر صنفاً أولاً',
+        severity: fluent.InfoBarSeverity.warning,
+      );
       return;
     }
     if (copies == null || copies < 1 || copies > 500) {
-      toast(context, 'أدخل عدداً من 1 إلى 500');
+      toast(
+        context,
+        'أدخل عدداً من 1 إلى 500',
+        severity: fluent.InfoBarSeverity.warning,
+      );
       return;
     }
     if (code.isEmpty || !RegExp(r'^[0-9]+$').hasMatch(code)) {
-      toast(context, 'أدخل باركوداً رقمياً');
+      toast(
+        context,
+        'أدخل باركوداً رقمياً',
+        severity: fluent.InfoBarSeverity.warning,
+      );
       return;
     }
     try {
       printer.printLabels(_printDocument(item, code, copies));
-      if (mounted) toast(context, 'تم فتح نافذة الطباعة');
+      if (mounted) {
+        toast(
+          context,
+          'تم فتح نافذة الطباعة',
+          severity: fluent.InfoBarSeverity.success,
+        );
+      }
     } catch (_) {
-      if (mounted) toast(context, 'تعذر فتح نافذة الطباعة في المتصفح');
+      if (mounted) {
+        toast(
+          context,
+          'تعذر فتح نافذة الطباعة في المتصفح',
+          severity: fluent.InfoBarSeverity.error,
+        );
+      }
     }
   }
 

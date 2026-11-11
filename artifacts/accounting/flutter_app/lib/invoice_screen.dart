@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
+import 'barcode_print_stub.dart'
+    if (dart.library.js_interop) 'barcode_print_web.dart'
+    as printer;
 import 'item_image.dart';
 import 'models.dart';
 import 'resizable_split.dart';
@@ -82,6 +85,19 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    for (final controller in h.values) {
+      controller.dispose();
+    }
+    for (final controllers in lineCtl.values) {
+      for (final controller in controllers) {
+        controller.dispose();
+      }
+    }
+    super.dispose();
+  }
+
   double _n(String k) => double.tryParse(h[k]!.text) ?? 0;
   double get subtotal => lines.fold(0, (s, l) => s + l.total);
   double get discount => _n('discount');
@@ -106,14 +122,33 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   void _addLine({
     String code = '',
     String name = '',
+    String unitNo = '',
     String unit = '',
     double price = 0,
   }) {
     selectedLineIds.clear();
+    final existingIndex = code.isEmpty
+        ? -1
+        : lines.indexWhere(
+            (line) =>
+                line.code == code &&
+                ((line.unitNo.isNotEmpty || unitNo.isNotEmpty)
+                    ? line.unitNo == unitNo
+                    : line.unit == unit && line.price == price),
+          );
+    if (existingIndex >= 0) {
+      final existing = lines[existingIndex];
+      existing.qty += 1;
+      _syncQty(existing);
+      selected = existingIndex;
+      return;
+    }
+
     final l = InvoiceLine(
       id: '${DateTime.now().microsecondsSinceEpoch}',
       code: code,
       name: name,
+      unitNo: unitNo,
       unit: unit,
       price: price,
     );
@@ -159,7 +194,11 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
         .map((line) => line.id)
         .toSet();
     if (targets.isEmpty) {
-      toast(context, 'حدد صنفاً أو أكثر أولاً');
+      toast(
+        context,
+        'حدد صنفاً أو أكثر أولاً',
+        severity: fluent.InfoBarSeverity.warning,
+      );
       return;
     }
 
@@ -241,79 +280,268 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                 (_n(activePayments.single) - net).abs() < .005));
   }
 
+  Future<bool> _saveInvoiceAndReset() async {
+    if (lines.isEmpty) {
+      toast(
+        context,
+        'أضف صنفاً قبل حفظ الفاتورة',
+        severity: fluent.InfoBarSeverity.warning,
+      );
+      return false;
+    }
+    final ok = await Store.saveInvoice(widget.typeIndex, _toJson());
+    if (!mounted) return false;
+    if (!ok) {
+      toast(
+        context,
+        'تعذر حفظ الفاتورة محلياً',
+        severity: fluent.InfoBarSeverity.error,
+      );
+      return false;
+    }
+    final draftCleared = await Store.clearDraft(widget.typeIndex);
+    if (!mounted) return false;
+    setState(_resetInvoiceForm);
+    if (!draftCleared) {
+      toast(
+        context,
+        'حُفظت الفاتورة، لكن تعذر مسح المسودة السابقة',
+        severity: fluent.InfoBarSeverity.warning,
+      );
+    }
+    return true;
+  }
+
+  void _resetInvoiceForm() {
+    for (final controllers in lineCtl.values) {
+      for (final controller in controllers) {
+        controller.dispose();
+      }
+    }
+    lineCtl.clear();
+    lines.clear();
+    selectedLineIds.clear();
+    selected = null;
+    selectedPayment = 'cash';
+    paymentAuto = true;
+    invDate = DateTime.now();
+    delivDate = invDate;
+    for (final controller in h.values) {
+      controller.clear();
+    }
+    h['taxRate']!.text = '0.15';
+    h['discount']!.text = '0';
+    for (final key in _paymentKeys) {
+      h[key]!.text = '0';
+    }
+    creditor = 'مورد بدون حساب';
+    debtor = 'مشتريات بضاعة بعرض البيع';
+    storeCredit = 'مشتريات بضاعة بعرض البيع';
+    storeDebit = '-';
+    taxable = 'خاضع للضريبة';
+    draftLoaded = false;
+  }
+
   Future<void> _save() async {
-    final ok = await Store.saveDraft(widget.typeIndex, _toJson());
-    if (mounted) {
-      setState(() => draftLoaded = true);
-      toast(context, ok ? 'تم حفظ مسودة ${type.ar}' : 'تعذر الحفظ محلياً');
+    if (await _saveInvoiceAndReset() && mounted) {
+      toast(
+        context,
+        'تم حفظ الفاتورة ${type.ar}',
+        severity: fluent.InfoBarSeverity.success,
+      );
     }
   }
 
-  Future<void> _discard() async {
-    final ok = await confirmDialog(
-      context,
-      'مسودة جديدة',
-      'مسح بيانات الفاتورة الحالية والمسودة المحفوظة؟',
-    );
-    if (!ok || !mounted) return;
-    await Store.clearDraft(widget.typeIndex);
-    setState(() {
-      lines.clear();
-      lineCtl.clear();
-      selectedLineIds.clear();
-      selected = null;
-      selectedPayment = 'cash';
-      paymentAuto = true;
-      for (final k in ['number', 'account', 'taxNo', 'notes']) {
-        h[k]!.text = '';
-      }
-      for (final k in ['discount', 'cash', 'network', 'credit', 'returnBal']) {
-        h[k]!.text = '0';
-      }
-      draftLoaded = false;
-    });
+  void _print() {
+    if (lines.isEmpty) {
+      toast(
+        context,
+        'أضف صنفاً قبل طباعة الفاتورة',
+        severity: fluent.InfoBarSeverity.warning,
+      );
+      return;
+    }
+    final printWindow = printer.openPrintWindow();
+    if (printWindow == null) {
+      toast(
+        context,
+        'تعذر فتح نافذة الطباعة في المتصفح',
+        severity: fluent.InfoBarSeverity.error,
+      );
+      return;
+    }
+    try {
+      printWindow.writeAndPrint(_printDocument());
+      toast(
+        context,
+        'تم فتح نافذة طباعة الفاتورة',
+        severity: fluent.InfoBarSeverity.success,
+      );
+    } catch (_) {
+      printWindow.close();
+      toast(
+        context,
+        'تعذرت طباعة الفاتورة',
+        severity: fluent.InfoBarSeverity.error,
+      );
+    }
   }
 
-  void _print() {
-    fluent.showDialog(
-      context: context,
-      builder: (c) => fluent.ContentDialog(
-        title: Text('معاينة طباعة — ${type.ar}'),
-        content: SizedBox(
-          width: 360,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'رقم: ${h['number']!.text.isEmpty ? '—' : h['number']!.text}   التاريخ: ${_fmt(invDate)}',
-              ),
-              const Divider(),
-              for (final l in lines)
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(l.name.isEmpty ? '(بدون اسم)' : l.name),
-                    ),
-                    Text('${l.qty} × ${money(l.price)} = ${money(l.total)}'),
-                  ],
-                ),
-              const Divider(),
-              Text(
-                'الصافي: ${money(net)}',
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          fluent.Button(
-            onPressed: () => Navigator.pop(c),
-            child: const Text('إغلاق'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _saveAndPrint() async {
+    if (lines.isEmpty) {
+      toast(
+        context,
+        'أضف صنفاً قبل حفظ الفاتورة',
+        severity: fluent.InfoBarSeverity.warning,
+      );
+      return;
+    }
+    final document = _printDocument();
+    // Open the window during the click gesture so the browser permits printing
+    // after local persistence completes.
+    final printWindow = printer.openPrintWindow();
+    if (printWindow == null) {
+      toast(
+        context,
+        'تعذر فتح نافذة الطباعة في المتصفح',
+        severity: fluent.InfoBarSeverity.error,
+      );
+      return;
+    }
+    if (!await _saveInvoiceAndReset()) {
+      printWindow.close();
+      return;
+    }
+    try {
+      printWindow.writeAndPrint(document);
+      if (mounted) {
+        toast(
+          context,
+          'تم حفظ الفاتورة وإرسالها للطباعة',
+          severity: fluent.InfoBarSeverity.success,
+        );
+      }
+    } catch (_) {
+      printWindow.close();
+      if (mounted) {
+        toast(
+          context,
+          'حُفظت الفاتورة لكن تعذرت الطباعة',
+          severity: fluent.InfoBarSeverity.error,
+        );
+      }
+    }
+  }
+
+  String _printDocument() {
+    String escape(String value) => value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+
+    final rows = lines.map((line) {
+      final quantity = line.qty == line.qty.roundToDouble()
+          ? line.qty.toStringAsFixed(0)
+          : line.qty.toString();
+      return '''
+        <tr>
+          <td>${escape(line.code)}</td>
+          <td>${escape(line.name)}</td>
+          <td>${escape(line.unit)}</td>
+          <td>$quantity</td>
+          <td>${money(line.price)}</td>
+          <td>${money(line.total)}</td>
+        </tr>
+      ''';
+    }).join();
+    final notes = h['notes']!.text.trim();
+    final number = h['number']!.text.trim();
+    final account = h['account']!.text.trim();
+    final taxNumber = h['taxNo']!.text.trim();
+    final noteSection = notes.isEmpty
+        ? ''
+        : '<section class="notes"><strong>ملاحظات:</strong> ${escape(notes)}</section>';
+
+    return '''
+      <!doctype html>
+      <html lang="ar" dir="rtl">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>${escape(type.ar)} ${escape(number)}</title>
+          <style>
+            * { box-sizing: border-box; }
+            body {
+              color: #15202b;
+              font-family: "IBM Plex Sans Arabic", Arial, sans-serif;
+              margin: 20px auto;
+              max-width: 1000px;
+              padding: 0 18px;
+            }
+            h1 { font-size: 25px; margin: 0 0 4px; }
+            .subtitle { color: #526477; margin-bottom: 20px; }
+            .details {
+              border: 1px solid #b7c7d7;
+              border-radius: 6px;
+              display: grid;
+              gap: 10px 24px;
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+              margin-bottom: 20px;
+              padding: 14px;
+            }
+            .detail-label { color: #526477; font-size: 12px; }
+            .detail-value { font-weight: 700; margin-top: 3px; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #b7c7d7; padding: 8px; text-align: right; }
+            th { background: #edf3f8; }
+            .totals { margin: 18px 0 0 auto; max-width: 420px; width: 100%; }
+            .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
+            .grand-total { border-top: 2px solid #15202b; font-size: 18px; font-weight: 800; }
+            .notes { border-top: 1px solid #b7c7d7; margin-top: 20px; padding-top: 12px; }
+            @page { size: A4; margin: 12mm; }
+            @media print {
+              body { margin: 0; max-width: none; padding: 0; }
+              tr { break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          <header>
+            <h1>${escape(type.ar)}</h1>
+            <div class="subtitle">${escape(type.en)}</div>
+          </header>
+          <section class="details">
+            <div><div class="detail-label">رقم الفاتورة</div><div class="detail-value">${number.isEmpty ? '—' : escape(number)}</div></div>
+            <div><div class="detail-label">تاريخ الفاتورة</div><div class="detail-value">${_fmt(invDate)}</div></div>
+            <div><div class="detail-label">تاريخ التسليم</div><div class="detail-value">${_fmt(delivDate)}</div></div>
+            <div><div class="detail-label">اسم الحساب</div><div class="detail-value">${account.isEmpty ? '—' : escape(account)}</div></div>
+            <div><div class="detail-label">الرقم الضريبي</div><div class="detail-value">${taxNumber.isEmpty ? '—' : escape(taxNumber)}</div></div>
+            <div><div class="detail-label">حالة الضريبة</div><div class="detail-value">${escape(taxable)}</div></div>
+          </section>
+          <table>
+            <thead><tr>
+              <th>رقم الصنف</th><th>اسم الصنف</th><th>الوحدة</th>
+              <th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th>
+            </tr></thead>
+            <tbody>$rows</tbody>
+          </table>
+          <section class="totals">
+            <div class="total-row"><span>الإجمالي قبل الخصم</span><strong>${money(subtotal)}</strong></div>
+            <div class="total-row"><span>الخصم</span><strong>${money(discount)}</strong></div>
+            <div class="total-row"><span>الضريبة</span><strong>${money(tax)}</strong></div>
+            <div class="total-row grand-total"><span>الصافي</span><strong>${money(net)}</strong></div>
+            <div class="total-row"><span>نقداً</span><strong>${money(_n('cash'))}</strong></div>
+            <div class="total-row"><span>شبكة</span><strong>${money(_n('network'))}</strong></div>
+            <div class="total-row"><span>آجل</span><strong>${money(_n('credit'))}</strong></div>
+            <div class="total-row"><span>رصيد رجيع</span><strong>${money(_n('returnBal'))}</strong></div>
+            <div class="total-row"><span>المتبقي</span><strong>${money(remaining)}</strong></div>
+          </section>
+          $noteSection
+        </body>
+      </html>
+    ''';
   }
 
   String _fmt(DateTime d) => '${d.month}/${d.day}/${d.year}';
@@ -847,11 +1075,11 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                         () => _addLine(
                           code: it.id,
                           name: it.nameAr,
+                          unitNo: unit.unitNo,
                           unit: unit.size,
                           price: unitPrice,
                         ),
                       );
-                      toast(context, 'أضيف ${it.nameAr}');
                     }
 
                     return Card(
@@ -960,6 +1188,13 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                 width: 54,
                 height: 58,
                 onTap: _save,
+              ),
+              ActionTile(
+                glyph: '💾',
+                label: 'حفظ+طبع',
+                width: 54,
+                height: 58,
+                onTap: _saveAndPrint,
               ),
               ActionTile(
                 glyph: '🖨️',
@@ -1172,11 +1407,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 6),
-          fluent.Button(
-            onPressed: _discard,
-            child: const Text('مسح المسودة وبدء فاتورة جديدة'),
           ),
         ],
       ),

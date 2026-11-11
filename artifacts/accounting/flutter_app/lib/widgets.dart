@@ -450,16 +450,17 @@ Future<bool> confirmDialog(
   return r ?? false;
 }
 
-void toast(BuildContext context, String msg) {
+void toast(
+  BuildContext context,
+  String msg, {
+  fluent.InfoBarSeverity severity = fluent.InfoBarSeverity.info,
+}) {
   unawaited(
     fluent.displayInfoBar(
       context,
-      builder: (context, close) => fluent.InfoBar(
-        title: Text(msg),
-        severity: fluent.InfoBarSeverity.info,
-        isIconVisible: false,
-        onClose: close,
-      ),
+      alignment: Alignment.topRight,
+      builder: (context, close) =>
+          fluent.InfoBar(title: Text(msg), severity: severity, onClose: close),
       duration: const Duration(seconds: 2),
     ),
   );

@@ -8,6 +8,7 @@ import 'models.dart';
 class Store {
   static const _itemsKey = 'items_v1';
   static const _accountsKey = 'accounts_v1';
+  static const _invoicesKey = 'invoices_v1';
 
   static List<Account> _seedAccounts() => [
     Account(code: '1000001', nameAr: 'النقدية'),
@@ -84,10 +85,46 @@ class Store {
     }
   }
 
-  static Future<void> clearDraft(int type) async {
+  static Future<List<Map<String, dynamic>>> loadInvoices() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getString(_invoicesKey);
+      if (raw == null) return [];
+      return (jsonDecode(raw) as List)
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<bool> saveInvoice(int type, Map<String, dynamic> data) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getString(_invoicesKey);
+      final invoices = raw == null
+          ? <Map<String, dynamic>>[]
+          : (jsonDecode(raw) as List)
+                .map((entry) => Map<String, dynamic>.from(entry))
+                .toList();
+      invoices.add({
+        'typeIndex': type,
+        'savedAt': DateTime.now().toIso8601String(),
+        'invoice': data,
+      });
+      return await p.setString(_invoicesKey, jsonEncode(invoices));
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> clearDraft(int type) async {
     try {
       final p = await SharedPreferences.getInstance();
       await p.remove('draft_$type');
-    } catch (_) {}
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 }
