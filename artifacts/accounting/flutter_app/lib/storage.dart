@@ -53,14 +53,16 @@ class Store {
     }
   }
 
-  static Future<void> saveItems(List<Item> items) async {
+  static Future<bool> saveItems(List<Item> items) async {
     try {
       final p = await SharedPreferences.getInstance();
-      await p.setString(
+      return await p.setString(
         _itemsKey,
         jsonEncode(items.map((e) => e.toJson()).toList()),
       );
-    } catch (_) {}
+    } catch (_) {
+      return false;
+    }
   }
 
   static Future<Map<String, dynamic>?> loadDraft(int type) async {

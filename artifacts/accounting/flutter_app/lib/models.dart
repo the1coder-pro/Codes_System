@@ -64,6 +64,7 @@ class Item {
   String taxCat;
   String taxRate;
   bool unused;
+  String? imageBase64;
   List<UnitRow> units;
 
   Item({
@@ -78,6 +79,7 @@ class Item {
     this.taxCat = 'غير معفاة',
     this.taxRate = '15',
     this.unused = false,
+    this.imageBase64,
     List<UnitRow>? units,
   }) : units = units ?? [UnitRow()];
 
@@ -93,6 +95,7 @@ class Item {
     'taxCat': taxCat,
     'taxRate': taxRate,
     'unused': unused,
+    'imageBase64': imageBase64,
     'units': units.map((u) => u.toJson()).toList(),
   };
 
@@ -108,6 +111,7 @@ class Item {
     taxCat: j['taxCat'] ?? 'غير معفاة',
     taxRate: j['taxRate'] ?? '15',
     unused: j['unused'] ?? false,
+    imageBase64: j['imageBase64'] as String?,
     units: ((j['units'] as List?) ?? [])
         .map((e) => UnitRow.fromJson(Map<String, dynamic>.from(e)))
         .toList(),

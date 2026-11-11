@@ -1,6 +1,11 @@
+import 'dart:typed_data';
+import 'dart:async';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
+import 'item_image.dart';
 import 'models.dart';
 import 'resizable_split.dart';
 import 'storage.dart';
@@ -10,6 +15,8 @@ import 'widgets.dart';
 const _usageOpts = ['غير محدد', 'بيع وشراء', 'بيع فقط', 'شراء فقط'];
 const _typeOpts = ['غير محدد', 'مخزني', 'خدمي', 'تجميعي'];
 const _taxOpts = ['غير معفاة', 'معفاة', 'صفرية'];
+
+typedef ItemImageBytesPicker = Future<Uint8List?> Function();
 
 const _unitCols = [
   GridColumn('رقم الصنف', 92),
@@ -27,7 +34,9 @@ const _unitCols = [
 /// Item card (الأصناف): cyan header form, action tiles, unit grid, search.
 class InventoryScreen extends StatefulWidget {
   final VoidCallback onExit;
-  const InventoryScreen({super.key, required this.onExit});
+  final ItemImageBytesPicker? pickImageBytes;
+
+  const InventoryScreen({super.key, required this.onExit, this.pickImageBytes});
 
   @override
   State<InventoryScreen> createState() => _InventoryScreenState();
@@ -41,7 +50,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
   String? currentId;
   Item draft = Item(id: '');
   int? selectedUnit;
-  bool hasImage = false;
 
   final f = <String, TextEditingController>{
     for (final k in [
@@ -144,11 +152,37 @@ class _InventoryScreenState extends State<InventoryScreen> {
     currentId = null;
     isNew = true;
     editing = true;
-    hasImage = false;
     _bind();
   });
 
   void _edit() => setState(() => editing = true);
+
+  Future<void> _pickImage() async {
+    try {
+      final bytes = widget.pickImageBytes == null
+          ? await _pickImageBytesFromFile()
+          : await widget.pickImageBytes!();
+      if (bytes == null || !mounted) return;
+      final imageData = optimizeItemImage(bytes);
+      setState(() => draft.imageBase64 = imageData);
+      toast(context, 'تم تحميل صورة الصنف');
+    } on FormatException catch (error) {
+      if (mounted) toast(context, error.message.toString());
+    } catch (_) {
+      if (mounted) toast(context, 'تعذر اختيار الصورة');
+    }
+  }
+
+  Future<Uint8List?> _pickImageBytesFromFile() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
+      allowMultiple: false,
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return null;
+    return result.files.single.bytes;
+  }
 
   Future<void> _save() async {
     _collect();
@@ -156,19 +190,26 @@ class _InventoryScreenState extends State<InventoryScreen> {
       toast(context, 'اسم الصنف بالعربي مطلوب');
       return;
     }
+    final updatedItems = List<Item>.of(items);
+    final idx = updatedItems.indexWhere((e) => e.id == draft.id);
+    if (idx >= 0) {
+      updatedItems[idx] = draft.copy();
+    } else {
+      updatedItems.add(draft.copy());
+    }
+    final saved = await Store.saveItems(updatedItems);
+    if (!mounted) return;
+    if (!saved) {
+      toast(context, 'تعذر حفظ الصنف. قد تكون مساحة تخزين المتصفح ممتلئة');
+      return;
+    }
     setState(() {
-      final idx = items.indexWhere((e) => e.id == draft.id);
-      if (idx >= 0) {
-        items[idx] = draft.copy();
-      } else {
-        items.add(draft.copy());
-      }
+      items = updatedItems;
       currentId = draft.id;
       editing = false;
       isNew = false;
       _search();
     });
-    await Store.saveItems(items);
     if (mounted) toast(context, 'تم حفظ الصنف ${draft.nameAr}');
   }
 
@@ -205,8 +246,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
         _bind();
       }
     });
-    await Store.saveItems(items);
-    if (mounted) toast(context, 'تم حذف الصنف');
+    final saved = await Store.saveItems(items);
+    if (!mounted) return;
+    if (!saved) {
+      toast(context, 'تعذر حفظ التغييرات. قد تكون مساحة تخزين المتصفح ممتلئة');
+      return;
+    }
+    toast(context, 'تم حذف الصنف');
   }
 
   void _search() {
@@ -526,13 +572,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
               constraints: const BoxConstraints(minHeight: 110),
               width: double.infinity,
               color: Colors.white,
-              alignment: Alignment.center,
-              child: Text(
-                hasImage ? '▥▦▧' : 'لا توجد صورة',
-                style: TextStyle(
-                  fontSize: hasImage ? 40 : 13,
-                  color: hasImage ? AppColors.greenLight : AppColors.muted,
-                ),
+              child: ItemImage(
+                base64Data: draft.imageBase64,
+                fit: BoxFit.contain,
               ),
             ),
           ),
@@ -540,15 +582,25 @@ class _InventoryScreenState extends State<InventoryScreen> {
           Row(
             children: [
               Expanded(
-                child: _smallBtn('اضافة صورة', AppColors.mint, () {
-                  setState(() => hasImage = true);
-                }),
+                child: _smallBtn(
+                  'رفع صورة',
+                  AppColors.mint,
+                  () {
+                    unawaited(_pickImage());
+                  },
+                  key: const ValueKey('inventory-image-upload'),
+                ),
               ),
               const SizedBox(width: 6),
               Expanded(
-                child: _smallBtn('ازالة صورة', AppColors.pink, () {
-                  setState(() => hasImage = false);
-                }),
+                child: _smallBtn(
+                  'ازالة صورة',
+                  AppColors.pink,
+                  () {
+                    setState(() => draft.imageBase64 = null);
+                  },
+                  key: const ValueKey('inventory-image-remove'),
+                ),
               ),
             ],
           ),
@@ -586,21 +638,25 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  Widget _smallBtn(String t, Color bg, VoidCallback onTap) => fluent.Button(
-    onPressed: editing ? onTap : null,
-    style: fluent.ButtonStyle(
-      backgroundColor: WidgetStatePropertyAll(bg),
-      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 8)),
-      shape: WidgetStatePropertyAll(
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-      ),
-    ),
-    child: Text(
-      t,
-      textAlign: TextAlign.center,
-      style: const TextStyle(fontSize: 13),
-    ),
-  );
+  Widget _smallBtn(String t, Color bg, VoidCallback onTap, {Key? key}) =>
+      fluent.Button(
+        key: key,
+        onPressed: editing ? onTap : null,
+        style: fluent.ButtonStyle(
+          backgroundColor: WidgetStatePropertyAll(bg),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(vertical: 8),
+          ),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          ),
+        ),
+        child: Text(
+          t,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 13),
+        ),
+      );
 
   Widget _unitGrid() {
     return Container(

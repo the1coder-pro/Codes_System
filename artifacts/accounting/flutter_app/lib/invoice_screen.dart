@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
+import 'item_image.dart';
 import 'models.dart';
 import 'resizable_split.dart';
 import 'storage.dart';
@@ -28,6 +29,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   int tab = 0;
   final lines = <InvoiceLine>[];
   final lineCtl = <String, List<TextEditingController>>{};
+  final selectedLineIds = <String>{};
   int? selected;
   List<Item> catalog = [];
   bool draftLoaded = false;
@@ -102,6 +104,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   void _addLine({String code = '', String name = '', double price = 0}) {
+    selectedLineIds.clear();
     final l = InvoiceLine(
       id: '${DateTime.now().microsecondsSinceEpoch}',
       code: code,
@@ -140,24 +143,72 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     });
   }
 
+  Widget _lineSelectionCheckbox(
+    InvoiceLine line, {
+    required Key key,
+    required double size,
+  }) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: fluent.Checkbox(
+          key: key,
+          checked: selectedLineIds.contains(line.id),
+          semanticLabel: 'حدد ${line.name}',
+          onChanged: (checked) => setState(() {
+            if (checked == true) {
+              selectedLineIds.add(line.id);
+            } else {
+              selectedLineIds.remove(line.id);
+            }
+          }),
+        ),
+      ),
+    );
+  }
+
   Future<void> _deleteLine() async {
-    if (selected == null) {
-      toast(context, 'حدد صنفاً أولاً');
+    final markedIds = lines
+        .where((line) => selectedLineIds.contains(line.id))
+        .map((line) => line.id)
+        .toSet();
+    final targets = markedIds.isNotEmpty
+        ? markedIds
+        : selected != null && selected! < lines.length
+        ? {lines[selected!].id}
+        : <String>{};
+    if (targets.isEmpty) {
+      toast(context, 'حدد صنفاً أو أكثر أولاً');
       return;
     }
-    final l = lines[selected!];
+
+    final count = targets.length;
+    final firstTarget = lines.firstWhere((line) => targets.contains(line.id));
+    final message = count == 1
+        ? 'حذف "${firstTarget.name.isEmpty ? 'الصنف المحدد' : firstTarget.name}" من الفاتورة؟'
+        : 'حذف $count أصناف محددة من الفاتورة؟';
     final ok = await confirmDialog(
       context,
-      'حذف صنف',
-      'حذف "${l.name.isEmpty ? 'سطر ${selected! + 1}' : l.name}" من الفاتورة؟',
+      count == 1 ? 'حذف صنف' : 'حذف أصناف',
+      message,
     );
     if (!ok || !mounted) return;
     setState(() {
-      lines.removeAt(selected!);
-      lineCtl.remove(l.id);
+      final activeIndex = selected ?? 0;
+      for (final line in lines.where((line) => targets.contains(line.id))) {
+        for (final controller in lineCtl.remove(line.id) ?? const []) {
+          controller.dispose();
+        }
+      }
+      lines.removeWhere((line) => targets.contains(line.id));
+      selectedLineIds.removeAll(targets);
       selected = lines.isEmpty
           ? null
-          : (selected! - 1).clamp(0, lines.length - 1);
+          : activeIndex >= lines.length
+          ? lines.length - 1
+          : activeIndex;
     });
   }
 
@@ -189,6 +240,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     selectedPayment = d['selectedPayment'] as String? ?? 'cash';
     lines.clear();
     lineCtl.clear();
+    selectedLineIds.clear();
     for (final raw in (d['lines'] as List? ?? [])) {
       final l = InvoiceLine.fromJson(Map<String, dynamic>.from(raw));
       lines.add(l);
@@ -229,6 +281,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     setState(() {
       lines.clear();
       lineCtl.clear();
+      selectedLineIds.clear();
       selected = null;
       selectedPayment = 'cash';
       paymentAuto = true;
@@ -639,6 +692,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
 
   Widget _linesTab() {
     const cols = [
+      GridColumn('تحديد', 54),
       GridColumn('رمز الصنف', 100),
       GridColumn('اسم الصنف', 220),
       GridColumn('الكمية', 80),
@@ -667,12 +721,13 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               ),
               const SizedBox(width: 8),
               fluent.Button(
+                key: const ValueKey('invoice-delete-selected-lines'),
                 onPressed: _deleteLine,
-                child: const Text('حذف السطر'),
+                child: const Text('حذف المحدد'),
               ),
               const Spacer(),
               Text(
-                '${lines.length} سطر',
+                '${lines.length} سطر${selectedLineIds.isEmpty ? '' : ' - محدد ${selectedLineIds.length}'}',
                 style: const TextStyle(color: AppColors.muted),
               ),
             ],
@@ -700,7 +755,16 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                     onSelectRow: (r) => setState(() => selected = r),
                     cell: (r, c) {
                       final l = lines[r];
-                      if (c == 4) {
+                      if (c == 0) {
+                        return Center(
+                          child: _lineSelectionCheckbox(
+                            l,
+                            key: ValueKey('invoice-line-select-${l.id}'),
+                            size: 30,
+                          ),
+                        );
+                      }
+                      if (c == 5) {
                         return Padding(
                           padding: const EdgeInsets.all(6),
                           child: Text(
@@ -710,9 +774,9 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                         );
                       }
                       return CellField(
-                        controller: lineCtl[l.id]![c],
+                        controller: lineCtl[l.id]![c - 1],
                         onChanged: (v) => setState(() {
-                          switch (c) {
+                          switch (c - 1) {
                             case 0:
                               l.code = v;
                             case 1:
@@ -764,43 +828,100 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                     style: TextStyle(color: AppColors.muted),
                   ),
                 )
-              : ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+              : GridView.builder(
+                  key: const ValueKey('invoice-item-grid'),
+                  padding: const EdgeInsets.all(8),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 190,
+                    mainAxisExtent: 220,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                  ),
                   itemCount: list.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (_, i) {
+                  itemBuilder: (context, i) {
                     final it = list[i];
-                    return fluent.ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      title: Text(
-                        it.nameAr,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      subtitle: Text(
-                        '${it.id}  ·  ${it.units.isEmpty ? '' : it.units.first.barcode}',
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(money(it.price)),
-                          const SizedBox(width: 10),
-                          fluent.Button(
-                            onPressed: () {
-                              setState(
-                                () => _addLine(
-                                  code: it.id,
-                                  name: it.nameAr,
-                                  price: it.price,
+                    void addItem() {
+                      setState(
+                        () => _addLine(
+                          code: it.id,
+                          name: it.nameAr,
+                          price: it.price,
+                        ),
+                      );
+                      toast(context, 'أضيف ${it.nameAr}');
+                    }
+
+                    return Card(
+                      key: ValueKey('invoice-item-card-${it.id}'),
+                      margin: EdgeInsets.zero,
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: addItem,
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.all(6),
+                                child: ItemImage(
+                                  base64Data: it.imageBase64,
+                                  fit: BoxFit.contain,
+                                  iconSize: 28,
+                                  emptyLabel: '',
                                 ),
-                              );
-                              toast(context, 'أضيف ${it.nameAr}');
-                            },
-                            child: const Text('إضافة'),
-                          ),
-                        ],
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    it.nameAr,
+                                    maxLines: 2,
+                                    textAlign: TextAlign.center,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          it.id,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: AppColors.muted,
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        money(it.price),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 30,
+                                    child: fluent.Button(
+                                      key: ValueKey(
+                                        'invoice-item-add-${it.id}',
+                                      ),
+                                      onPressed: addItem,
+                                      child: const Text('إضافة'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -929,6 +1050,13 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                                   money(l.total),
                                   style: const TextStyle(fontSize: 12),
                                 ),
+                              ),
+                              _lineSelectionCheckbox(
+                                l,
+                                key: ValueKey(
+                                  'invoice-side-line-select-${l.id}',
+                                ),
+                                size: 32,
                               ),
                             ],
                           ),

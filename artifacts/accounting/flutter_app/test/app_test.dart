@@ -2,12 +2,16 @@ import 'package:accounting_ui/main.dart';
 import 'package:accounting_ui/barcode_screen.dart';
 import 'package:accounting_ui/invoice_screen.dart';
 import 'package:accounting_ui/inventory_screen.dart';
+import 'package:accounting_ui/item_image.dart';
+import 'package:accounting_ui/models.dart';
 import 'package:accounting_ui/resizable_split.dart';
+import 'package:accounting_ui/storage.dart';
 import 'package:accounting_ui/theme.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> _launchAndLogin(
@@ -370,6 +374,142 @@ void main() {
     await tester.tap(actionsToggle);
     await tester.pumpAndSettle();
     expect(actionsPanel, findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('inventory uploads and persists an item image', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final imageBytes = img.encodePng(img.Image(width: 8, height: 8));
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: InventoryScreen(
+              onExit: () {},
+              pickImageBytes: () async => imageBytes,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('تعديل').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('inventory-image-upload')));
+    await tester.pumpAndSettle();
+    expect(find.byType(ItemImage), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
+
+    await tester.tap(find.text('حفظ').first);
+    await tester.pumpAndSettle();
+    var savedItems = await Store.loadItems();
+    expect(savedItems.first.imageBase64, isNotNull);
+    expect(savedItems.first.imageBase64, isNotEmpty);
+
+    await tester.tap(find.text('تعديل').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('inventory-image-remove')));
+    await tester.tap(find.text('حفظ').first);
+    await tester.pumpAndSettle();
+    savedItems = await Store.loadItems();
+    expect(savedItems.first.imageBase64, isNull);
+    await tester.pump(const Duration(seconds: 3));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('invoice picker shows inventory items as image cards', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final imageBytes = img.encodePng(img.Image(width: 8, height: 8));
+    final imageData = optimizeItemImage(imageBytes);
+    expect(
+      await Store.saveItems([
+        Item(
+          id: 'P-1',
+          nameAr: 'صنف مصور',
+          imageBase64: imageData,
+          units: [UnitRow(unitNo: '1', priceBefore: '12.50')],
+        ),
+      ]),
+      isTrue,
+    );
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: InvoiceScreen(typeIndex: 0, onExit: () {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('اختيار الأصناف'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('invoice-item-grid')), findsOneWidget);
+    expect(find.byKey(const ValueKey('invoice-item-card-P-1')), findsOneWidget);
+    expect(find.byType(ItemImage), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
+    expect(find.text('صنف مصور'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('invoice-item-add-P-1')));
+    await tester.pumpAndSettle();
+    expect(find.text('صنف مصور').evaluate().length, greaterThan(1));
+    await tester.pump(const Duration(seconds: 3));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('invoice deletes all checked rows in one action', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: InvoiceScreen(typeIndex: 0, onExit: () {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('اختيار الأصناف'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('إضافة').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('إضافة').first);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(fluent.Checkbox), findsNWidgets(2));
+    await tester.tap(find.byType(fluent.Checkbox).at(0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(fluent.Checkbox).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('حذف صنف'));
+    await tester.pumpAndSettle();
+    expect(find.text('حذف أصناف'), findsOneWidget);
+    expect(find.text('حذف 2 أصناف محددة من الفاتورة؟'), findsOneWidget);
+
+    await tester.tap(find.text('نعم، تأكيد'));
+    await tester.pumpAndSettle();
+    expect(find.byType(fluent.Checkbox), findsNothing);
+    await tester.pump(const Duration(seconds: 3));
     expect(tester.takeException(), isNull);
   });
 
