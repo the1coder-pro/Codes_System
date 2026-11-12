@@ -450,6 +450,10 @@ void main() {
       tester.widget<Text>(find.text('تحديث')).style!.fontSize,
     );
     expect(
+      tester.widget<Text>(find.text('الفواتير\nوأوامر الصرف')).style!.fontSize,
+      12,
+    );
+    expect(
       tester.widget<AppImageIcon>(iconFinder).size,
       tester.widget<AppImageIcon>(calculatorIcon).size,
     );
@@ -540,7 +544,7 @@ void main() {
     );
     expect(
       tester.getSize(find.byKey(const ValueKey('ribbon-container'))).height,
-      60,
+      64,
     );
 
     expect(calculatorAction.right - exitAction.left, lessThan(700));
@@ -596,6 +600,10 @@ void main() {
     expect(
       tester.widget<Text>(find.text('الفواتير\nوأوامر الصرف')).style!.fontSize,
       tester.widget<Text>(find.text('تحديث')).style!.fontSize,
+    );
+    expect(
+      tester.widget<Text>(find.text('الفواتير\nوأوامر الصرف')).style!.fontSize,
+      12,
     );
     final exitButton = find.byKey(const ValueKey('ribbon-خروج'));
     expect(
@@ -666,6 +674,10 @@ void main() {
       matching: find.byType(AppImageIcon),
     );
     expect(tester.widget<AppImageIcon>(mobileMainIcon).size, 22);
+    expect(
+      tester.widget<Text>(find.text('الفواتير وأوامر الصرف')).style!.fontSize,
+      8.5,
+    );
     expect(tester.takeException(), isNull);
   });
 

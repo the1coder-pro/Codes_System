@@ -332,7 +332,7 @@ class _AppShellState extends State<AppShell> {
           if (width >= 1400) {
             return SizedBox(
               width: width,
-              height: 60,
+              height: 64,
               child: Row(
                 children: [
                   Expanded(
@@ -350,8 +350,8 @@ class _AppShellState extends State<AppShell> {
                   ),
                   const SizedBox(width: 4),
                   SizedBox(
-                    width: 68,
-                    height: 60,
+                    width: 88,
+                    height: 64,
                     child: calculatorButton.asStacked(
                       dense: true,
                       iconSize: 32,
@@ -366,8 +366,8 @@ class _AppShellState extends State<AppShell> {
                   ),
                   const SizedBox(width: 4),
                   SizedBox(
-                    width: 208,
-                    height: 60,
+                    width: 256,
+                    height: 64,
                     child: compactGroup(left, dense: true, iconSize: 32),
                   ),
                   const SizedBox(width: 6),
@@ -543,7 +543,8 @@ class _RibbonButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resolvedIconSize = iconSize ?? (dense ? 22.0 : 32.0);
-    final compactHeight = dense && iconSize != null ? 58.0 : 50.0;
+    final compactFontSize = dense && iconSize == null ? 8.5 : 12.0;
+    final compactHeight = dense && iconSize != null ? 64.0 : 50.0;
     final buttonHeight = stacked
         ? (dense ? compactHeight : 64.0)
         : horizontalCompact
@@ -629,7 +630,7 @@ class _RibbonButton extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: dense ? 8.5 : 12,
+                              fontSize: compactFontSize,
                               height: 1,
                               fontWeight: FontWeight.w600,
                             ),
@@ -650,7 +651,7 @@ class _RibbonButton extends StatelessWidget {
                           label,
                           style: TextStyle(
                             fontSize: horizontalCompact
-                                ? (dense ? 8.5 : 12)
+                                ? compactFontSize
                                 : 12.5,
                             height: 1.2,
                           ),
