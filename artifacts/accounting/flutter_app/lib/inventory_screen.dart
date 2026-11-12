@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
+import 'auth_service.dart';
 import 'item_image.dart';
 import 'item_image_picker.dart';
 import 'models.dart';
@@ -58,9 +59,17 @@ const _unitCols = [
 /// Item card (الأصناف): cyan header form, action tiles, unit grid, search.
 class InventoryScreen extends StatefulWidget {
   final VoidCallback onExit;
+  final UserSession session;
+  final AccountingAuthService authService;
   final ItemImageBytesPicker? pickImageBytes;
 
-  const InventoryScreen({super.key, required this.onExit, this.pickImageBytes});
+  const InventoryScreen({
+    super.key,
+    required this.onExit,
+    required this.session,
+    required this.authService,
+    this.pickImageBytes,
+  });
 
   @override
   State<InventoryScreen> createState() => _InventoryScreenState();
@@ -201,7 +210,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
-  void _new() {
+  bool get _canManage => widget.session.can('inventory.manage');
+
+  Future<void> _new() async {
+    if (!await requirePermission(
+      context: context,
+      session: widget.session,
+      authService: widget.authService,
+      permission: 'inventory.manage',
+    )) {
+      return;
+    }
+    if (!mounted) return;
     if (editing) {
       _collect();
       _addUnit();
@@ -228,7 +248,17 @@ class _InventoryScreenState extends State<InventoryScreen> {
     });
   }
 
-  void _edit() => setState(() => editing = true);
+  Future<void> _edit() async {
+    if (!await requirePermission(
+      context: context,
+      session: widget.session,
+      authService: widget.authService,
+      permission: 'inventory.manage',
+    )) {
+      return;
+    }
+    if (mounted) setState(() => editing = true);
+  }
 
   Future<void> _pickImage() async {
     try {
@@ -268,6 +298,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Future<bool> _persistDraft() async {
+    if (!await requirePermission(
+      context: context,
+      session: widget.session,
+      authService: widget.authService,
+      permission: 'inventory.manage',
+    )) {
+      return false;
+    }
+    if (!mounted) return false;
     _collect();
     if (draft.nameAr.isEmpty) {
       toast(
@@ -336,6 +375,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
       'هل تريد حذف الصنف "${draft.nameAr}" نهائياً؟',
     );
     if (!ok || !mounted) return;
+    if (!await requirePermission(
+      context: context,
+      session: widget.session,
+      authService: widget.authService,
+      permission: 'inventory.delete',
+    )) {
+      return;
+    }
+    if (!mounted) return;
     setState(() {
       items.removeWhere((e) => e.id == currentId);
       currentId = null;
@@ -561,25 +609,28 @@ class _InventoryScreenState extends State<InventoryScreen> {
           spacing: 6,
           runSpacing: 6,
           children: [
-            ActionTile(
-              key: const ValueKey('inventory-new-item'),
-              assetPath: AppIcons.add,
-              label: 'جديد',
-              glyphColor: AppColors.green,
-              onTap: _new,
-            ),
-            ActionTile(
-              assetPath: AppIcons.edit,
-              label: 'تعديل',
-              glyphColor: const Color(0xFF2B7BC4),
-              onTap: editing || !hasCurrent ? null : _edit,
-            ),
-            ActionTile(
-              assetPath: AppIcons.save,
-              label: 'حفظ',
-              glyphColor: AppColors.muted,
-              onTap: editing ? _save : null,
-            ),
+            if (_canManage)
+              ActionTile(
+                key: const ValueKey('inventory-new-item'),
+                assetPath: AppIcons.add,
+                label: 'جديد',
+                glyphColor: AppColors.green,
+                onTap: _new,
+              ),
+            if (_canManage)
+              ActionTile(
+                assetPath: AppIcons.edit,
+                label: 'تعديل',
+                glyphColor: const Color(0xFF2B7BC4),
+                onTap: editing || !hasCurrent ? null : _edit,
+              ),
+            if (_canManage)
+              ActionTile(
+                assetPath: AppIcons.save,
+                label: 'حفظ',
+                glyphColor: AppColors.muted,
+                onTap: editing ? _save : null,
+              ),
             ActionTile(
               assetPath: AppIcons.exit,
               label: 'خروج',
@@ -587,18 +638,20 @@ class _InventoryScreenState extends State<InventoryScreen> {
               glyphColor: const Color(0xFF2B7BC4),
               onTap: widget.onExit,
             ),
-            ActionTile(
-              assetPath: AppIcons.delete,
-              label: 'حذف',
-              glyphColor: AppColors.red,
-              onTap: editing || !hasCurrent ? null : _delete,
-            ),
-            ActionTile(
-              assetPath: AppIcons.undo,
-              label: 'تراجع',
-              glyphColor: AppColors.muted,
-              onTap: editing ? _undo : null,
-            ),
+            if (widget.session.can('inventory.delete'))
+              ActionTile(
+                assetPath: AppIcons.delete,
+                label: 'حذف',
+                glyphColor: AppColors.red,
+                onTap: editing || !hasCurrent ? null : _delete,
+              ),
+            if (_canManage)
+              ActionTile(
+                assetPath: AppIcons.undo,
+                label: 'تراجع',
+                glyphColor: AppColors.muted,
+                onTap: editing ? _undo : null,
+              ),
           ],
         ),
       ],

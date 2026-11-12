@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
+import 'auth_service.dart';
 import 'models.dart';
 import 'resizable_split.dart';
 import 'storage.dart';
@@ -13,7 +14,14 @@ const _paymentTypes = ['حساب نقدي', 'حساب شبكة', 'حساب بن�
 /// Arabic account directory and editor. Account changes are saved locally.
 class AccountsScreen extends StatefulWidget {
   final VoidCallback onExit;
-  const AccountsScreen({super.key, required this.onExit});
+  final UserSession session;
+  final AccountingAuthService authService;
+  const AccountsScreen({
+    super.key,
+    required this.onExit,
+    required this.session,
+    required this.authService,
+  });
 
   @override
   State<AccountsScreen> createState() => _AccountsScreenState();
@@ -119,7 +127,16 @@ class _AccountsScreenState extends State<AccountsScreen> {
       ..email = fields['email']!.text.trim();
   }
 
-  void _new() {
+  Future<void> _new() async {
+    if (!await requirePermission(
+      context: context,
+      session: widget.session,
+      authService: widget.authService,
+      permission: 'accounts.manage',
+    )) {
+      return;
+    }
+    if (!mounted) return;
     final next =
         accounts.fold<int>(1000000, (max, account) {
           final value = int.tryParse(account.code) ?? 0;
@@ -136,12 +153,30 @@ class _AccountsScreenState extends State<AccountsScreen> {
     });
   }
 
-  void _edit() {
+  Future<void> _edit() async {
     if (currentCode == null) return;
+    if (!await requirePermission(
+      context: context,
+      session: widget.session,
+      authService: widget.authService,
+      permission: 'accounts.manage',
+    )) {
+      return;
+    }
+    if (!mounted) return;
     setState(() => editing = true);
   }
 
   Future<void> _save() async {
+    if (!await requirePermission(
+      context: context,
+      session: widget.session,
+      authService: widget.authService,
+      permission: 'accounts.manage',
+    )) {
+      return;
+    }
+    if (!mounted) return;
     _collect();
     if (draft.code.isEmpty || draft.nameAr.isEmpty) {
       toast(
@@ -205,6 +240,15 @@ class _AccountsScreenState extends State<AccountsScreen> {
       'هل تريد حذف الحساب "${draft.nameAr}" نهائياً؟',
     );
     if (!confirmed || !mounted) return;
+    if (!await requirePermission(
+      context: context,
+      session: widget.session,
+      authService: widget.authService,
+      permission: 'accounts.delete',
+    )) {
+      return;
+    }
+    if (!mounted) return;
     setState(() {
       accounts.removeWhere((a) => a.code == currentCode);
       if (accounts.isEmpty) {
@@ -421,16 +465,21 @@ class _AccountsScreenState extends State<AccountsScreen> {
           spacing: 4,
           runSpacing: 4,
           children: [
-            _action(AppIcons.add, 'جديد', _new, color: AppColors.greenLight),
-            _action(AppIcons.edit, 'تعديل', _edit, enabled: !editing),
-            _action(AppIcons.save, 'حفظ', editing ? _save : null),
-            _action(AppIcons.undo, 'تراجع', editing ? _undo : null),
-            _action(
-              AppIcons.delete,
-              'حذف',
-              !editing ? _delete : null,
-              color: AppColors.red,
-            ),
+            if (widget.session.can('accounts.manage'))
+              _action(AppIcons.add, 'جديد', _new, color: AppColors.greenLight),
+            if (widget.session.can('accounts.manage'))
+              _action(AppIcons.edit, 'تعديل', _edit, enabled: !editing),
+            if (widget.session.can('accounts.manage'))
+              _action(AppIcons.save, 'حفظ', editing ? _save : null),
+            if (widget.session.can('accounts.manage'))
+              _action(AppIcons.undo, 'تراجع', editing ? _undo : null),
+            if (widget.session.can('accounts.delete'))
+              _action(
+                AppIcons.delete,
+                'حذف',
+                !editing ? _delete : null,
+                color: AppColors.red,
+              ),
             _action(AppIcons.exit, 'خروج', widget.onExit, hideLabel: true),
           ],
         ),

@@ -1,4 +1,6 @@
 import 'package:accounting_ui/main.dart';
+import 'package:accounting_ui/accounts_screen.dart';
+import 'package:accounting_ui/auth_service.dart';
 import 'package:accounting_ui/barcode_screen.dart';
 import 'package:accounting_ui/invoice_screen.dart';
 import 'package:accounting_ui/invoice_menu.dart';
@@ -9,6 +11,8 @@ import 'package:accounting_ui/resizable_split.dart';
 import 'package:accounting_ui/storage.dart';
 import 'package:accounting_ui/theme.dart';
 import 'package:accounting_ui/widgets.dart';
+import 'package:accounting_ui/widgets.dart' as app_widgets;
+import 'dart:typed_data';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
@@ -16,12 +20,73 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:shared_preferences/shared_preferences.dart';
 
+const _adminSession = UserSession(
+  username: 'admin',
+  role: AccountingRole.admin,
+  token: 'test-session',
+);
+const _testAuthService = _TestAuthService();
+
+class _TestAuthService implements AccountingAuthService {
+  const _TestAuthService();
+
+  @override
+  Future<bool> authorize(UserSession session, String permission) async =>
+      session.can(permission);
+
+  @override
+  Future<UserSession> login(String username, String password) async {
+    if (password != '1233') {
+      throw const FormatException('Invalid credentials');
+    }
+    final role = UserSession.parseRole(username);
+    if (role == null) throw const FormatException('Invalid role');
+    return UserSession(username: username, role: role, token: 'test-session');
+  }
+}
+
+InvoiceScreen _invoiceScreen({
+  required VoidCallback onExit,
+  UserSession session = _adminSession,
+}) => InvoiceScreen(
+  typeIndex: 0,
+  onExit: onExit,
+  session: session,
+  authService: _testAuthService,
+);
+
+InventoryScreen _inventoryScreen({
+  required VoidCallback onExit,
+  UserSession session = _adminSession,
+  Future<Uint8List?> Function()? pickImageBytes,
+}) => InventoryScreen(
+  onExit: onExit,
+  session: session,
+  authService: _testAuthService,
+  pickImageBytes: pickImageBytes,
+);
+
+BarcodeScreen _barcodeScreen({required VoidCallback onExit}) => BarcodeScreen(
+  onExit: onExit,
+  session: _adminSession,
+  authService: _testAuthService,
+);
+
+AccountsScreen _accountsScreen({
+  required VoidCallback onExit,
+  UserSession session = _adminSession,
+}) => AccountsScreen(
+  onExit: onExit,
+  session: session,
+  authService: _testAuthService,
+);
+
 Future<void> _launchAndLogin(
   WidgetTester tester, {
   String username = 'admin',
   bool tryInvalidPassword = false,
 }) async {
-  await tester.pumpWidget(const AccountingApp());
+  await tester.pumpWidget(const AccountingApp(authService: _testAuthService));
   await tester.pumpAndSettle();
   expect(find.byKey(const ValueKey('login-dialog')), findsOneWidget);
 
@@ -32,7 +97,10 @@ Future<void> _launchAndLogin(
     );
     await tester.tap(find.byKey(const ValueKey('login-submit')));
     await tester.pumpAndSettle();
-    expect(find.text('كلمة المرور غير صحيحة'), findsOneWidget);
+    expect(
+      find.text('بيانات الدخول غير صحيحة أو تعذر الاتصال بالخادم'),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const ValueKey('login-clear')));
     await tester.pumpAndSettle();
     expect(
@@ -42,7 +110,10 @@ Future<void> _launchAndLogin(
           .text,
       isEmpty,
     );
-    expect(find.text('كلمة المرور غير صحيحة'), findsNothing);
+    expect(
+      find.text('بيانات الدخول غير صحيحة أو تعذر الاتصال بالخادم'),
+      findsNothing,
+    );
   }
 
   if (username != 'admin') {
@@ -58,6 +129,116 @@ Future<void> _launchAndLogin(
 }
 
 void main() {
+  test(
+    'role matrix separates viewing, editing, discounting, and administration',
+    () {
+      const admin = UserSession(
+        username: 'admin',
+        role: AccountingRole.admin,
+        token: 'test',
+      );
+      const cashier1 = UserSession(
+        username: 'cashier1',
+        role: AccountingRole.cashier1,
+        token: 'test',
+      );
+      const cashier2 = UserSession(
+        username: 'cashier2',
+        role: AccountingRole.cashier2,
+        token: 'test',
+      );
+      const auditor = UserSession(
+        username: 'auditor',
+        role: AccountingRole.auditor,
+        token: 'test',
+      );
+
+      expect(admin.can('inventory.manage'), isTrue);
+      expect(cashier1.can('inventory.manage'), isFalse);
+      expect(cashier2.can('accounts.manage'), isFalse);
+      expect(cashier1.can('invoice.discount'), isTrue);
+      expect(cashier2.can('invoice.discount'), isFalse);
+      expect(auditor.can('invoice.save'), isFalse);
+      expect(auditor.can('invoice.print'), isTrue);
+      expect(auditor.can('admin.users'), isFalse);
+    },
+  );
+
+  testWidgets(
+    'auditors get read-only accounting controls and invoice printing',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = const Size(1280, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      const auditor = UserSession(
+        username: 'auditor',
+        role: AccountingRole.auditor,
+        token: 'test',
+      );
+
+      await tester.pumpWidget(
+        fluent.FluentApp(
+          theme: buildFluentTheme(),
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              body: _inventoryScreen(onExit: () {}, session: auditor),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('inventory-new-item')), findsNothing);
+      expect(find.text('تعديل'), findsNothing);
+      expect(find.text('حذف'), findsNothing);
+
+      await tester.pumpWidget(
+        fluent.FluentApp(
+          theme: buildFluentTheme(),
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              body: _accountsScreen(onExit: () {}, session: auditor),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('جديد'), findsNothing);
+      expect(find.text('حفظ'), findsNothing);
+      expect(find.text('حذف'), findsNothing);
+
+      await tester.pumpWidget(
+        fluent.FluentApp(
+          theme: buildFluentTheme(),
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              body: _invoiceScreen(onExit: () {}, session: auditor),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('invoice-save-and-print')),
+        findsNothing,
+      );
+      expect(find.byKey(const ValueKey('invoice-print')), findsOneWidget);
+      expect(
+        tester
+            .widget<app_widgets.TextBox>(
+              find.byKey(const ValueKey('invoice-discount-field')),
+            )
+            .enabled,
+        isFalse,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('important messages use a top-right Fluent InfoBar', (
     tester,
   ) async {
@@ -137,7 +318,7 @@ void main() {
         theme: buildFluentTheme(),
         home: Directionality(
           textDirection: TextDirection.rtl,
-          child: Scaffold(body: BarcodeScreen(onExit: () {})),
+          child: Scaffold(body: _barcodeScreen(onExit: () {})),
         ),
       ),
     );
@@ -193,7 +374,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const AccountingApp());
+    await tester.pumpWidget(const AccountingApp(authService: _testAuthService));
     await tester.pumpAndSettle();
 
     expect(
@@ -319,7 +500,7 @@ void main() {
         theme: buildFluentTheme(),
         home: Directionality(
           textDirection: TextDirection.rtl,
-          child: Scaffold(body: InvoiceScreen(typeIndex: 0, onExit: () {})),
+          child: Scaffold(body: _invoiceScreen(onExit: () {})),
         ),
       ),
     );
@@ -817,7 +998,7 @@ void main() {
         home: Directionality(
           textDirection: TextDirection.rtl,
           child: Scaffold(
-            body: InventoryScreen(
+            body: _inventoryScreen(
               onExit: () {},
               pickImageBytes: () async => imageBytes,
             ),
@@ -870,7 +1051,7 @@ void main() {
         theme: buildFluentTheme(),
         home: Directionality(
           textDirection: TextDirection.rtl,
-          child: Scaffold(body: InventoryScreen(onExit: () {})),
+          child: Scaffold(body: _inventoryScreen(onExit: () {})),
         ),
       ),
     );
@@ -941,7 +1122,7 @@ void main() {
         theme: buildFluentTheme(),
         home: Directionality(
           textDirection: TextDirection.rtl,
-          child: Scaffold(body: InvoiceScreen(typeIndex: 0, onExit: () {})),
+          child: Scaffold(body: _invoiceScreen(onExit: () {})),
         ),
       ),
     );
@@ -1001,7 +1182,7 @@ void main() {
         theme: buildFluentTheme(),
         home: Directionality(
           textDirection: TextDirection.rtl,
-          child: Scaffold(body: InvoiceScreen(typeIndex: 0, onExit: () {})),
+          child: Scaffold(body: _invoiceScreen(onExit: () {})),
         ),
       ),
     );
@@ -1062,7 +1243,7 @@ void main() {
         theme: buildFluentTheme(),
         home: Directionality(
           textDirection: TextDirection.rtl,
-          child: Scaffold(body: InventoryScreen(onExit: () {})),
+          child: Scaffold(body: _inventoryScreen(onExit: () {})),
         ),
       ),
     );
@@ -1154,7 +1335,7 @@ void main() {
         theme: buildFluentTheme(),
         home: Directionality(
           textDirection: TextDirection.rtl,
-          child: Scaffold(body: InvoiceScreen(typeIndex: 0, onExit: () {})),
+          child: Scaffold(body: _invoiceScreen(onExit: () {})),
         ),
       ),
     );
@@ -1214,7 +1395,7 @@ void main() {
         theme: buildFluentTheme(),
         home: Directionality(
           textDirection: TextDirection.rtl,
-          child: Scaffold(body: InvoiceScreen(typeIndex: 0, onExit: () {})),
+          child: Scaffold(body: _invoiceScreen(onExit: () {})),
         ),
       ),
     );
@@ -1265,7 +1446,7 @@ void main() {
         theme: buildFluentTheme(),
         home: Directionality(
           textDirection: TextDirection.rtl,
-          child: Scaffold(body: InvoiceScreen(typeIndex: 0, onExit: () {})),
+          child: Scaffold(body: _invoiceScreen(onExit: () {})),
         ),
       ),
     );
@@ -1307,7 +1488,7 @@ void main() {
         theme: buildFluentTheme(),
         home: Directionality(
           textDirection: TextDirection.rtl,
-          child: Scaffold(body: InvoiceScreen(typeIndex: 0, onExit: () {})),
+          child: Scaffold(body: _invoiceScreen(onExit: () {})),
         ),
       ),
     );
@@ -1361,7 +1542,7 @@ void main() {
           theme: buildFluentTheme(),
           home: Directionality(
             textDirection: TextDirection.rtl,
-            child: Scaffold(body: InvoiceScreen(typeIndex: 0, onExit: () {})),
+            child: Scaffold(body: _invoiceScreen(onExit: () {})),
           ),
         ),
       );
@@ -1560,7 +1741,7 @@ void main() {
         theme: buildFluentTheme(),
         home: Directionality(
           textDirection: TextDirection.rtl,
-          child: Scaffold(body: BarcodeScreen(onExit: () {})),
+          child: Scaffold(body: _barcodeScreen(onExit: () {})),
         ),
       ),
     );

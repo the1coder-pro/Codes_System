@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
+import 'auth_service.dart';
 import 'shell.dart';
 import 'theme.dart';
 
@@ -9,7 +10,8 @@ void main() {
 }
 
 class AccountingApp extends StatelessWidget {
-  const AccountingApp({super.key});
+  final AccountingAuthService authService;
+  const AccountingApp({super.key, this.authService = const ApiAuthService()});
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +41,7 @@ class AccountingApp extends StatelessWidget {
           ),
         );
       },
-      home: const AppShell(),
+      home: AppShell(authService: authService),
     );
   }
 }

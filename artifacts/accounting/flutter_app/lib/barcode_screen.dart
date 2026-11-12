@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
+import 'auth_service.dart';
 import 'barcode_print_stub.dart'
     if (dart.library.js_interop) 'barcode_print_web.dart'
     as printer;
@@ -19,7 +20,14 @@ const _labelTemplates = [
 /// Barcode-label form backed by the inventory items already in the app.
 class BarcodeScreen extends StatefulWidget {
   final VoidCallback onExit;
-  const BarcodeScreen({super.key, required this.onExit});
+  final UserSession session;
+  final AccountingAuthService authService;
+  const BarcodeScreen({
+    super.key,
+    required this.onExit,
+    required this.session,
+    required this.authService,
+  });
 
   @override
   State<BarcodeScreen> createState() => _BarcodeScreenState();
@@ -114,6 +122,15 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   }
 
   Future<void> _print() async {
+    if (!await requirePermission(
+      context: context,
+      session: widget.session,
+      authService: widget.authService,
+      permission: 'barcode.print',
+    )) {
+      return;
+    }
+    if (!mounted) return;
     final item = selected;
     final copies = int.tryParse(count.text.trim());
     final code = barcode.text.trim();

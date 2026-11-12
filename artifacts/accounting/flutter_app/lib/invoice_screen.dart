@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'barcode_print_stub.dart'
     if (dart.library.js_interop) 'barcode_print_web.dart'
     as printer;
+import 'auth_service.dart';
 import 'item_image.dart';
 import 'models.dart';
 import 'resizable_split.dart';
@@ -16,10 +17,14 @@ import 'widgets.dart';
 class InvoiceScreen extends StatefulWidget {
   final int typeIndex;
   final VoidCallback onExit;
+  final UserSession session;
+  final AccountingAuthService authService;
   const InvoiceScreen({
     super.key,
     required this.typeIndex,
     required this.onExit,
+    required this.session,
+    required this.authService,
   });
 
   @override
@@ -63,6 +68,9 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   String taxable = 'خاضع للضريبة';
 
   InvoiceType get type => invoiceTypes[widget.typeIndex];
+  bool get _canEdit => widget.session.can('invoice.save');
+  bool get _canDiscount => widget.session.can('invoice.discount');
+  bool _can(String permission) => widget.session.can(permission);
 
   @override
   void initState() {
@@ -135,6 +143,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     String unit = '',
     double price = 0,
   }) {
+    if (!_canEdit) return;
     selectedLineIds.clear();
     final existingIndex = code.isEmpty
         ? -1
@@ -177,7 +186,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   void _changeQty(double d) {
-    if (selected == null) return;
+    if (!_canEdit || selected == null) return;
     setState(() {
       final l = lines[selected!];
       l.qty = (l.qty + d).clamp(1, 99999).toDouble();
@@ -186,7 +195,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   void _move(int d) {
-    if (lines.isEmpty) return;
+    if (!_canEdit || lines.isEmpty) return;
     setState(() {
       selected = ((selected ?? 0) + d).clamp(0, lines.length - 1);
     });
@@ -197,6 +206,15 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   Future<void> _deleteLine() async {
+    if (!await requirePermission(
+      context: context,
+      session: widget.session,
+      authService: widget.authService,
+      permission: 'invoice.save',
+    )) {
+      return;
+    }
+    if (!mounted) return;
     final targets = lines
         .where((line) => selectedLineIds.contains(line.id))
         .map((line) => line.id)
@@ -253,6 +271,25 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   };
 
   Future<bool> _saveInvoiceAndReset() async {
+    if (!await requirePermission(
+      context: context,
+      session: widget.session,
+      authService: widget.authService,
+      permission: 'invoice.save',
+    )) {
+      return false;
+    }
+    if (!mounted) return false;
+    if (discount > 0 &&
+        !await requirePermission(
+          context: context,
+          session: widget.session,
+          authService: widget.authService,
+          permission: 'invoice.discount',
+        )) {
+      return false;
+    }
+    if (!mounted) return false;
     if (lines.isEmpty) {
       toast(
         context,
@@ -328,6 +365,20 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   Future<void> _saveAndPrint() async {
+    final canSave = await requirePermission(
+      context: context,
+      session: widget.session,
+      authService: widget.authService,
+      permission: 'invoice.save',
+    );
+    if (!mounted || !canSave) return;
+    final canPrint = await requirePermission(
+      context: context,
+      session: widget.session,
+      authService: widget.authService,
+      permission: 'invoice.print',
+    );
+    if (!mounted || !canPrint) return;
     if (lines.isEmpty) {
       toast(
         context,
@@ -369,6 +420,43 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           'حُفظت الفاتورة لكن تعذرت الطباعة',
           severity: fluent.InfoBarSeverity.error,
         );
+      }
+    }
+  }
+
+  Future<void> _printCurrent() async {
+    if (!await requirePermission(
+      context: context,
+      session: widget.session,
+      authService: widget.authService,
+      permission: 'invoice.print',
+    )) {
+      return;
+    }
+    if (!mounted) return;
+    if (lines.isEmpty) {
+      toast(
+        context,
+        'لا توجد أصناف لطباعة الفاتورة',
+        severity: fluent.InfoBarSeverity.warning,
+      );
+      return;
+    }
+    final printWindow = printer.openPrintWindow();
+    if (printWindow == null) {
+      toast(
+        context,
+        'تعذر فتح نافذة الطباعة في المتصفح',
+        severity: fluent.InfoBarSeverity.error,
+      );
+      return;
+    }
+    try {
+      printWindow.writeAndPrint(_printDocument());
+    } catch (_) {
+      printWindow.close();
+      if (mounted) {
+        toast(context, 'تعذرت الطباعة', severity: fluent.InfoBarSeverity.error);
       }
     }
   }
@@ -493,6 +581,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   Future<void> _pickDate(bool invoice) async {
+    if (!_canEdit) return;
     final initialDate = invoice ? invDate : delivDate;
     var chosen = initialDate;
     final confirmed = await fluent.showDialog<bool>(
@@ -652,13 +741,18 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   Widget _headerTab() {
+    final canEdit = _canEdit;
     final right = Column(
       children: [
         FieldRow(
           label: 'تاريخ الفاتورة',
           labelWidth: 92,
           compact: true,
-          child: _dateBox(_fmt(invDate), () => _pickDate(true)),
+          child: _dateBox(
+            _fmt(invDate),
+            () => _pickDate(true),
+            enabled: canEdit,
+          ),
         ),
         FieldRow(
           label: 'وقت الفاتورة',
@@ -684,7 +778,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               'شركة النخبة',
             ],
             compact: true,
-            onChanged: (v) => setState(() => creditor = v),
+            onChanged: canEdit ? (v) => setState(() => creditor = v) : null,
           ),
         ),
         FieldRow(
@@ -699,7 +793,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               'الصندوق',
             ],
             compact: true,
-            onChanged: (v) => setState(() => debtor = v),
+            onChanged: canEdit ? (v) => setState(() => debtor = v) : null,
           ),
         ),
         FieldRow(
@@ -710,13 +804,18 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             key: const ValueKey('invoice-account-field'),
             controller: h['account']!,
             compact: true,
+            enabled: canEdit,
           ),
         ),
         FieldRow(
           label: 'الرقم الضريبي',
           labelWidth: 92,
           compact: true,
-          child: TextBox(controller: h['taxNo']!, compact: true),
+          child: TextBox(
+            controller: h['taxNo']!,
+            compact: true,
+            enabled: canEdit,
+          ),
         ),
         FieldRow(
           label: 'المخزون دائن',
@@ -730,7 +829,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               '-',
             ],
             compact: true,
-            onChanged: (v) => setState(() => storeCredit = v),
+            onChanged: canEdit ? (v) => setState(() => storeCredit = v) : null,
           ),
         ),
         FieldRow(
@@ -741,7 +840,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             value: storeDebit,
             options: const ['-', 'المستودع الرئيسي', 'مستودع الفرع'],
             compact: true,
-            onChanged: (v) => setState(() => storeDebit = v),
+            onChanged: canEdit ? (v) => setState(() => storeDebit = v) : null,
           ),
         ),
       ],
@@ -756,7 +855,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             value: taxable,
             options: const ['خاضع للضريبة', 'غير خاضع'],
             compact: true,
-            onChanged: (v) => setState(() => taxable = v),
+            onChanged: canEdit ? (v) => setState(() => taxable = v) : null,
           ),
         ),
         FieldRow(
@@ -766,14 +865,19 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           child: TextBox(
             controller: h['taxRate']!,
             compact: true,
-            onChanged: (_) => setState(() {}),
+            enabled: canEdit,
+            onChanged: canEdit ? (_) => setState(() {}) : null,
           ),
         ),
         FieldRow(
           label: 'تاريخ التسليم',
           labelWidth: 82,
           compact: true,
-          child: _dateBox(_fmt(delivDate), () => _pickDate(false)),
+          child: _dateBox(
+            _fmt(delivDate),
+            () => _pickDate(false),
+            enabled: canEdit,
+          ),
         ),
         FieldRow(
           label: 'وقت التسليم',
@@ -785,7 +889,12 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           label: 'ملاحظات',
           labelWidth: 82,
           compact: true,
-          child: TextBox(controller: h['notes']!, maxLines: 4, compact: true),
+          child: TextBox(
+            controller: h['notes']!,
+            maxLines: 4,
+            compact: true,
+            enabled: canEdit,
+          ),
         ),
       ],
     );
@@ -835,33 +944,36 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     );
   }
 
-  Widget _dateBox(String text, VoidCallback onTap) => fluent.Button(
-    onPressed: onTap,
-    style: fluent.ButtonStyle(
-      padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-      backgroundColor: const WidgetStatePropertyAll(Colors.white),
-      shape: WidgetStatePropertyAll(
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-      ),
-    ),
-    child: SizedBox(
-      height: 30,
-      width: double.infinity,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Row(
-          children: [
-            Expanded(child: Text(text, style: const TextStyle(fontSize: 12))),
-            const Icon(
-              fluent.FluentIcons.chevron_down,
-              size: 12,
-              color: AppColors.muted,
-            ),
-          ],
+  Widget _dateBox(String text, VoidCallback onTap, {bool enabled = true}) =>
+      fluent.Button(
+        onPressed: enabled ? onTap : null,
+        style: fluent.ButtonStyle(
+          padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+          backgroundColor: const WidgetStatePropertyAll(Colors.white),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          ),
         ),
-      ),
-    ),
-  );
+        child: SizedBox(
+          height: 30,
+          width: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(text, style: const TextStyle(fontSize: 12)),
+                ),
+                const Icon(
+                  fluent.FluentIcons.chevron_down,
+                  size: 12,
+                  color: AppColors.muted,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
 
   Widget _readonly(String text) => Container(
     height: 30,
@@ -945,6 +1057,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                         : '${it.id}-${unit.unitNo}';
                     final unitPrice = double.tryParse(unit.priceBefore) ?? 0;
                     void addItem() {
+                      if (!_canEdit) return;
                       setState(
                         () => _addLine(
                           code: it.id,
@@ -961,7 +1074,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                       margin: EdgeInsets.zero,
                       clipBehavior: Clip.antiAlias,
                       child: InkWell(
-                        onTap: addItem,
+                        onTap: _canEdit ? addItem : null,
                         child: Column(
                           children: [
                             Expanded(
@@ -1018,7 +1131,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                                       key: ValueKey(
                                         'invoice-item-add-$variantKey',
                                       ),
-                                      onPressed: addItem,
+                                      onPressed: _canEdit ? addItem : null,
                                       child: const Text('إضافة'),
                                     ),
                                   ),
@@ -1048,29 +1161,41 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             runSpacing: 4,
             alignment: WrapAlignment.center,
             children: [
-              ActionTile(
-                assetPath: AppIcons.delete,
-                label: 'حذف صنف',
-                glyphColor: AppColors.red,
-                width: 54,
-                height: 58,
-                onTap: _deleteLine,
-              ),
-              ActionTile(
-                assetPath: AppIcons.save,
-                label: 'حفظ F8',
-                width: 54,
-                height: 58,
-                onTap: _save,
-              ),
-              ActionTile(
-                key: const ValueKey('invoice-save-and-print'),
-                assetPath: AppIcons.saveAndPrintPrinter,
-                label: 'حفظ\nوطباعة',
-                width: 54,
-                height: 58,
-                onTap: _saveAndPrint,
-              ),
+              if (_canEdit)
+                ActionTile(
+                  assetPath: AppIcons.delete,
+                  label: 'حذف صنف',
+                  glyphColor: AppColors.red,
+                  width: 54,
+                  height: 58,
+                  onTap: _deleteLine,
+                ),
+              if (_canEdit)
+                ActionTile(
+                  assetPath: AppIcons.save,
+                  label: 'حفظ F8',
+                  width: 54,
+                  height: 58,
+                  onTap: _save,
+                ),
+              if (_canEdit && _can('invoice.print'))
+                ActionTile(
+                  key: const ValueKey('invoice-save-and-print'),
+                  assetPath: AppIcons.saveAndPrintPrinter,
+                  label: 'حفظ\nوطباعة',
+                  width: 54,
+                  height: 58,
+                  onTap: _saveAndPrint,
+                ),
+              if (!_canEdit && _can('invoice.print'))
+                ActionTile(
+                  key: const ValueKey('invoice-print'),
+                  assetPath: AppIcons.printer,
+                  label: 'طباعة',
+                  width: 54,
+                  height: 58,
+                  onTap: _printCurrent,
+                ),
               ActionTile(
                 assetPath: AppIcons.search,
                 label: 'بحث F2',
@@ -1231,9 +1356,11 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                     SizedBox(
                       height: 30,
                       child: TextBox(
+                        key: const ValueKey('invoice-discount-field'),
                         controller: h['discount']!,
                         align: TextAlign.center,
-                        onChanged: (_) => setState(() {}),
+                        enabled: _canDiscount,
+                        onChanged: _canDiscount ? (_) => setState(() {}) : null,
                       ),
                     ),
                   ],
@@ -1284,7 +1411,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   Widget _greenBtn(IconData icon, String label, VoidCallback onTap) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 1.5),
     child: fluent.Button(
-      onPressed: onTap,
+      onPressed: _canEdit ? onTap : null,
       style: fluent.ButtonStyle(
         backgroundColor: const WidgetStatePropertyAll(AppColors.green),
         foregroundColor: const WidgetStatePropertyAll(Colors.white),
@@ -1323,6 +1450,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   );
 
   void _selectPayment(String key) {
+    if (!_canEdit) return;
     setState(() {
       final active = [
         'cash',
@@ -1364,7 +1492,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               children: [
                 fluent.Button(
                   key: ValueKey('payment-option-$key'),
-                  onPressed: () => _selectPayment(key),
+                  onPressed: _canEdit ? () => _selectPayment(key) : null,
                   style: fluent.ButtonStyle(
                     padding: const WidgetStatePropertyAll(EdgeInsets.zero),
                     backgroundColor: WidgetStatePropertyAll(
@@ -1404,16 +1532,19 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                   child: fluent.TextBox(
                     key: ValueKey('payment-field-$key'),
                     controller: h[key],
+                    enabled: _canEdit,
                     textDirection: TextDirection.ltr,
                     textAlign: TextAlign.center,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
                     placeholder: '0.00',
-                    onChanged: (_) {
-                      paymentAuto = false;
-                      setState(() => selectedPayment = key);
-                    },
+                    onChanged: _canEdit
+                        ? (_) {
+                            paymentAuto = false;
+                            setState(() => selectedPayment = key);
+                          }
+                        : null,
                   ),
                 ),
               ],

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'accounts_screen.dart';
+import 'auth_service.dart';
 import 'barcode_screen.dart';
 import 'inventory_screen.dart';
 import 'invoice_menu.dart';
@@ -15,7 +16,8 @@ enum ShellView { home, inventory, invoiceMenu, invoice, accounts, barcode }
 
 /// Window chrome: title strip, menu bar, ribbon, content canvas, status bar.
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  final AccountingAuthService authService;
+  const AppShell({super.key, this.authService = const ApiAuthService()});
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -25,7 +27,7 @@ class _AppShellState extends State<AppShell> {
   ShellView view = ShellView.home;
   int invoiceType = 0;
   int invoiceSession = 0;
-  String? currentUser;
+  UserSession? session;
   bool _loginDialogOpen = false;
 
   @override
@@ -35,31 +37,57 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _showLoginDialog() async {
-    if (!mounted || _loginDialogOpen || currentUser != null) return;
+    if (!mounted || _loginDialogOpen || session != null) return;
     _loginDialogOpen = true;
-    final username = await fluent.showDialog<String>(
+    final loggedInSession = await fluent.showDialog<UserSession>(
       context: context,
       barrierDismissible: false,
       barrierColor: AppColors.canvasBlue,
       dismissWithEsc: false,
-      builder: (_) => const _LoginDialog(),
+      builder: (_) => _LoginDialog(authService: widget.authService),
     );
     _loginDialogOpen = false;
     if (!mounted) return;
-    if (username == null) {
+    if (loggedInSession == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _showLoginDialog());
       return;
     }
-    setState(() => currentUser = username);
+    setState(() => session = loggedInSession);
   }
 
-  void go(ShellView v) => setState(() => view = v);
+  bool _can(String permission) => session?.can(permission) ?? false;
 
-  void openInvoice(int t) => setState(() {
-    invoiceType = t;
-    invoiceSession++;
-    view = ShellView.invoice;
-  });
+  void go(ShellView v) {
+    final permission = switch (v) {
+      ShellView.inventory => 'inventory.view',
+      ShellView.accounts => 'accounts.view',
+      ShellView.invoiceMenu || ShellView.invoice => 'invoice.view',
+      ShellView.barcode => 'barcode.view',
+      ShellView.home => null,
+    };
+    if (permission != null && !_can(permission)) {
+      soon('هذه الشاشة');
+      return;
+    }
+    setState(() => view = v);
+  }
+
+  void openInvoice(int t) {
+    if (!_can('invoice.view')) return;
+    setState(() {
+      invoiceType = t;
+      invoiceSession++;
+      view = ShellView.invoice;
+    });
+  }
+
+  void _logout() {
+    setState(() {
+      session = null;
+      view = ShellView.home;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _showLoginDialog());
+  }
 
   void soon(String name) => toast(
     context,
@@ -109,9 +137,9 @@ class _AppShellState extends State<AppShell> {
   Widget _titleStrip() {
     final compact = MediaQuery.sizeOf(context).width < 600;
     final version = view == ShellView.invoice ? '25.07.17' : '25.08.18';
-    final versionAndUser = currentUser == null
+    final versionAndUser = session == null
         ? version
-        : '$version - ($currentUser)';
+        : '$version - (${session!.username})';
     return Container(
       width: double.infinity,
       color: Colors.white,
@@ -166,25 +194,50 @@ class _AppShellState extends State<AppShell> {
 
   Widget _menuBar() {
     final compact = MediaQuery.sizeOf(context).width < 600;
-    final mainMenu = _menu('القائمة الرئيسية', [
+    final mainEntries = <(String, VoidCallback)>[
       ('الشاشة الرئيسية', () => go(ShellView.home)),
-      ('الفواتير وأوامر الصرف', () => go(ShellView.invoiceMenu)),
-      ('الأصناف / المخزون', () => go(ShellView.inventory)),
-      ('الحسابات', () => go(ShellView.accounts)),
-      ('طباعة الباركود', () => go(ShellView.barcode)),
-    ]);
+    ];
+    if (_can('invoice.view')) {
+      mainEntries.add((
+        'الفواتير وأوامر الصرف',
+        () => go(ShellView.invoiceMenu),
+      ));
+    }
+    if (_can('inventory.view')) {
+      mainEntries.add(('الأصناف / المخزون', () => go(ShellView.inventory)));
+    }
+    if (_can('accounts.view')) {
+      mainEntries.add(('الحسابات', () => go(ShellView.accounts)));
+    }
+    if (_can('barcode.view')) {
+      mainEntries.add(('طباعة الباركود', () => go(ShellView.barcode)));
+    }
+    final mainMenu = _menu('القائمة الرئيسية', mainEntries);
     final adminMenu = _menu('إدارة', [
       ('المستخدمون والصلاحيات', () => soon('المستخدمون')),
       ('بيانات المنشأة', () => soon('بيانات المنشأة')),
     ]);
     final toolsMenu = _menu('أدوات', [
       ('آلة حاسبة', calculator),
-      ('نسخة احتياطية', () => soon('النسخ الاحتياطي')),
+      if (_can('admin.backup'))
+        ('نسخة احتياطية', () => soon('النسخ الاحتياطي')),
     ]);
-    final itemsMenu = _menu('الأصناف', [
-      ('بطاقة صنف', () => go(ShellView.inventory)),
-      ('طباعة الباركود', () => go(ShellView.barcode)),
-    ]);
+    final itemsEntries = <(String, VoidCallback)>[];
+    if (_can('inventory.view')) {
+      itemsEntries.add(('بطاقة صنف', () => go(ShellView.inventory)));
+    }
+    if (_can('barcode.view')) {
+      itemsEntries.add(('طباعة الباركود', () => go(ShellView.barcode)));
+    }
+    final itemsMenu = itemsEntries.isEmpty
+        ? null
+        : _menu('الأصناف', itemsEntries);
+    final menus = <Widget>[
+      mainMenu,
+      if (_can('admin.users')) adminMenu,
+      toolsMenu,
+      if (itemsMenu != null) itemsMenu,
+    ];
     return Container(
       key: const ValueKey('top-menu-bar'),
       color: Colors.white,
@@ -197,57 +250,59 @@ class _AppShellState extends State<AppShell> {
               children: [
                 Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [mainMenu, adminMenu],
+                  children: menus.take(2).toList(),
                 ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [toolsMenu, itemsMenu],
+                  children: menus.skip(2).toList(),
                 ),
               ],
             )
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [mainMenu, adminMenu, toolsMenu, itemsMenu],
-            ),
+          : Row(mainAxisSize: MainAxisSize.min, children: menus),
     );
   }
 
   Widget _ribbon() {
     final right = [
-      _RibbonButton(
-        assetPath: AppIcons.receipt,
-        label: 'الفواتير\nوأوامر الصرف',
-        color: AppColors.navy,
-        active: view == ShellView.invoiceMenu || view == ShellView.invoice,
-        onTap: () => go(ShellView.invoiceMenu),
-      ),
-      _RibbonButton(
-        assetPath: AppIcons.printer,
-        label: 'طباعة\nالباركود',
-        color: AppColors.muted,
-        active: view == ShellView.barcode,
-        onTap: () => go(ShellView.barcode),
-      ),
-      _RibbonButton(
-        assetPath: AppIcons.users,
-        label: 'الحسابات',
-        color: AppColors.navy,
-        active: view == ShellView.accounts,
-        onTap: () => go(ShellView.accounts),
-      ),
-      _RibbonButton(
-        assetPath: AppIcons.shop,
-        label: 'الأصناف',
-        color: const Color(0xFF2B7BC4),
-        active: view == ShellView.inventory,
-        onTap: () => go(ShellView.inventory),
-      ),
-      _RibbonButton(
-        assetPath: AppIcons.test,
-        label: 'ارسال واعتماد\nالفواتير',
-        color: AppColors.red,
-        onTap: () => soon('ارسال واعتماد الفواتير'),
-      ),
+      if (_can('invoice.view'))
+        _RibbonButton(
+          assetPath: AppIcons.receipt,
+          label: 'الفواتير\nوأوامر الصرف',
+          color: AppColors.navy,
+          active: view == ShellView.invoiceMenu || view == ShellView.invoice,
+          onTap: () => go(ShellView.invoiceMenu),
+        ),
+      if (_can('barcode.view'))
+        _RibbonButton(
+          assetPath: AppIcons.printer,
+          label: 'طباعة\nالباركود',
+          color: AppColors.muted,
+          active: view == ShellView.barcode,
+          onTap: () => go(ShellView.barcode),
+        ),
+      if (_can('accounts.view'))
+        _RibbonButton(
+          assetPath: AppIcons.users,
+          label: 'الحسابات',
+          color: AppColors.navy,
+          active: view == ShellView.accounts,
+          onTap: () => go(ShellView.accounts),
+        ),
+      if (_can('inventory.view'))
+        _RibbonButton(
+          assetPath: AppIcons.shop,
+          label: 'الأصناف',
+          color: const Color(0xFF2B7BC4),
+          active: view == ShellView.inventory,
+          onTap: () => go(ShellView.inventory),
+        ),
+      if (_can('invoice.approve'))
+        _RibbonButton(
+          assetPath: AppIcons.test,
+          label: 'ارسال واعتماد\nالفواتير',
+          color: AppColors.red,
+          onTap: () => soon('ارسال واعتماد الفواتير'),
+        ),
     ];
     final calculatorButton = _RibbonButton(
       assetPath: AppIcons.calculator,
@@ -286,7 +341,7 @@ class _AppShellState extends State<AppShell> {
         label: 'خروج',
         hideLabel: true,
         color: const Color(0xFF2B7BC4),
-        onTap: () => go(ShellView.home),
+        onTap: _logout,
       ),
     ];
     return Container(
@@ -435,17 +490,31 @@ class _AppShellState extends State<AppShell> {
         color: AppColors.canvasBlue,
         child: SizedBox.expand(),
       ),
-      ShellView.inventory => InventoryScreen(onExit: () => go(ShellView.home)),
+      ShellView.inventory => InventoryScreen(
+        session: session!,
+        authService: widget.authService,
+        onExit: () => go(ShellView.home),
+      ),
       ShellView.invoiceMenu => InvoiceMenu(
         onPick: openInvoice,
         onClose: () => go(ShellView.home),
       ),
       ShellView.invoice => InvoiceScreen(
         typeIndex: invoiceType,
+        session: session!,
+        authService: widget.authService,
         onExit: () => go(ShellView.invoiceMenu),
       ),
-      ShellView.accounts => AccountsScreen(onExit: () => go(ShellView.home)),
-      ShellView.barcode => BarcodeScreen(onExit: () => go(ShellView.home)),
+      ShellView.accounts => AccountsScreen(
+        session: session!,
+        authService: widget.authService,
+        onExit: () => go(ShellView.home),
+      ),
+      ShellView.barcode => BarcodeScreen(
+        session: session!,
+        authService: widget.authService,
+        onExit: () => go(ShellView.home),
+      ),
     };
     final contentKey = ValueKey(
       '${view.name}-${view == ShellView.invoice ? '$invoiceType-$invoiceSession' : ''}',
@@ -749,7 +818,8 @@ class _StatusBar extends StatelessWidget {
 }
 
 class _LoginDialog extends StatefulWidget {
-  const _LoginDialog();
+  final AccountingAuthService authService;
+  const _LoginDialog({required this.authService});
 
   @override
   State<_LoginDialog> createState() => _LoginDialogState();
@@ -757,11 +827,11 @@ class _LoginDialog extends StatefulWidget {
 
 class _LoginDialogState extends State<_LoginDialog> {
   static const _users = ['admin', 'cashier1', 'cashier2', 'auditor'];
-  static const _demoPassword = '1233';
 
   final password = TextEditingController();
   String selectedUser = _users.first;
   String? error;
+  bool signingIn = false;
 
   @override
   void dispose() {
@@ -769,12 +839,26 @@ class _LoginDialogState extends State<_LoginDialog> {
     super.dispose();
   }
 
-  void _login() {
-    if (password.text != _demoPassword) {
-      setState(() => error = 'كلمة المرور غير صحيحة');
-      return;
+  Future<void> _login() async {
+    if (signingIn) return;
+    setState(() {
+      signingIn = true;
+      error = null;
+    });
+    try {
+      final authenticated = await widget.authService.login(
+        selectedUser,
+        password.text,
+      );
+      if (mounted) Navigator.of(context).pop(authenticated);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          error = 'بيانات الدخول غير صحيحة أو تعذر الاتصال بالخادم';
+          signingIn = false;
+        });
+      }
     }
-    Navigator.of(context).pop(selectedUser);
   }
 
   void _clearPassword() {
@@ -842,7 +926,7 @@ class _LoginDialogState extends State<_LoginDialog> {
             children: [
               fluent.FilledButton(
                 key: const ValueKey('login-submit'),
-                onPressed: _login,
+                onPressed: signingIn ? null : _login,
                 child: const Text('دخول'),
               ),
               fluent.Button(
