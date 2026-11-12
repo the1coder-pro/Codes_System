@@ -314,8 +314,10 @@ class _AppShellState extends State<AppShell> {
             return Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                for (final button in buttons)
-                  button.asHorizontalCompact(dense: dense),
+                for (var index = 0; index < buttons.length; index++) ...[
+                  if (index > 0) const SizedBox(width: 6),
+                  buttons[index].asHorizontalCompact(dense: dense),
+                ],
               ],
             );
           }

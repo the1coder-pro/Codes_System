@@ -480,7 +480,8 @@ void main() {
       find.byKey(const ValueKey('ribbon-ارسال واعتماد\nالفواتير')),
     );
     expect(mainAction.right - lastMainAction.left, lessThan(740));
-    expect(mainAction.left - barcodeAction.right, lessThan(8));
+    expect(mainAction.left - barcodeAction.right, greaterThan(2));
+    expect(mainAction.left - barcodeAction.right, lessThan(9));
     final utilityAction = tester.getRect(
       find.byKey(const ValueKey('ribbon-خروج')),
     );
