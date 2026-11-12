@@ -444,6 +444,7 @@ void main() {
       tester.widget<AppImageIcon>(iconFinder).size,
       tester.widget<AppImageIcon>(updateIcon).size,
     );
+    expect(tester.widget<AppImageIcon>(iconFinder).size, 32);
     expect(
       tester.widget<Text>(find.text('الفواتير\nوأوامر الصرف')).style!.fontSize,
       tester.widget<Text>(find.text('تحديث')).style!.fontSize,
@@ -591,6 +592,7 @@ void main() {
       tester.widget<AppImageIcon>(invoiceIcon).size,
       tester.widget<AppImageIcon>(updateIcon).size,
     );
+    expect(tester.widget<AppImageIcon>(invoiceIcon).size, 22);
     expect(
       tester.widget<Text>(find.text('الفواتير\nوأوامر الصرف')).style!.fontSize,
       tester.widget<Text>(find.text('تحديث')).style!.fontSize,

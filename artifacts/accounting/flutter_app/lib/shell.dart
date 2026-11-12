@@ -602,7 +602,7 @@ class _RibbonButton extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        iconWidget(dense ? 17 : 27),
+                        iconWidget(dense ? 22 : 32),
                         if (!hideLabel) ...[
                           SizedBox(height: dense ? 1 : 2),
                           Text(
@@ -623,7 +623,7 @@ class _RibbonButton extends StatelessWidget {
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      iconWidget(dense ? 17 : 27),
+                      iconWidget(dense ? 22 : 32),
                       if (!hideLabel) ...[
                         SizedBox(
                           width: horizontalCompact ? (dense ? 1 : 2) : 6,
