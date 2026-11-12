@@ -249,13 +249,13 @@ class _AppShellState extends State<AppShell> {
         onTap: () => soon('ارسال واعتماد الفواتير'),
       ),
     ];
+    final calculatorButton = _RibbonButton(
+      assetPath: AppIcons.calculator,
+      label: 'آلة حاسبة',
+      color: AppColors.muted,
+      onTap: calculator,
+    );
     final left = [
-      _RibbonButton(
-        assetPath: AppIcons.calculator,
-        label: 'آلة حاسبة',
-        color: AppColors.muted,
-        onTap: calculator,
-      ),
       _RibbonButton(
         assetPath: AppIcons.refresh,
         label: 'تحديث',
@@ -307,6 +307,19 @@ class _AppShellState extends State<AppShell> {
             );
           }
 
+          Widget sectionGroup(
+            List<_RibbonButton> buttons, {
+            bool dense = false,
+          }) {
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final button in buttons)
+                  button.asHorizontalCompact(dense: dense),
+              ],
+            );
+          }
+
           if (width >= 1400) {
             return SizedBox(
               width: width,
@@ -316,13 +329,23 @@ class _AppShellState extends State<AppShell> {
                   Expanded(
                     child: Align(
                       alignment: AlignmentDirectional.centerStart,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [const SizedBox(width: 6), ...right],
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Padding(
+                          padding: const EdgeInsetsDirectional.only(start: 6),
+                          child: sectionGroup(right, dense: true),
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 4),
+                  SizedBox(
+                    width: 68,
+                    height: 72,
+                    child: calculatorButton.asStacked(dense: true),
+                  ),
+                  const SizedBox(width: 8),
                   Container(
                     key: const ValueKey('ribbon-divider'),
                     width: 1,
@@ -331,7 +354,7 @@ class _AppShellState extends State<AppShell> {
                   ),
                   const SizedBox(width: 4),
                   SizedBox(
-                    width: 340,
+                    width: 208,
                     height: 72,
                     child: compactGroup(left, dense: true),
                   ),
@@ -347,7 +370,12 @@ class _AppShellState extends State<AppShell> {
               child: Column(
                 children: [
                   Expanded(child: compactGroup(right, dense: true)),
-                  Expanded(child: compactGroup(left, dense: true)),
+                  Expanded(
+                    child: compactGroup([
+                      calculatorButton,
+                      ...left,
+                    ], dense: true),
+                  ),
                 ],
               ),
             );
@@ -360,10 +388,18 @@ class _AppShellState extends State<AppShell> {
                 Expanded(
                   child: Align(
                     alignment: AlignmentDirectional.centerStart,
-                    child: compactGroup(right),
+                    child: width < 1000
+                        ? compactGroup(right)
+                        : FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: sectionGroup(right),
+                          ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 4),
+                SizedBox(width: 68, child: calculatorButton.asStacked()),
+                const SizedBox(width: 8),
                 Container(
                   key: const ValueKey('ribbon-divider'),
                   width: 1,
@@ -371,7 +407,7 @@ class _AppShellState extends State<AppShell> {
                   color: AppColors.line,
                 ),
                 const SizedBox(width: 4),
-                SizedBox(width: 340, child: compactGroup(left)),
+                SizedBox(width: 208, child: compactGroup(left)),
                 const SizedBox(width: 6),
               ],
             ),
@@ -442,6 +478,7 @@ class _RibbonButton extends StatelessWidget {
   final bool active;
   final bool stacked;
   final bool dense;
+  final bool horizontalCompact;
   final bool hideLabel;
   final VoidCallback onTap;
   const _RibbonButton({
@@ -454,6 +491,7 @@ class _RibbonButton extends StatelessWidget {
     this.active = false,
     this.stacked = false,
     this.dense = false,
+    this.horizontalCompact = false,
     this.hideLabel = false,
   });
 
@@ -467,12 +505,30 @@ class _RibbonButton extends StatelessWidget {
     onTap: onTap,
     stacked: true,
     dense: dense,
+    horizontalCompact: false,
+    hideLabel: hideLabel,
+  );
+
+  _RibbonButton asHorizontalCompact({bool dense = false}) => _RibbonButton(
+    glyph: glyph,
+    assetPath: assetPath,
+    icon: icon,
+    label: label,
+    color: color,
+    active: active,
+    onTap: onTap,
+    horizontalCompact: true,
+    dense: dense,
     hideLabel: hideLabel,
   );
 
   @override
   Widget build(BuildContext context) {
-    final buttonHeight = stacked ? (dense ? 50.0 : 74.0) : 60.0;
+    final buttonHeight = stacked
+        ? (dense ? 50.0 : 74.0)
+        : horizontalCompact
+        ? (dense ? 50.0 : 74.0)
+        : 60.0;
     Widget iconWidget(double size) => assetPath != null
         ? AppImageIcon(assetPath!, size: size)
         : icon != null
@@ -488,8 +544,16 @@ class _RibbonButton extends StatelessWidget {
           );
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: stacked ? 1 : 2,
-        vertical: stacked ? (dense ? 0 : 1) : 4,
+        horizontal: stacked
+            ? 1
+            : horizontalCompact
+            ? 0
+            : 2,
+        vertical: stacked
+            ? (dense ? 0 : 1)
+            : horizontalCompact
+            ? (dense ? 0 : 1)
+            : 4,
       ),
       child: SizedBox(
         key: ValueKey('ribbon-$label'),
@@ -507,8 +571,16 @@ class _RibbonButton extends StatelessWidget {
             style: fluent.ButtonStyle(
               padding: WidgetStatePropertyAll(
                 EdgeInsets.symmetric(
-                  horizontal: stacked ? 1 : 10,
-                  vertical: stacked ? (dense ? 2 : 1) : 8,
+                  horizontal: stacked
+                      ? 1
+                      : horizontalCompact
+                      ? 2
+                      : 10,
+                  vertical: stacked
+                      ? (dense ? 2 : 1)
+                      : horizontalCompact
+                      ? 2
+                      : 8,
                 ),
               ),
               backgroundColor: WidgetStatePropertyAll(
@@ -549,12 +621,19 @@ class _RibbonButton extends StatelessWidget {
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      iconWidget(22),
+                      iconWidget(dense ? 17 : 27),
                       if (!hideLabel) ...[
-                        const SizedBox(width: 6),
+                        SizedBox(
+                          width: horizontalCompact ? (dense ? 1 : 2) : 6,
+                        ),
                         Text(
                           label,
-                          style: const TextStyle(fontSize: 12.5, height: 1.2),
+                          style: TextStyle(
+                            fontSize: horizontalCompact
+                                ? (dense ? 8.5 : 12)
+                                : 12.5,
+                            height: 1.2,
+                          ),
                         ),
                       ],
                     ],

@@ -15,6 +15,7 @@ class AppIcons {
   static const lock = 'assets/icons/icons8-lock-96.png';
   static const network = 'assets/icons/icons8-transaction-96.png';
   static const printer = 'assets/icons/icons8-printer-96.png';
+  static const saveAndPrintPrinter = 'assets/icons/icons8-printer-save-96.png';
   static const profit = 'assets/icons/icons8-profit-report-96.png';
   static const receipt = 'assets/icons/icons8-receipt-96.png';
   static const refresh = 'assets/icons/icons8-refresh-96.png';

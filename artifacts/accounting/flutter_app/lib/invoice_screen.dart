@@ -1064,7 +1064,8 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                 onTap: _save,
               ),
               ActionTile(
-                assetPath: AppIcons.save,
+                key: const ValueKey('invoice-save-and-print'),
+                assetPath: AppIcons.saveAndPrintPrinter,
                 label: 'حفظ\nوطباعة',
                 width: 54,
                 height: 58,

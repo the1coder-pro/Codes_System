@@ -325,6 +325,20 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final saveAndPrint = find.byKey(const ValueKey('invoice-save-and-print'));
+    expect(saveAndPrint, findsOneWidget);
+    expect(
+      tester
+          .widget<AppImageIcon>(
+            find.descendant(
+              of: saveAndPrint,
+              matching: find.byType(AppImageIcon),
+            ),
+          )
+          .assetPath,
+      AppIcons.saveAndPrintPrinter,
+    );
+
     final tabStrip = tester.getRect(
       find.byKey(const ValueKey('invoice-tabs-strip')),
     );
@@ -414,30 +428,75 @@ void main() {
       matching: find.byType(AppImageIcon),
     );
     final iconRect = tester.getRect(iconFinder);
-    final labelRect = tester.getRect(find.text('الفواتير وأوامر الصرف'));
-    expect(iconRect.center.dx, closeTo(labelRect.center.dx, 1));
-    expect(iconRect.bottom, lessThan(labelRect.top));
-    expect(tester.widget<AppImageIcon>(iconFinder).size, greaterThan(22));
-    expect(
-      tester.widget<Text>(find.text('الفواتير وأوامر الصرف')).style!.fontSize,
-      greaterThan(9.5),
+    final labelRect = tester.getRect(find.text('الفواتير\nوأوامر الصرف'));
+    expect(labelRect.right, lessThan(iconRect.left));
+    final updateButton = find.byKey(const ValueKey('ribbon-تحديث'));
+    final updateIcon = find.descendant(
+      of: updateButton,
+      matching: find.byType(AppImageIcon),
     );
+    final calculatorButton = find.byKey(const ValueKey('ribbon-آلة حاسبة'));
+    final calculatorIcon = find.descendant(
+      of: calculatorButton,
+      matching: find.byType(AppImageIcon),
+    );
+    expect(
+      tester.widget<AppImageIcon>(iconFinder).size,
+      tester.widget<AppImageIcon>(updateIcon).size,
+    );
+    expect(
+      tester.widget<Text>(find.text('الفواتير\nوأوامر الصرف')).style!.fontSize,
+      tester.widget<Text>(find.text('تحديث')).style!.fontSize,
+    );
+    expect(
+      tester.widget<AppImageIcon>(iconFinder).size,
+      tester.widget<AppImageIcon>(calculatorIcon).size,
+    );
+    expect(
+      tester.widget<Text>(find.text('الفواتير\nوأوامر الصرف')).style!.fontSize,
+      tester.widget<Text>(find.text('آلة حاسبة')).style!.fontSize,
+    );
+    for (final label in [
+      'طباعة\nالباركود',
+      'الحسابات',
+      'الأصناف',
+      'ارسال واعتماد\nالفواتير',
+    ]) {
+      final button = find.byKey(ValueKey('ribbon-$label'));
+      final icon = find.descendant(
+        of: button,
+        matching: find.byType(AppImageIcon),
+      );
+      final title = find.descendant(of: button, matching: find.text(label));
+      expect(tester.getRect(title).right, lessThan(tester.getRect(icon).left));
+    }
     final mainAction = tester.getRect(
       find.byKey(const ValueKey('ribbon-الفواتير\nوأوامر الصرف')),
     );
+    final barcodeAction = tester.getRect(
+      find.byKey(const ValueKey('ribbon-طباعة\nالباركود')),
+    );
+    final lastMainAction = tester.getRect(
+      find.byKey(const ValueKey('ribbon-ارسال واعتماد\nالفواتير')),
+    );
+    expect(mainAction.right - lastMainAction.left, lessThan(740));
+    expect(mainAction.left - barcodeAction.right, lessThan(8));
     final utilityAction = tester.getRect(
       find.byKey(const ValueKey('ribbon-خروج')),
     );
-    final calculatorAction = tester.getRect(
-      find.byKey(const ValueKey('ribbon-آلة حاسبة')),
-    );
+    final calculatorAction = tester.getRect(calculatorButton);
+    final updateAction = tester.getRect(updateButton);
     final divider = tester.getRect(
       find.byKey(const ValueKey('ribbon-divider')),
     );
     expect(mainAction.center.dx, greaterThan(utilityAction.center.dx));
     expect(calculatorAction.right - utilityAction.left, lessThan(380));
     expect(utilityAction.right, lessThan(divider.left));
-    expect(divider.right, lessThan(mainAction.left));
+    expect(divider.right, lessThan(calculatorAction.left));
+    expect(calculatorAction.right, lessThan(lastMainAction.left));
+    expect(updateAction.right, lessThan(divider.left));
+    expect(lastMainAction.left - calculatorAction.right, lessThan(80));
+    expect(calculatorAction.left - divider.right, lessThan(20));
     final hoveredButton = find.byKey(
       const ValueKey('ribbon-الفواتير\nوأوامر الصرف'),
     );
@@ -459,7 +518,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('wide ribbon keeps utility buttons grouped before the divider', (
+  testWidgets('wide ribbon places the divider after the calculator', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1920, 900);
@@ -477,9 +536,6 @@ void main() {
     final divider = tester.getRect(
       find.byKey(const ValueKey('ribbon-divider')),
     );
-    final invoiceAction = tester.getRect(
-      find.byKey(const ValueKey('ribbon-الفواتير\nوأوامر الصرف')),
-    );
     expect(
       tester.getSize(find.byKey(const ValueKey('ribbon-container'))).height,
       72,
@@ -487,7 +543,11 @@ void main() {
 
     expect(calculatorAction.right - exitAction.left, lessThan(700));
     expect(exitAction.right, lessThan(divider.left));
-    expect(divider.right, lessThan(invoiceAction.left));
+    expect(divider.right, lessThan(calculatorAction.left));
+    final lastMainAction = tester.getRect(
+      find.byKey(const ValueKey('ribbon-ارسال واعتماد\nالفواتير')),
+    );
+    expect(calculatorAction.right, lessThan(lastMainAction.left));
     void expectStacked(Finder icon, Finder label) {
       final iconRect = tester.getRect(icon);
       final labelRect = tester.getRect(label);
@@ -514,6 +574,26 @@ void main() {
     ]) {
       expectStacked(pair.$1, pair.$2);
     }
+    final invoiceButton = find.byKey(
+      const ValueKey('ribbon-الفواتير\nوأوامر الصرف'),
+    );
+    final invoiceIcon = find.descendant(
+      of: invoiceButton,
+      matching: find.byType(AppImageIcon),
+    );
+    final updateButton = find.byKey(const ValueKey('ribbon-تحديث'));
+    final updateIcon = find.descendant(
+      of: updateButton,
+      matching: find.byType(AppImageIcon),
+    );
+    expect(
+      tester.widget<AppImageIcon>(invoiceIcon).size,
+      tester.widget<AppImageIcon>(updateIcon).size,
+    );
+    expect(
+      tester.widget<Text>(find.text('الفواتير\nوأوامر الصرف')).style!.fontSize,
+      tester.widget<Text>(find.text('تحديث')).style!.fontSize,
+    );
     final exitButton = find.byKey(const ValueKey('ribbon-خروج'));
     expect(
       find.descendant(of: exitButton, matching: find.text('خروج')),
