@@ -295,6 +295,18 @@ class _AppShellState extends State<AppShell> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
+          Widget compactGroup(
+            List<_RibbonButton> buttons, {
+            bool dense = false,
+          }) {
+            return Row(
+              children: [
+                for (final button in buttons)
+                  Expanded(child: button.asStacked(dense: dense)),
+              ],
+            );
+          }
+
           if (width >= 1400) {
             return SizedBox(
               width: width,
@@ -318,24 +330,14 @@ class _AppShellState extends State<AppShell> {
                     color: AppColors.line,
                   ),
                   const SizedBox(width: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [...left, const SizedBox(width: 6)],
+                  SizedBox(
+                    width: 340,
+                    height: 72,
+                    child: compactGroup(left, dense: true),
                   ),
+                  const SizedBox(width: 6),
                 ],
               ),
-            );
-          }
-
-          Widget compactGroup(
-            List<_RibbonButton> buttons, {
-            bool dense = false,
-          }) {
-            return Row(
-              children: [
-                for (final button in buttons)
-                  Expanded(child: button.asStacked(dense: dense)),
-              ],
             );
           }
 

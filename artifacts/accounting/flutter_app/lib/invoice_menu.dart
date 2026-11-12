@@ -4,7 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'models.dart';
 import 'theme.dart';
 
-/// Green bilingual list of invoice types, right aligned on the blue canvas.
+/// Green bilingual list of invoice types on a light-gray canvas.
 class InvoiceMenu extends StatelessWidget {
   final ValueChanged<int> onPick;
   final VoidCallback onClose;
@@ -15,7 +15,8 @@ class InvoiceMenu extends StatelessWidget {
     final w = MediaQuery.sizeOf(context).width;
     final menuWidth = w < 600 ? w - 24 : 280.0;
     return Container(
-      color: AppColors.canvasBlue,
+      key: const ValueKey('invoice-type-menu-background'),
+      color: const Color(0xFFF0F0F0),
       child: Stack(
         children: [
           PositionedDirectional(

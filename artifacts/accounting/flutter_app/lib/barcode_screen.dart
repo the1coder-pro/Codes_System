@@ -274,23 +274,35 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Text(
+          key: ValueKey('barcode-screen-title'),
           'طباعة الباركود',
           textAlign: TextAlign.end,
           style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 10),
         Container(
+          key: const ValueKey('barcode-settings-panel'),
           padding: const EdgeInsets.all(10),
           color: AppColors.cyan,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'الباركود',
-                textAlign: TextAlign.end,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              Container(
+                key: const ValueKey('barcode-field-header'),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                color: const Color(0xFF4F8DB8),
+                alignment: AlignmentDirectional.centerEnd,
+                child: const Text(
+                  'الباركود',
+                  textAlign: TextAlign.end,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 3),
               TextBox(
                 key: const ValueKey('barcode-value'),
                 controller: barcode,
@@ -307,13 +319,25 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                 onChanged: (value) => setState(() => template = value),
               ),
               const SizedBox(height: 10),
-              _labeledValue(
-                'اسم الصنف:',
-                selected?.nameAr ?? '',
-                key: const ValueKey('barcode-item-name'),
+              Row(
+                children: [
+                  Expanded(
+                    child: _labeledValue(
+                      'اسم الصنف:',
+                      selected?.nameAr ?? '',
+                      key: const ValueKey('barcode-item-name'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _labeledValue(
+                      'رقم الصنف:',
+                      selected?.id ?? '',
+                      key: const ValueKey('barcode-item-code'),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 7),
-              _labeledValue('رقم الصنف:', selected?.id ?? ''),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -348,54 +372,66 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
           ),
         ),
         if (compact) const SizedBox(height: 12) else const Spacer(),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ActionTile(
-              glyph: '🚪',
-              label: 'خروج',
-              glyphColor: const Color(0xFF178BD0),
-              width: 76,
-              height: 74,
-              onTap: widget.onExit,
+        Align(
+          alignment: Alignment.centerRight,
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Row(
+              key: const ValueKey('barcode-action-buttons'),
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                ActionTile(
+                  key: const ValueKey('barcode-exit-button'),
+                  glyph: '🚪',
+                  label: 'خروج',
+                  glyphColor: const Color(0xFF178BD0),
+                  width: 76,
+                  height: 78,
+                  onTap: widget.onExit,
+                ),
+                const SizedBox(width: 8),
+                ActionTile(
+                  key: const ValueKey('barcode-print-button'),
+                  glyph: '🖨',
+                  label: 'طباعة',
+                  glyphColor: const Color(0xFF178BD0),
+                  width: 180,
+                  height: 78,
+                  onTap: loading ? null : _print,
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            ActionTile(
-              glyph: '🖨',
-              label: 'طباعة',
-              glyphColor: const Color(0xFF178BD0),
-              width: 130,
-              height: 74,
-              onTap: loading ? null : _print,
-            ),
-          ],
+          ),
         ),
       ],
     ),
   );
 
-  Widget _labeledValue(String label, String value, {Key? key}) => Row(
+  Widget _labeledValue(String label, String value, {Key? key}) => Column(
     key: key,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Expanded(
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 31),
-          alignment: AlignmentDirectional.centerEnd,
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE8ECEF),
-            border: Border.all(color: AppColors.line),
-          ),
-          child: Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12),
-          ),
+      Text(
+        label,
+        textAlign: TextAlign.end,
+        style: const TextStyle(fontSize: 13),
+      ),
+      const SizedBox(height: 4),
+      Container(
+        constraints: const BoxConstraints(minHeight: 31),
+        alignment: AlignmentDirectional.centerEnd,
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8ECEF),
+          border: Border.all(color: AppColors.line),
+        ),
+        child: Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12),
         ),
       ),
-      const SizedBox(width: 6),
-      Text(label, style: const TextStyle(fontSize: 13)),
     ],
   );
 
@@ -430,31 +466,45 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            SizedBox(
-              width: 82,
-              child: ActionTile(
-                glyph: '🔎',
-                label: 'بحث',
-                width: 76,
-                height: 66,
-                onTap: () => setState(() {}),
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Row(
+            key: const ValueKey('barcode-search-row'),
+            children: [
+              SizedBox(
+                width: 82,
+                child: ActionTile(
+                  key: const ValueKey('barcode-search-button'),
+                  glyph: '🔎',
+                  label: 'بحث',
+                  width: 76,
+                  height: 78,
+                  onTap: () => setState(() {}),
+                ),
               ),
-            ),
-            Expanded(
-              child: Column(
-                children: [
-                  const Text('تصنيف الأسماء'),
-                  const SizedBox(height: 4),
-                  TextBox(
-                    controller: search,
-                    onChanged: (_) => setState(() {}),
-                  ),
-                ],
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'تصنيف الأسماء',
+                      key: ValueKey('barcode-search-title'),
+                      textAlign: TextAlign.end,
+                    ),
+                    const SizedBox(height: 4),
+                    TextBox(
+                      key: const ValueKey('barcode-search-field'),
+                      controller: search,
+                      textDirection: TextDirection.rtl,
+                      align: TextAlign.end,
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 10),
         Expanded(

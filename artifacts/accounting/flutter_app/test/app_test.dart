@@ -1,6 +1,7 @@
 import 'package:accounting_ui/main.dart';
 import 'package:accounting_ui/barcode_screen.dart';
 import 'package:accounting_ui/invoice_screen.dart';
+import 'package:accounting_ui/invoice_menu.dart';
 import 'package:accounting_ui/inventory_screen.dart';
 import 'package:accounting_ui/item_image.dart';
 import 'package:accounting_ui/models.dart';
@@ -98,6 +99,90 @@ void main() {
     expect(tester.getRect(infoBar).left, isNot(infoBarRect.left));
 
     await tester.pump(const Duration(seconds: 3));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('invoice type menu uses the requested light-gray background', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1024, 768);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: InvoiceMenu(onPick: (_) {}, onClose: () {}),
+      ),
+    );
+
+    final background = tester.widget<Container>(
+      find.byKey(const ValueKey('invoice-type-menu-background')),
+    );
+    expect(background.color, const Color(0xFFF0F0F0));
+  });
+
+  testWidgets('barcode form aligns its search and action controls', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1024, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: BarcodeScreen(onExit: () {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final barcodePanel = tester.widget<Container>(
+      find.byKey(const ValueKey('barcode-settings-panel')),
+    );
+    final barcodeHeader = tester.widget<Container>(
+      find.byKey(const ValueKey('barcode-field-header')),
+    );
+    expect(barcodePanel.color, AppColors.cyan);
+    expect(barcodeHeader.color, const Color(0xFF4F8DB8));
+
+    final searchButton = tester.getRect(
+      find.byKey(const ValueKey('barcode-search-button')),
+    );
+    final searchField = tester.getRect(
+      find.byKey(const ValueKey('barcode-search-field')),
+    );
+    final searchTitle = tester.getRect(
+      find.byKey(const ValueKey('barcode-search-title')),
+    );
+    expect(searchButton.right, lessThan(searchField.left));
+    expect(searchTitle.right, closeTo(searchField.right, 1));
+
+    final nameField = tester.getRect(
+      find.byKey(const ValueKey('barcode-item-name')),
+    );
+    final codeField = tester.getRect(
+      find.byKey(const ValueKey('barcode-item-code')),
+    );
+    expect(nameField.left, greaterThan(codeField.left));
+
+    final exitButton = tester.getRect(
+      find.byKey(const ValueKey('barcode-exit-button')),
+    );
+    final printButton = tester.getRect(
+      find.byKey(const ValueKey('barcode-print-button')),
+    );
+    final title = tester.getRect(
+      find.byKey(const ValueKey('barcode-screen-title')),
+    );
+    expect(exitButton.left, lessThan(printButton.left));
+    expect(printButton.right, closeTo(title.right, 1));
     expect(tester.takeException(), isNull);
   });
 
@@ -397,6 +482,29 @@ void main() {
     expect(calculatorAction.right - exitAction.left, lessThan(700));
     expect(exitAction.right, lessThan(divider.left));
     expect(divider.right, lessThan(invoiceAction.left));
+    void expectStacked(Finder icon, Finder label) {
+      final iconRect = tester.getRect(icon);
+      final labelRect = tester.getRect(label);
+      expect(iconRect.center.dx, closeTo(labelRect.center.dx, 1));
+      expect(iconRect.bottom, lessThan(labelRect.top));
+    }
+
+    for (final pair in [
+      (find.text('🚪'), find.text('خروج')),
+      (find.text('🗣️'), find.text('Arabic')),
+      (find.text('🌐'), find.text('موقعنا')),
+      (find.text('🔄'), find.text('تحديث')),
+    ]) {
+      expectStacked(pair.$1, pair.$2);
+    }
+    final calculator = find.byKey(const ValueKey('ribbon-آلة حاسبة'));
+    expectStacked(
+      find.descendant(
+        of: calculator,
+        matching: find.byIcon(fluent.FluentIcons.calculator),
+      ),
+      find.descendant(of: calculator, matching: find.text('آلة حاسبة')),
+    );
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('ribbon-container')),
