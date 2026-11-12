@@ -397,7 +397,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
             SizedBox(
               width: 68,
               child: ActionTile(
-                glyph: '🔎',
+                assetPath: AppIcons.search,
                 label: 'بحث',
                 width: 68,
                 height: 66,
@@ -421,28 +421,17 @@ class _AccountsScreenState extends State<AccountsScreen> {
           spacing: 4,
           runSpacing: 4,
           children: [
+            _action(AppIcons.add, 'جديد', _new, color: AppColors.greenLight),
+            _action(AppIcons.edit, 'تعديل', _edit, enabled: !editing),
+            _action(AppIcons.save, 'حفظ', editing ? _save : null),
+            _action(AppIcons.undo, 'تراجع', editing ? _undo : null),
             _action(
-              '',
-              'جديد',
-              _new,
-              color: AppColors.greenLight,
-              icon: fluent.FluentIcons.add,
-            ),
-            _action('🖊', 'تعديل', _edit, enabled: !editing),
-            _action('💾', 'حفظ', editing ? _save : null),
-            _action(
-              '',
-              'تراجع',
-              editing ? _undo : null,
-              icon: fluent.FluentIcons.undo,
-            ),
-            _action(
-              '🗑',
+              AppIcons.delete,
               'حذف',
               !editing ? _delete : null,
               color: AppColors.red,
             ),
-            _action('🚪', 'خروج', widget.onExit),
+            _action(AppIcons.exit, 'خروج', widget.onExit, hideLabel: true),
           ],
         ),
       ],
@@ -659,19 +648,19 @@ class _AccountsScreenState extends State<AccountsScreen> {
   );
 
   Widget _action(
-    String glyph,
+    String assetPath,
     String label,
     VoidCallback? onTap, {
     Color color = AppColors.navy,
     bool enabled = true,
-    IconData? icon,
+    bool hideLabel = false,
   }) => ActionTile(
-    glyph: glyph,
-    icon: icon,
+    assetPath: assetPath,
     label: label,
     glyphColor: color,
     width: 56,
     height: 65,
+    hideLabel: hideLabel,
     onTap: enabled ? onTap : null,
   );
 }

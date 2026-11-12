@@ -382,8 +382,9 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
               children: [
                 ActionTile(
                   key: const ValueKey('barcode-exit-button'),
-                  glyph: '🚪',
+                  assetPath: AppIcons.exit,
                   label: 'خروج',
+                  hideLabel: true,
                   glyphColor: const Color(0xFF178BD0),
                   width: 76,
                   height: 78,
@@ -392,7 +393,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                 const SizedBox(width: 8),
                 ActionTile(
                   key: const ValueKey('barcode-print-button'),
-                  glyph: '🖨',
+                  assetPath: AppIcons.printer,
                   label: 'طباعة',
                   glyphColor: const Color(0xFF178BD0),
                   width: 180,
@@ -475,7 +476,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                 width: 82,
                 child: ActionTile(
                   key: const ValueKey('barcode-search-button'),
-                  glyph: '🔎',
+                  assetPath: AppIcons.search,
                   label: 'بحث',
                   width: 76,
                   height: 78,

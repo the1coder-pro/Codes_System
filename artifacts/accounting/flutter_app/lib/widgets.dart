@@ -5,6 +5,44 @@ import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'theme.dart';
 
+class AppIcons {
+  static const add = 'assets/icons/icons8-add-96.png';
+  static const calculator = 'assets/icons/icons8-calculator-96.png';
+  static const cash = 'assets/icons/icons8-cash-96.png';
+  static const delete = 'assets/icons/icons8-remove-properties-96.png';
+  static const edit = 'assets/icons/icons8-edit-96.png';
+  static const exit = 'assets/icons/icons8-exit-96.png';
+  static const lock = 'assets/icons/icons8-lock-96.png';
+  static const network = 'assets/icons/icons8-transaction-96.png';
+  static const printer = 'assets/icons/icons8-printer-96.png';
+  static const profit = 'assets/icons/icons8-profit-report-96.png';
+  static const receipt = 'assets/icons/icons8-receipt-96.png';
+  static const refresh = 'assets/icons/icons8-refresh-96.png';
+  static const save = 'assets/icons/icons8-save-96.png';
+  static const search = 'assets/icons/icons8-search-96.png';
+  static const shop = 'assets/icons/icons8-shopping-cart-96.png';
+  static const test = 'assets/icons/icons8-test-96.png';
+  static const undo = 'assets/icons/icons8-undo-96.png';
+  static const users = 'assets/icons/icons8-users-96.png';
+  static const website = 'assets/icons/icons8-website-96.png';
+}
+
+class AppImageIcon extends StatelessWidget {
+  final String assetPath;
+  final double size;
+
+  const AppImageIcon(this.assetPath, {super.key, this.size = 24});
+
+  @override
+  Widget build(BuildContext context) => Image.asset(
+    assetPath,
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+    excludeFromSemantics: true,
+  );
+}
+
 /// Label + field pair, desktop-form style (label on the right in RTL).
 class FieldRow extends StatelessWidget {
   final String label;
@@ -145,30 +183,37 @@ class DropBox extends StatelessWidget {
   }
 }
 
-/// Square desktop-style action tile with a unicode glyph.
+/// Square desktop-style action tile with an image or Fluent icon.
 class ActionTile extends StatelessWidget {
-  final String glyph;
+  final String? assetPath;
   final IconData? icon;
   final String label;
   final Color glyphColor;
   final VoidCallback? onTap;
   final double width;
   final double height;
+  final bool hideLabel;
   const ActionTile({
     super.key,
-    this.glyph = '',
+    this.assetPath,
     this.icon,
     required this.label,
     this.glyphColor = AppColors.navy,
     this.onTap,
     this.width = 74,
     this.height = 70,
+    this.hideLabel = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
     final multiline = label.contains('\n');
+    final iconSize = height <= 60
+        ? 21.0
+        : height <= 68
+        ? 24.0
+        : 28.0;
     return Opacity(
       opacity: enabled ? 1 : 0.42,
       child: Container(
@@ -177,48 +222,48 @@ class ActionTile extends StatelessWidget {
           border: Border.all(color: AppColors.line),
           borderRadius: BorderRadius.circular(4),
         ),
-        child: fluent.Button(
-          onPressed: onTap,
-          style: fluent.ButtonStyle(
-            padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-            backgroundColor: WidgetStateProperty.resolveWith(
-              (states) => states.contains(WidgetState.hovered)
-                  ? const Color(0xFFEAF2FB)
-                  : Colors.white,
+        child: Semantics(
+          button: true,
+          label: label,
+          child: fluent.Button(
+            onPressed: onTap,
+            style: fluent.ButtonStyle(
+              padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+              backgroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.hovered)
+                    ? const Color(0xFFEAF2FB)
+                    : Colors.white,
+              ),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
             ),
-            shape: WidgetStatePropertyAll(
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            ),
-          ),
-          child: SizedBox(
-            width: width,
-            height: height,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (icon != null)
-                  Icon(icon, size: multiline ? 20 : 24, color: glyphColor)
-                else
-                  Text(
-                    glyph,
-                    style: TextStyle(
-                      fontSize: multiline ? 21 : 24,
-                      height: multiline ? 1 : 1.1,
-                      color: glyphColor,
-                      fontWeight: FontWeight.w700,
+            child: SizedBox(
+              width: width,
+              height: height,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (assetPath != null)
+                    AppImageIcon(assetPath!, size: iconSize)
+                  else if (icon != null)
+                    Icon(icon, size: multiline ? 20 : 24, color: glyphColor)
+                  else
+                    const SizedBox.shrink(),
+                  if (!hideLabel) ...[
+                    SizedBox(height: multiline ? 2 : 4),
+                    Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: multiline ? 11 : 13,
+                        fontWeight: FontWeight.w600,
+                        height: multiline ? 1 : 1.1,
+                      ),
                     ),
-                  ),
-                SizedBox(height: multiline ? 2 : 4),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: multiline ? 11 : 13,
-                    fontWeight: FontWeight.w600,
-                    height: multiline ? 1 : 1.1,
-                  ),
-                ),
-              ],
+                  ],
+                ],
+              ),
             ),
           ),
         ),

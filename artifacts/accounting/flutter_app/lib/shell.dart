@@ -215,35 +215,35 @@ class _AppShellState extends State<AppShell> {
   Widget _ribbon() {
     final right = [
       _RibbonButton(
-        glyph: '🧾',
+        assetPath: AppIcons.receipt,
         label: 'الفواتير\nوأوامر الصرف',
         color: AppColors.navy,
         active: view == ShellView.invoiceMenu || view == ShellView.invoice,
         onTap: () => go(ShellView.invoiceMenu),
       ),
       _RibbonButton(
-        glyph: '🏷️',
+        assetPath: AppIcons.printer,
         label: 'طباعة\nالباركود',
         color: AppColors.muted,
         active: view == ShellView.barcode,
         onTap: () => go(ShellView.barcode),
       ),
       _RibbonButton(
-        glyph: '📒',
+        assetPath: AppIcons.users,
         label: 'الحسابات',
         color: AppColors.navy,
         active: view == ShellView.accounts,
         onTap: () => go(ShellView.accounts),
       ),
       _RibbonButton(
-        glyph: '📦',
+        assetPath: AppIcons.shop,
         label: 'الأصناف',
         color: const Color(0xFF2B7BC4),
         active: view == ShellView.inventory,
         onTap: () => go(ShellView.inventory),
       ),
       _RibbonButton(
-        glyph: '📨',
+        assetPath: AppIcons.test,
         label: 'ارسال واعتماد\nالفواتير',
         color: AppColors.red,
         onTap: () => soon('ارسال واعتماد الفواتير'),
@@ -251,14 +251,13 @@ class _AppShellState extends State<AppShell> {
     ];
     final left = [
       _RibbonButton(
-        glyph: '',
-        icon: fluent.FluentIcons.calculator,
+        assetPath: AppIcons.calculator,
         label: 'آلة حاسبة',
         color: AppColors.muted,
         onTap: calculator,
       ),
       _RibbonButton(
-        glyph: '🔄',
+        assetPath: AppIcons.refresh,
         label: 'تحديث',
         color: AppColors.green,
         onTap: () {
@@ -271,20 +270,21 @@ class _AppShellState extends State<AppShell> {
         },
       ),
       _RibbonButton(
-        glyph: '🌐',
+        assetPath: AppIcons.website,
         label: 'موقعنا',
         color: const Color(0xFF2B7BC4),
         onTap: () => soon('الموقع'),
       ),
       _RibbonButton(
-        glyph: '🗣️',
+        glyph: 'ع',
         label: 'Arabic',
         color: AppColors.ink,
         onTap: () {},
       ),
       _RibbonButton(
-        glyph: '🚪',
+        assetPath: AppIcons.exit,
         label: 'خروج',
+        hideLabel: true,
         color: const Color(0xFF2B7BC4),
         onTap: () => go(ShellView.home),
       ),
@@ -435,26 +435,31 @@ class _AppShellState extends State<AppShell> {
 
 class _RibbonButton extends StatelessWidget {
   final String glyph;
+  final String? assetPath;
   final IconData? icon;
   final String label;
   final Color color;
   final bool active;
   final bool stacked;
   final bool dense;
+  final bool hideLabel;
   final VoidCallback onTap;
   const _RibbonButton({
-    required this.glyph,
+    this.glyph = '',
     required this.label,
     required this.color,
     required this.onTap,
+    this.assetPath,
     this.icon,
     this.active = false,
     this.stacked = false,
     this.dense = false,
+    this.hideLabel = false,
   });
 
   _RibbonButton asStacked({bool dense = false}) => _RibbonButton(
     glyph: glyph,
+    assetPath: assetPath,
     icon: icon,
     label: label,
     color: color,
@@ -462,13 +467,17 @@ class _RibbonButton extends StatelessWidget {
     onTap: onTap,
     stacked: true,
     dense: dense,
+    hideLabel: hideLabel,
   );
 
   @override
   Widget build(BuildContext context) {
     final buttonHeight = stacked ? (dense ? 50.0 : 74.0) : 60.0;
-    Widget iconWidget(double size) => icon == null
-        ? Text(
+    Widget iconWidget(double size) => assetPath != null
+        ? AppImageIcon(assetPath!, size: size)
+        : icon != null
+        ? Icon(icon, size: size, color: color)
+        : Text(
             glyph,
             style: TextStyle(
               fontSize: size,
@@ -476,8 +485,7 @@ class _RibbonButton extends StatelessWidget {
               color: color,
               fontWeight: FontWeight.w700,
             ),
-          )
-        : Icon(icon, size: size, color: color);
+          );
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: stacked ? 1 : 2,
@@ -521,18 +529,20 @@ class _RibbonButton extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         iconWidget(dense ? 17 : 27),
-                        SizedBox(height: dense ? 1 : 2),
-                        Text(
-                          label.replaceAll('\n', ' '),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: dense ? 8.5 : 12,
-                            height: 1,
-                            fontWeight: FontWeight.w600,
+                        if (!hideLabel) ...[
+                          SizedBox(height: dense ? 1 : 2),
+                          Text(
+                            label.replaceAll('\n', ' '),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: dense ? 8.5 : 12,
+                              height: 1,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   )
@@ -540,11 +550,13 @@ class _RibbonButton extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       iconWidget(22),
-                      const SizedBox(width: 6),
-                      Text(
-                        label,
-                        style: const TextStyle(fontSize: 12.5, height: 1.2),
-                      ),
+                      if (!hideLabel) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          label,
+                          style: const TextStyle(fontSize: 12.5, height: 1.2),
+                        ),
+                      ],
                     ],
                   ),
           ),
@@ -751,10 +763,10 @@ class _LoginDialogState extends State<_LoginDialog> {
     final compact = screenWidth < 600;
     final maxDialogWidth = (screenWidth - 32).clamp(280.0, 760.0);
     final lock = Center(
-      child: Text(
-        '🔒',
+      child: AppImageIcon(
+        AppIcons.lock,
         key: const ValueKey('login-lock'),
-        style: TextStyle(fontSize: compact ? 72 : 176, height: 1),
+        size: compact ? 72 : 176,
       ),
     );
     return fluent.ContentDialog(

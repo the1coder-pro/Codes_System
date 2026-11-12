@@ -225,9 +225,8 @@ void main() {
     );
     expect(
       tester
-          .widget<Text>(find.byKey(const ValueKey('login-lock')))
-          .style!
-          .fontSize,
+          .widget<AppImageIcon>(find.byKey(const ValueKey('login-lock')))
+          .size,
       greaterThan(100),
     );
     expect(tester.takeException(), isNull);
@@ -271,10 +270,13 @@ void main() {
     await _launchAndLogin(tester);
 
     final calculatorButton = find.byKey(const ValueKey('ribbon-آلة حاسبة'));
-    final icon = tester.widget<Icon>(
-      find.descendant(of: calculatorButton, matching: find.byType(Icon)),
+    final icon = tester.widget<AppImageIcon>(
+      find.descendant(
+        of: calculatorButton,
+        matching: find.byType(AppImageIcon),
+      ),
     );
-    expect(icon.icon, fluent.FluentIcons.calculator);
+    expect(icon.assetPath, AppIcons.calculator);
     await tester.tap(calculatorButton);
     await tester.pumpAndSettle();
 
@@ -404,14 +406,18 @@ void main() {
       find.descendant(of: ribbon, matching: find.byType(SingleChildScrollView)),
       findsNothing,
     );
-    final iconRect = tester.getRect(find.text('🧾'));
+    final invoiceButton = find.byKey(
+      const ValueKey('ribbon-الفواتير\nوأوامر الصرف'),
+    );
+    final iconFinder = find.descendant(
+      of: invoiceButton,
+      matching: find.byType(AppImageIcon),
+    );
+    final iconRect = tester.getRect(iconFinder);
     final labelRect = tester.getRect(find.text('الفواتير وأوامر الصرف'));
     expect(iconRect.center.dx, closeTo(labelRect.center.dx, 1));
     expect(iconRect.bottom, lessThan(labelRect.top));
-    expect(
-      tester.widget<Text>(find.text('🧾')).style!.fontSize,
-      greaterThan(22),
-    );
+    expect(tester.widget<AppImageIcon>(iconFinder).size, greaterThan(22));
     expect(
       tester.widget<Text>(find.text('الفواتير وأوامر الصرف')).style!.fontSize,
       greaterThan(9.5),
@@ -490,19 +496,43 @@ void main() {
     }
 
     for (final pair in [
-      (find.text('🚪'), find.text('خروج')),
-      (find.text('🗣️'), find.text('Arabic')),
-      (find.text('🌐'), find.text('موقعنا')),
-      (find.text('🔄'), find.text('تحديث')),
+      (find.text('ع'), find.text('Arabic')),
+      (
+        find.descendant(
+          of: find.byKey(const ValueKey('ribbon-موقعنا')),
+          matching: find.byType(AppImageIcon),
+        ),
+        find.text('موقعنا'),
+      ),
+      (
+        find.descendant(
+          of: find.byKey(const ValueKey('ribbon-تحديث')),
+          matching: find.byType(AppImageIcon),
+        ),
+        find.text('تحديث'),
+      ),
     ]) {
       expectStacked(pair.$1, pair.$2);
     }
+    final exitButton = find.byKey(const ValueKey('ribbon-خروج'));
+    expect(
+      find.descendant(of: exitButton, matching: find.text('خروج')),
+      findsNothing,
+    );
+    expect(
+      tester
+          .widget<AppImageIcon>(
+            find.descendant(
+              of: exitButton,
+              matching: find.byType(AppImageIcon),
+            ),
+          )
+          .assetPath,
+      AppIcons.exit,
+    );
     final calculator = find.byKey(const ValueKey('ribbon-آلة حاسبة'));
     expectStacked(
-      find.descendant(
-        of: calculator,
-        matching: find.byIcon(fluent.FluentIcons.calculator),
-      ),
+      find.descendant(of: calculator, matching: find.byType(AppImageIcon)),
       find.descendant(of: calculator, matching: find.text('آلة حاسبة')),
     );
     expect(
@@ -703,7 +733,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('inventory-image-upload')));
     await tester.pumpAndSettle();
     expect(find.byType(ItemImage), findsOneWidget);
-    expect(find.byType(Image), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(ItemImage), matching: find.byType(Image)),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('حفظ').first);
     await tester.pumpAndSettle();
@@ -819,7 +852,10 @@ void main() {
     expect(find.byKey(const ValueKey('invoice-item-grid')), findsOneWidget);
     expect(find.byKey(const ValueKey('invoice-item-card-P-1')), findsOneWidget);
     expect(find.byType(ItemImage), findsOneWidget);
-    expect(find.byType(Image), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(ItemImage), matching: find.byType(Image)),
+      findsOneWidget,
+    );
     expect(find.text('صنف مصور'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('invoice-item-add-P-1')));
     await tester.pumpAndSettle();

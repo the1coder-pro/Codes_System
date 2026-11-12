@@ -852,7 +852,11 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
         child: Row(
           children: [
             Expanded(child: Text(text, style: const TextStyle(fontSize: 12))),
-            const Text('▾', style: TextStyle(color: AppColors.muted)),
+            const Icon(
+              fluent.FluentIcons.chevron_down,
+              size: 12,
+              color: AppColors.muted,
+            ),
           ],
         ),
       ),
@@ -1045,7 +1049,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             alignment: WrapAlignment.center,
             children: [
               ActionTile(
-                glyph: '🗑️',
+                assetPath: AppIcons.delete,
                 label: 'حذف صنف',
                 glyphColor: AppColors.red,
                 width: 54,
@@ -1053,29 +1057,30 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                 onTap: _deleteLine,
               ),
               ActionTile(
-                glyph: '💾',
+                assetPath: AppIcons.save,
                 label: 'حفظ F8',
                 width: 54,
                 height: 58,
                 onTap: _save,
               ),
               ActionTile(
-                glyph: '💾',
+                assetPath: AppIcons.save,
                 label: 'حفظ\nوطباعة',
                 width: 54,
                 height: 58,
                 onTap: _saveAndPrint,
               ),
               ActionTile(
-                glyph: '🔎',
+                assetPath: AppIcons.search,
                 label: 'بحث F2',
                 width: 54,
                 height: 58,
                 onTap: () => setState(() => tab = 2),
               ),
               ActionTile(
-                glyph: '🚪',
+                assetPath: AppIcons.exit,
                 label: 'خروج F1',
+                hideLabel: true,
                 width: 54,
                 height: 58,
                 onTap: widget.onExit,
@@ -1239,10 +1244,10 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              _pay('نقداً', '💵', 'cash'),
-              _pay('شبكة', '💳', 'network'),
-              _pay('آجل', '🧾', 'credit'),
-              _pay('رصيد رجيع', '💸', 'returnBal'),
+              _pay('نقداً', AppIcons.cash, 'cash'),
+              _pay('شبكة', AppIcons.network, 'network'),
+              _pay('آجل', AppIcons.receipt, 'credit'),
+              _pay('رصيد رجيع', AppIcons.profit, 'returnBal'),
             ],
           ),
           const SizedBox(height: 6),
@@ -1335,7 +1340,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     });
   }
 
-  Widget _pay(String label, String glyph, String key) => Expanded(
+  Widget _pay(String label, String iconAsset, String key) => Expanded(
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: Semantics(
@@ -1386,14 +1391,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                          Text(
-                            glyph,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              color: AppColors.green,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                          AppImageIcon(iconAsset, size: 26),
                         ],
                       ),
                     ),
