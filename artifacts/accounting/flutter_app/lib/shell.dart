@@ -298,11 +298,14 @@ class _AppShellState extends State<AppShell> {
           Widget compactGroup(
             List<_RibbonButton> buttons, {
             bool dense = false,
+            double? iconSize,
           }) {
             return Row(
               children: [
                 for (final button in buttons)
-                  Expanded(child: button.asStacked(dense: dense)),
+                  Expanded(
+                    child: button.asStacked(dense: dense, iconSize: iconSize),
+                  ),
               ],
             );
           }
@@ -310,13 +313,17 @@ class _AppShellState extends State<AppShell> {
           Widget sectionGroup(
             List<_RibbonButton> buttons, {
             bool dense = false,
+            double? iconSize,
           }) {
             return Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 for (var index = 0; index < buttons.length; index++) ...[
                   if (index > 0) const SizedBox(width: 12),
-                  buttons[index].asHorizontalCompact(dense: dense),
+                  buttons[index].asHorizontalCompact(
+                    dense: dense,
+                    iconSize: iconSize,
+                  ),
                 ],
               ],
             );
@@ -336,7 +343,7 @@ class _AppShellState extends State<AppShell> {
                         alignment: AlignmentDirectional.centerStart,
                         child: Padding(
                           padding: const EdgeInsetsDirectional.only(start: 6),
-                          child: sectionGroup(right, dense: true),
+                          child: sectionGroup(right, dense: true, iconSize: 32),
                         ),
                       ),
                     ),
@@ -345,7 +352,10 @@ class _AppShellState extends State<AppShell> {
                   SizedBox(
                     width: 68,
                     height: 60,
-                    child: calculatorButton.asStacked(dense: true),
+                    child: calculatorButton.asStacked(
+                      dense: true,
+                      iconSize: 32,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Container(
@@ -358,7 +368,7 @@ class _AppShellState extends State<AppShell> {
                   SizedBox(
                     width: 208,
                     height: 60,
-                    child: compactGroup(left, dense: true),
+                    child: compactGroup(left, dense: true, iconSize: 32),
                   ),
                   const SizedBox(width: 6),
                 ],
@@ -482,6 +492,7 @@ class _RibbonButton extends StatelessWidget {
   final bool dense;
   final bool horizontalCompact;
   final bool hideLabel;
+  final double? iconSize;
   final VoidCallback onTap;
   const _RibbonButton({
     this.glyph = '',
@@ -495,41 +506,48 @@ class _RibbonButton extends StatelessWidget {
     this.dense = false,
     this.horizontalCompact = false,
     this.hideLabel = false,
+    this.iconSize,
   });
 
-  _RibbonButton asStacked({bool dense = false}) => _RibbonButton(
-    glyph: glyph,
-    assetPath: assetPath,
-    icon: icon,
-    label: label,
-    color: color,
-    active: active,
-    onTap: onTap,
-    stacked: true,
-    dense: dense,
-    horizontalCompact: false,
-    hideLabel: hideLabel,
-  );
+  _RibbonButton asStacked({bool dense = false, double? iconSize}) =>
+      _RibbonButton(
+        glyph: glyph,
+        assetPath: assetPath,
+        icon: icon,
+        label: label,
+        color: color,
+        active: active,
+        onTap: onTap,
+        stacked: true,
+        dense: dense,
+        horizontalCompact: false,
+        hideLabel: hideLabel,
+        iconSize: iconSize,
+      );
 
-  _RibbonButton asHorizontalCompact({bool dense = false}) => _RibbonButton(
-    glyph: glyph,
-    assetPath: assetPath,
-    icon: icon,
-    label: label,
-    color: color,
-    active: active,
-    onTap: onTap,
-    horizontalCompact: true,
-    dense: dense,
-    hideLabel: hideLabel,
-  );
+  _RibbonButton asHorizontalCompact({bool dense = false, double? iconSize}) =>
+      _RibbonButton(
+        glyph: glyph,
+        assetPath: assetPath,
+        icon: icon,
+        label: label,
+        color: color,
+        active: active,
+        onTap: onTap,
+        horizontalCompact: true,
+        dense: dense,
+        hideLabel: hideLabel,
+        iconSize: iconSize,
+      );
 
   @override
   Widget build(BuildContext context) {
+    final resolvedIconSize = iconSize ?? (dense ? 22.0 : 32.0);
+    final compactHeight = dense && iconSize != null ? 58.0 : 50.0;
     final buttonHeight = stacked
-        ? (dense ? 50.0 : 64.0)
+        ? (dense ? compactHeight : 64.0)
         : horizontalCompact
-        ? (dense ? 50.0 : 64.0)
+        ? (dense ? compactHeight : 64.0)
         : 60.0;
     Widget iconWidget(double size) => assetPath != null
         ? AppImageIcon(assetPath!, size: size)
@@ -602,7 +620,7 @@ class _RibbonButton extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        iconWidget(dense ? 22 : 32),
+                        iconWidget(resolvedIconSize),
                         if (!hideLabel) ...[
                           SizedBox(height: dense ? 1 : 2),
                           Text(
@@ -623,7 +641,7 @@ class _RibbonButton extends StatelessWidget {
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      iconWidget(dense ? 22 : 32),
+                      iconWidget(resolvedIconSize),
                       if (!hideLabel) ...[
                         SizedBox(
                           width: horizontalCompact ? (dense ? 1 : 2) : 6,

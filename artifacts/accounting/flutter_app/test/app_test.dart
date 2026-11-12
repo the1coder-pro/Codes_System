@@ -592,7 +592,7 @@ void main() {
       tester.widget<AppImageIcon>(invoiceIcon).size,
       tester.widget<AppImageIcon>(updateIcon).size,
     );
-    expect(tester.widget<AppImageIcon>(invoiceIcon).size, 22);
+    expect(tester.widget<AppImageIcon>(invoiceIcon).size, 32);
     expect(
       tester.widget<Text>(find.text('الفواتير\nوأوامر الصرف')).style!.fontSize,
       tester.widget<Text>(find.text('تحديث')).style!.fontSize,
@@ -661,6 +661,11 @@ void main() {
       find.descendant(of: ribbon, matching: find.byType(SingleChildScrollView)),
       findsNothing,
     );
+    final mobileMainIcon = find.descendant(
+      of: find.byKey(const ValueKey('ribbon-الفواتير\nوأوامر الصرف')),
+      matching: find.byType(AppImageIcon),
+    );
+    expect(tester.widget<AppImageIcon>(mobileMainIcon).size, 22);
     expect(tester.takeException(), isNull);
   });
 
