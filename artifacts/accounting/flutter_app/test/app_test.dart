@@ -409,13 +409,13 @@ void main() {
       'خروج',
     ];
     for (final label in buttons) {
-      expect(tester.getSize(find.byKey(ValueKey('ribbon-$label'))).height, 74);
+      expect(tester.getSize(find.byKey(ValueKey('ribbon-$label'))).height, 64);
       final rect = tester.getRect(find.byKey(ValueKey('ribbon-$label')));
       expect(rect.left, greaterThanOrEqualTo(0));
       expect(rect.right, lessThanOrEqualTo(1024));
     }
     final ribbon = find.byKey(const ValueKey('ribbon-container'));
-    expect(tester.getSize(ribbon).height, 80);
+    expect(tester.getSize(ribbon).height, 68);
     expect(
       find.descendant(of: ribbon, matching: find.byType(SingleChildScrollView)),
       findsNothing,
@@ -480,8 +480,8 @@ void main() {
       find.byKey(const ValueKey('ribbon-ارسال واعتماد\nالفواتير')),
     );
     expect(mainAction.right - lastMainAction.left, lessThan(740));
-    expect(mainAction.left - barcodeAction.right, greaterThan(2));
-    expect(mainAction.left - barcodeAction.right, lessThan(9));
+    expect(mainAction.left - barcodeAction.right, greaterThan(8));
+    expect(mainAction.left - barcodeAction.right, lessThan(16));
     final utilityAction = tester.getRect(
       find.byKey(const ValueKey('ribbon-خروج')),
     );
@@ -539,7 +539,7 @@ void main() {
     );
     expect(
       tester.getSize(find.byKey(const ValueKey('ribbon-container'))).height,
-      72,
+      60,
     );
 
     expect(calculatorAction.right - exitAction.left, lessThan(700));

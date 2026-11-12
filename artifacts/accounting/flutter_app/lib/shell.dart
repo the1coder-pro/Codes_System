@@ -315,7 +315,7 @@ class _AppShellState extends State<AppShell> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 for (var index = 0; index < buttons.length; index++) ...[
-                  if (index > 0) const SizedBox(width: 6),
+                  if (index > 0) const SizedBox(width: 12),
                   buttons[index].asHorizontalCompact(dense: dense),
                 ],
               ],
@@ -325,7 +325,7 @@ class _AppShellState extends State<AppShell> {
           if (width >= 1400) {
             return SizedBox(
               width: width,
-              height: 72,
+              height: 60,
               child: Row(
                 children: [
                   Expanded(
@@ -344,7 +344,7 @@ class _AppShellState extends State<AppShell> {
                   const SizedBox(width: 4),
                   SizedBox(
                     width: 68,
-                    height: 72,
+                    height: 60,
                     child: calculatorButton.asStacked(dense: true),
                   ),
                   const SizedBox(width: 8),
@@ -357,7 +357,7 @@ class _AppShellState extends State<AppShell> {
                   const SizedBox(width: 4),
                   SizedBox(
                     width: 208,
-                    height: 72,
+                    height: 60,
                     child: compactGroup(left, dense: true),
                   ),
                   const SizedBox(width: 6),
@@ -384,7 +384,7 @@ class _AppShellState extends State<AppShell> {
           }
 
           return SizedBox(
-            height: 80,
+            height: 68,
             child: Row(
               children: [
                 Expanded(
@@ -527,9 +527,9 @@ class _RibbonButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final buttonHeight = stacked
-        ? (dense ? 50.0 : 74.0)
+        ? (dense ? 50.0 : 64.0)
         : horizontalCompact
-        ? (dense ? 50.0 : 74.0)
+        ? (dense ? 50.0 : 64.0)
         : 60.0;
     Widget iconWidget(double size) => assetPath != null
         ? AppImageIcon(assetPath!, size: size)
