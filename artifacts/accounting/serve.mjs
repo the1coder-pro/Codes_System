@@ -1,10 +1,19 @@
-import { createServer } from 'node:http';
+import { createServer, request as httpRequest } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { resolve, extname, sep } from 'node:path';
 
 const root = resolve(import.meta.dirname, 'dist/public');
 const port = Number(process.env.PORT);
+const host = process.env.HOST || '0.0.0.0';
 if (!port) throw new Error('PORT must be provided by the app workflow.');
+const apiPortSetting = process.env.API_PORT;
+const apiPort = apiPortSetting ? Number(apiPortSetting) : 0;
+if (apiPortSetting && (!Number.isInteger(apiPort) || apiPort <= 0)) {
+  throw new Error(`Invalid API_PORT value: "${apiPortSetting}"`);
+}
+if (apiPort && apiPort === port) {
+  throw new Error('API_PORT must be different from PORT.');
+}
 const mime = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'application/javascript',
@@ -20,12 +29,44 @@ const mime = {
   '.woff2': 'font/woff2',
 };
 
+function proxyApiRequest(req, res) {
+  const upstream = httpRequest(
+    {
+      hostname: '127.0.0.1',
+      port: apiPort,
+      method: req.method,
+      path: req.url,
+      headers: { ...req.headers, host: `127.0.0.1:${apiPort}` },
+    },
+    (upstreamRes) => {
+      res.writeHead(upstreamRes.statusCode || 502, upstreamRes.headers);
+      upstreamRes.pipe(res);
+    },
+  );
+
+  upstream.on('error', (error) => {
+    console.error('Local API proxy failed:', error.message);
+    if (res.headersSent) {
+      res.destroy(error);
+      return;
+    }
+    res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ error: 'api_unavailable' }));
+  });
+
+  req.pipe(upstream);
+}
+
 createServer((req, res) => {
   let pathname;
   try {
     pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
   } catch {
     res.writeHead(400).end('Invalid URL');
+    return;
+  }
+  if (apiPort && (pathname === '/api' || pathname.startsWith('/api/'))) {
+    proxyApiRequest(req, res);
     return;
   }
   let file = resolve(root, `.${pathname}`);
@@ -46,6 +87,9 @@ createServer((req, res) => {
     'Cache-Control': 'no-cache',
   });
   createReadStream(file).pipe(res);
-}).listen(port, '0.0.0.0', () => {
-  console.info(`Flutter accounting UI serving on port ${port}`);
+}).listen(port, host, () => {
+  console.info(`Flutter accounting UI serving on ${host}:${port}`);
+  if (apiPort) {
+    console.info(`Local API proxy enabled for 127.0.0.1:${apiPort}`);
+  }
 });
