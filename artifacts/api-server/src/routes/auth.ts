@@ -11,7 +11,7 @@ const rolePermissions: Record<Role, ReadonlySet<string>> = {
     "accounts.view", "accounts.manage", "accounts.delete",
     "invoice.view", "invoice.save", "invoice.deleteDraft", "invoice.print",
     "invoice.discount", "barcode.view", "barcode.print", "admin.users",
-    "invoice.approve", "admin.company", "admin.backup",
+    "invoice.approve", "admin.company", "admin.backup", "printer.manage",
   ]),
   cashier1: new Set([
     "inventory.view", "accounts.view", "invoice.view", "invoice.save",

@@ -43,6 +43,7 @@ const Map<AccountingRole, Set<String>> _rolePermissions = {
     'barcode.view',
     'barcode.print',
     'admin.users',
+    'printer.manage',
     'admin.company',
     'admin.backup',
   },

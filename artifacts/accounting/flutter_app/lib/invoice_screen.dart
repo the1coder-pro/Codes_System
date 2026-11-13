@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
-import 'barcode_print_stub.dart'
-    if (dart.library.js_interop) 'barcode_print_web.dart'
-    as printer;
 import 'auth_service.dart';
 import 'item_image.dart';
 import 'models.dart';
+import 'printer_bridge.dart';
 import 'resizable_split.dart';
 import 'storage.dart';
 import 'theme.dart';
@@ -38,6 +36,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   final lines = <InvoiceLine>[];
   final lineCtl = <String, List<TextEditingController>>{};
   final selectedLineIds = <String>{};
+  final _printerBridge = PrinterBridgeClient();
   int? selected;
   List<Item> catalog = [];
   String? selectedPayment = 'cash';
@@ -104,6 +103,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
 
   @override
   void dispose() {
+    _printerBridge.dispose();
     for (final controller in h.values) {
       controller.dispose();
     }
@@ -387,37 +387,29 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       );
       return;
     }
+    final preferences = await _invoicePrinterPreferences();
+    if (!mounted || preferences == null) return;
     final document = _printDocument();
-    // Open the window during the click gesture so the browser permits printing
-    // after local persistence completes.
-    final printWindow = printer.openPrintWindow();
-    if (printWindow == null) {
-      toast(
-        context,
-        'تعذر فتح نافذة الطباعة في المتصفح',
-        severity: fluent.InfoBarSeverity.error,
-      );
-      return;
-    }
-    if (!await _saveInvoiceAndReset()) {
-      printWindow.close();
-      return;
-    }
+    if (!await _saveInvoiceAndReset()) return;
     try {
-      printWindow.writeAndPrint(document);
+      await _printerBridge.printHtml(
+        preferences: preferences,
+        printerName: preferences.invoicePrinter ?? '',
+        jobType: 'invoice',
+        html: document,
+      );
       if (mounted) {
         toast(
           context,
-          'تم حفظ الفاتورة وإرسالها للطباعة',
+          'تم حفظ الفاتورة وإرسالها للطابعة المحددة',
           severity: fluent.InfoBarSeverity.success,
         );
       }
-    } catch (_) {
-      printWindow.close();
+    } catch (error) {
       if (mounted) {
         toast(
           context,
-          'حُفظت الفاتورة لكن تعذرت الطباعة',
+          'حُفظت الفاتورة لكن تعذرت الطباعة: $error',
           severity: fluent.InfoBarSeverity.error,
         );
       }
@@ -442,22 +434,58 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       );
       return;
     }
-    final printWindow = printer.openPrintWindow();
-    if (printWindow == null) {
+    final preferences = await _invoicePrinterPreferences();
+    if (!mounted || preferences == null) return;
+    try {
+      await _printerBridge.printHtml(
+        preferences: preferences,
+        printerName: preferences.invoicePrinter ?? '',
+        jobType: 'invoice',
+        html: _printDocument(),
+      );
+    } catch (error) {
+      if (mounted) {
+        toast(
+          context,
+          'تعذرت الطباعة: $error',
+          severity: fluent.InfoBarSeverity.error,
+        );
+      }
+    }
+  }
+
+  Future<PrinterPreferences?> _invoicePrinterPreferences() async {
+    final saved = await Store.loadPrinterPreferences();
+    if (!mounted) return null;
+    final preferences = PrinterPreferences.fromJson(saved);
+    final printerName = preferences.invoicePrinter;
+    if (preferences.token.isEmpty ||
+        printerName == null ||
+        printerName.isEmpty) {
       toast(
         context,
-        'تعذر فتح نافذة الطباعة في المتصفح',
-        severity: fluent.InfoBarSeverity.error,
+        'عيّن طابعة الفواتير من الإدارة ثم أعد المحاولة',
+        severity: fluent.InfoBarSeverity.warning,
       );
-      return;
+      return null;
     }
     try {
-      printWindow.writeAndPrint(_printDocument());
-    } catch (_) {
-      printWindow.close();
-      if (mounted) {
-        toast(context, 'تعذرت الطباعة', severity: fluent.InfoBarSeverity.error);
+      final printers = await _printerBridge.loadPrinters(preferences);
+      if (!printers.any((printer) => printer.name == printerName)) {
+        throw const PrinterBridgeException(
+          'الطابعة المحددة للفواتير غير مثبتة على هذا الجهاز',
+        );
       }
+      return preferences;
+    } catch (error) {
+      if (mounted) {
+        toast(
+          context,
+          error.toString(),
+          severity: fluent.InfoBarSeverity.error,
+        );
+      }
+      return null;
     }
   }
 

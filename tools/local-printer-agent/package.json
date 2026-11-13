@@ -1,0 +1,17 @@
+{
+  "name": "@workspace/local-printer-agent",
+  "version": "0.0.0",
+  "private": true,
+  "main": "main.cjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "electron .",
+    "show-token": "electron . --show-token",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "electron": "44.11.2"
+  }
+}

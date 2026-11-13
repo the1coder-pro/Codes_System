@@ -10,6 +10,7 @@ class Store {
   static const _accountsKey = 'accounts_v1';
   static const _invoicesKey = 'invoices_v1';
   static const _invoiceSequenceKey = 'invoice_next_number_v1';
+  static const _printerPreferencesKey = 'printer_preferences_v1';
 
   static List<Account> _seedAccounts() => [
     Account(code: '1000001', nameAr: 'النقدية'),
@@ -156,6 +157,30 @@ class Store {
       final p = await SharedPreferences.getInstance();
       await p.remove('draft_$type');
       return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<Map<String, dynamic>> loadPrinterPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_printerPreferencesKey);
+      if (raw == null) return {};
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) return decoded;
+      return {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  static Future<bool> savePrinterPreferences(
+    Map<String, dynamic> preferences,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.setString(_printerPreferencesKey, jsonEncode(preferences));
     } catch (_) {
       return false;
     }

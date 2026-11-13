@@ -9,10 +9,19 @@ import 'barcode_screen.dart';
 import 'inventory_screen.dart';
 import 'invoice_menu.dart';
 import 'invoice_screen.dart';
+import 'printer_settings_screen.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
-enum ShellView { home, inventory, invoiceMenu, invoice, accounts, barcode }
+enum ShellView {
+  home,
+  inventory,
+  invoiceMenu,
+  invoice,
+  accounts,
+  barcode,
+  printerSettings,
+}
 
 /// Window chrome: title strip, menu bar, ribbon, content canvas, status bar.
 class AppShell extends StatefulWidget {
@@ -63,6 +72,7 @@ class _AppShellState extends State<AppShell> {
       ShellView.accounts => 'accounts.view',
       ShellView.invoiceMenu || ShellView.invoice => 'invoice.view',
       ShellView.barcode => 'barcode.view',
+      ShellView.printerSettings => 'printer.manage',
       ShellView.home => null,
     };
     if (permission != null && !_can(permission)) {
@@ -216,6 +226,8 @@ class _AppShellState extends State<AppShell> {
     final adminMenu = _menu('إدارة', [
       ('المستخدمون والصلاحيات', () => soon('المستخدمون')),
       ('بيانات المنشأة', () => soon('بيانات المنشأة')),
+      if (_can('printer.manage'))
+        ('إدارة الطابعات', () => go(ShellView.printerSettings)),
     ]);
     final toolsMenu = _menu('أدوات', [
       ('آلة حاسبة', calculator),
@@ -511,6 +523,11 @@ class _AppShellState extends State<AppShell> {
         onExit: () => go(ShellView.home),
       ),
       ShellView.barcode => BarcodeScreen(
+        session: session!,
+        authService: widget.authService,
+        onExit: () => go(ShellView.home),
+      ),
+      ShellView.printerSettings => PrinterSettingsScreen(
         session: session!,
         authService: widget.authService,
         onExit: () => go(ShellView.home),

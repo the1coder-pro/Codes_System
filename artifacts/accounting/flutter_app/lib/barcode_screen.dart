@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'auth_service.dart';
-import 'barcode_print_stub.dart'
-    if (dart.library.js_interop) 'barcode_print_web.dart'
-    as printer;
 import 'models.dart';
+import 'printer_bridge.dart';
 import 'resizable_split.dart';
 import 'storage.dart';
 import 'theme.dart';
@@ -43,6 +41,9 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   final search = TextEditingController();
   final barcode = TextEditingController();
   final count = TextEditingController(text: '1');
+  final _printerBridge = PrinterBridgeClient();
+  List<LocalPrinter> _availablePrinters = [];
+  String? _selectedPrinter;
 
   List<Item> get visibleItems {
     final query = search.text.trim().toLowerCase();
@@ -58,6 +59,7 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   @override
   void initState() {
     super.initState();
+    _loadPrinterPreferences();
     Store.loadItems().then((loaded) {
       if (!mounted) return;
       setState(() {
@@ -68,11 +70,36 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
     });
   }
 
+  Future<void> _loadPrinterPreferences() async {
+    final preferences = PrinterPreferences.fromJson(
+      await Store.loadPrinterPreferences(),
+    );
+    if (!mounted) return;
+    if (preferences.token.isEmpty) return;
+    try {
+      final printers = await _printerBridge.loadPrinters(preferences);
+      if (!mounted) return;
+      final savedName = preferences.barcodePrinter;
+      final defaultPrinters = printers.where((printer) => printer.isDefault);
+      setState(() {
+        _availablePrinters = printers;
+        _selectedPrinter = printers.any((printer) => printer.name == savedName)
+            ? savedName
+            : (defaultPrinters.isNotEmpty
+                  ? defaultPrinters.first.name
+                  : (printers.isEmpty ? null : printers.first.name));
+      });
+    } catch (_) {
+      // The printer management page reports connection errors with details.
+    }
+  }
+
   @override
   void dispose() {
     search.dispose();
     barcode.dispose();
     count.dispose();
+    _printerBridge.dispose();
     super.dispose();
   }
 
@@ -159,19 +186,28 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
       return;
     }
     try {
-      printer.printLabels(_printDocument(item, code, copies));
+      final preferences = PrinterPreferences.fromJson(
+        await Store.loadPrinterPreferences(),
+      );
+      final printerName = _selectedPrinter ?? preferences.barcodePrinter;
+      await _printerBridge.printHtml(
+        preferences: preferences,
+        printerName: printerName ?? '',
+        jobType: 'barcode',
+        html: _printDocument(item, code, copies),
+      );
       if (mounted) {
         toast(
           context,
-          'تم فتح نافذة الطباعة',
+          'تم إرسال الباركود للطابعة المحددة',
           severity: fluent.InfoBarSeverity.success,
         );
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
         toast(
           context,
-          'تعذر فتح نافذة الطباعة في المتصفح',
+          error.toString(),
           severity: fluent.InfoBarSeverity.error,
         );
       }
@@ -334,6 +370,39 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
                 value: template,
                 options: _labelTemplates,
                 onChanged: (value) => setState(() => template = value),
+              ),
+              const SizedBox(height: 10),
+              const Text('الطابعة:', textAlign: TextAlign.end),
+              const SizedBox(height: 4),
+              SizedBox(
+                height: 36,
+                child: fluent.ComboBox<String>(
+                  key: const ValueKey('barcode-printer-choice'),
+                  value:
+                      _availablePrinters.any(
+                        (printer) => printer.name == _selectedPrinter,
+                      )
+                      ? _selectedPrinter
+                      : null,
+                  placeholder: const Text('اختر طابعة الباركود'),
+                  isExpanded: true,
+                  items: [
+                    for (final printer in _availablePrinters)
+                      fluent.ComboBoxItem<String>(
+                        value: printer.name,
+                        child: Text(
+                          printer.isDefault
+                              ? '${printer.displayName} (الافتراضية)'
+                              : printer.displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: _availablePrinters.isEmpty
+                      ? null
+                      : (value) => setState(() => _selectedPrinter = value),
+                ),
               ),
               const SizedBox(height: 10),
               Row(
