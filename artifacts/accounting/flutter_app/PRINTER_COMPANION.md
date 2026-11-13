@@ -41,3 +41,9 @@ published domains are allowed by default.
 Invoices and barcode sheets are generated as PDFs using IBM Plex Sans Arabic.
 The barcode companion uses the selected printer and the document's A4 page
 format; the barcode label dimensions and grid are laid out inside the page.
+
+## macOS permissions
+
+The macOS app sandbox requires `com.apple.security.print` in both the Debug
+Profile and Release entitlements for printer discovery and printing. Rebuild
+the app after pulling entitlement changes.
