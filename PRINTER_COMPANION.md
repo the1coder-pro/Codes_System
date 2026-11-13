@@ -8,7 +8,7 @@ printers and print PDF jobs without a browser dialog.
 ## Build for a workstation
 
 Install Flutter and the platform's normal desktop build tools on the build
-computer. From `artifacts/accounting/flutter_app`, run one of:
+computer. From the repository root, run one of:
 
 ```sh
 flutter build windows --dart-define=PRINTER_COMPANION=true
