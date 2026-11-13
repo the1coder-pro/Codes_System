@@ -10,12 +10,14 @@ import 'widgets.dart';
 class PrinterSettingsScreen extends StatefulWidget {
   final UserSession session;
   final AccountingAuthService authService;
+  final String? embeddedPrinterToken;
   final VoidCallback onExit;
 
   const PrinterSettingsScreen({
     super.key,
     required this.session,
     required this.authService,
+    this.embeddedPrinterToken,
     required this.onExit,
   });
 
@@ -51,7 +53,10 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
       await Store.loadPrinterPreferences(),
     );
     if (!mounted) return;
-    _tokenController.text = saved.token;
+    _tokenController.text =
+        widget.embeddedPrinterToken?.trim().isNotEmpty == true
+        ? widget.embeddedPrinterToken!.trim()
+        : saved.token;
     setState(() {
       _invoicePrinter = saved.invoicePrinter;
       _barcodePrinter = saved.barcodePrinter;
@@ -64,6 +69,9 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     invoicePrinter: _invoicePrinter,
     barcodePrinter: _barcodePrinter,
   );
+
+  bool get _hasEmbeddedService =>
+      widget.embeddedPrinterToken?.trim().isNotEmpty == true;
 
   Future<void> _connect() async {
     if (_tokenController.text.trim().isEmpty) {
@@ -207,39 +215,48 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               color: AppColors.cyan,
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'تعمل الطباعة الصامتة عبر خدمة محلية على هذا الجهاز.',
+                    _hasEmbeddedService
+                        ? 'خدمة الطباعة تعمل ضمن النظام المستقل على هذا الجهاز.'
+                        : 'تعمل الطباعة الصامتة عبر خدمة محلية على هذا الجهاز.',
                     textAlign: TextAlign.right,
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'شغّل تطبيق Local Printer Companion على هذا الجهاز، ثم أدخل رمز الربط الظاهر فيه. '
-                    'تُحفظ الاختيارات في هذا المتصفح وعلى هذا الجهاز فقط.',
+                    _hasEmbeddedService
+                        ? 'لا تحتاج لتشغيل تطبيق آخر أو إدخال رمز ربط. '
+                              'تُحفظ اختيارات الطابعات على هذا الجهاز فقط.'
+                        : 'شغّل تطبيق Local Printer Companion على هذا الجهاز، ثم أدخل رمز الربط الظاهر فيه. '
+                              'تُحفظ الاختيارات في هذا المتصفح وعلى هذا الجهاز فقط.',
                     textAlign: TextAlign.right,
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    'لا يحتاج التطبيق المرافق إلى Node.js.',
-                    textDirection: TextDirection.ltr,
-                    textAlign: TextAlign.left,
-                  ),
+                  if (!_hasEmbeddedService) ...[
+                    SizedBox(height: 4),
+                    Text(
+                      'لا يحتاج التطبيق المرافق إلى Node.js.',
+                      textDirection: TextDirection.ltr,
+                      textAlign: TextAlign.left,
+                    ),
+                  ],
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            const Text('رمز الربط', textAlign: TextAlign.right),
-            const SizedBox(height: 5),
-            fluent.TextBox(
-              key: const ValueKey('printer-pairing-token'),
-              controller: _tokenController,
-              obscureText: true,
-              textDirection: TextDirection.ltr,
-              placeholder: 'ألصق رمز الربط من خدمة الطباعة',
-            ),
+            if (!_hasEmbeddedService) ...[
+              const SizedBox(height: 12),
+              const Text('رمز الربط', textAlign: TextAlign.right),
+              const SizedBox(height: 5),
+              fluent.TextBox(
+                key: const ValueKey('printer-pairing-token'),
+                controller: _tokenController,
+                obscureText: true,
+                textDirection: TextDirection.ltr,
+                placeholder: 'ألصق رمز الربط من خدمة الطباعة',
+              ),
+            ],
             const SizedBox(height: 10),
             Align(
               alignment: Alignment.centerRight,
@@ -258,7 +275,11 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                     else
                       const Icon(fluent.FluentIcons.refresh, size: 16),
                     const SizedBox(width: 7),
-                    const Text('الاتصال واكتشاف الطابعات'),
+                    Text(
+                      _hasEmbeddedService
+                          ? 'تحديث الطابعات'
+                          : 'الاتصال واكتشاف الطابعات',
+                    ),
                   ],
                 ),
               ),

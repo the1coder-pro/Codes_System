@@ -3,8 +3,8 @@ name: Dart printer companion
 description: Project decision for silent printing from the browser app
 ---
 
-Use a Flutter desktop companion with a loopback-only Dart HTTP service and direct PDF printing. Keep the accounting web app as the user interface and send generated PDFs to the companion.
+With `PRINTER_COMPANION=true`, the Flutter desktop app is the standalone accounting system: launch the accounting UI, local authentication, device-local records, and the loopback Dart printing service together. Keep the browser app and its API authentication as a separate path. `PRINTER_SERVICE_ONLY=true` remains available for a print-only helper.
 
-**Why:** The user explicitly chose Dart so workstations do not need Node.js. Browser security prevents silent printer access directly from the web app. On macOS, the sandbox blocks `HttpServer.bind` in a release app unless the server-network entitlement is granted; the debug entitlement does not cover release builds. Printer discovery and printing also require Apple's print entitlement.
+**Why:** The user chose a standalone Flutter desktop app, device-local data without web sync, and admin-managed passwords for all four roles. They explicitly chose Dart so workstations do not need Node.js. Browser security prevents silent printer access directly from the web app. On macOS, sandboxed builds need Keychain, print, and network client/server entitlements.
 
-**How to apply:** Preserve the local pairing token, printer defaults, and barcode override. Keep invoice and barcode print output as PDFs. For macOS, keep both the server-network and print entitlements enabled in debug and release signing configurations, then verify behavior on actual Windows, macOS, and Linux printers before claiming hardware validation.
+**How to apply:** In standalone desktop mode, use OS secure storage for role passwords and auto-start the Dart print service; keep accounting records on that device and do not imply web synchronization. Preserve local printer defaults and barcode overrides. Keep invoice and barcode output as PDFs. For macOS, retain Keychain, print, and network client/server entitlements in debug and release builds, then verify behavior on real printers before claiming hardware validation.

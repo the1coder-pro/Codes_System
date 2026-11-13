@@ -1,13 +1,35 @@
 # Run the accounting system locally on macOS
 
-The full system is on the repository's `main` branch. The `flutter-only` branch
-contains the Flutter app but not the API server.
+Use the standalone Flutter desktop build for a full local system without Node.
+The `flutter-only` branch contains the complete Flutter app; `main` also
+contains the Node API used by the browser-based development setup below.
 
 ## Requirements
 
 - macOS with Xcode command-line tools
-- Node.js and pnpm
 - Flutter SDK
+
+## Build the standalone desktop app
+
+From the Flutter app folder. On `main`, first change to
+`artifacts/accounting/flutter_app`; on `flutter-only`, the repository root is
+already the Flutter app folder.
+
+```sh
+flutter pub get
+flutter build macos --dart-define=PRINTER_COMPANION=true
+open build/macos/Build/Products/Release/*.app
+```
+
+The app opens the full accounting system and starts its local printing service.
+No Node.js or browser is needed. All data is stored locally on this Mac and
+does not sync with the browser app. On first launch, all four roles use password
+`1233`; sign in as `admin` and change them under **الإدارة → إدارة كلمات المرور**.
+
+## Run the browser version locally
+
+The steps below use the Node API from `main` and run the UI in a browser.
+Install Node.js and pnpm before continuing.
 
 From a clone of the full repository, install the workspace dependencies:
 
