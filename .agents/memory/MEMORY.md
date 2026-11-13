@@ -1,7 +1,0 @@
-- [Flutter preview rendering](flutter-preview.md) — CPU-only preview browsers need extra time for Flutter's first frame; an early blank capture is not conclusive.
-- [Flutter publishing dependencies](flutter-publishing.md) — release builds must restore Dart packages explicitly; the preview's home-directory cache is absent during publishing.
-- [Fluent UI SDK compatibility](fluent-ui-sdk-compatibility.md) — recent package releases may use Flutter APIs newer than their declared minimum; verify with tests and a web release build.
-- [Browser file selection](web-file-selection.md) — accounting image uploads use a browser-native picker because the generated web build omitted FilePickerWeb registration.
-- [Inventory unit rows](inventory-groups.md) — New while editing preserves item fields and adds an independent unit row; invoices bill each unit at its own price.
-- [Fluent InfoBar lifecycle](fluent-infobar-lifecycle.md) — `displayInfoBar` returns after overlay insertion, not after dismissal; track deduplication with an explicit lifetime.
-- [Dart printer companion](dart-printer-companion.md) — keep local silent printing in Flutter/Dart; workstations should not require Node.
