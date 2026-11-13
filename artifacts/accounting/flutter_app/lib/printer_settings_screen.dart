@@ -199,14 +199,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                 fluent.Button(
                   key: const ValueKey('printer-settings-exit'),
                   onPressed: widget.onExit,
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AppImageIcon(AppIcons.exit, size: 20),
-                      SizedBox(width: 6),
-                      Text('عودة'),
-                    ],
-                  ),
+                  child: const AppImageIcon(AppIcons.exit, size: 20),
                 ),
               ],
             ),
