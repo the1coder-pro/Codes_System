@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'auth_service.dart';
 import 'models.dart';
 import 'printer_bridge.dart';
+import 'print_documents.dart';
 import 'resizable_split.dart';
 import 'storage.dart';
 import 'theme.dart';
@@ -44,6 +45,8 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
   final _printerBridge = PrinterBridgeClient();
   List<LocalPrinter> _availablePrinters = [];
   String? _selectedPrinter;
+
+  String _dateText(DateTime date) => '${date.day}/${date.month}/${date.year}';
 
   List<Item> get visibleItems {
     final query = search.text.trim().toLowerCase();
@@ -190,11 +193,19 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
         await Store.loadPrinterPreferences(),
       );
       final printerName = _selectedPrinter ?? preferences.barcodePrinter;
-      await _printerBridge.printHtml(
+      final pdfBytes = await buildBarcodePdf(
+        itemName: item.nameAr,
+        code: code,
+        copies: copies,
+        template: template,
+        productionDate: productionDate,
+        expiryDate: expiryDate,
+      );
+      await _printerBridge.printPdf(
         preferences: preferences,
         printerName: printerName ?? '',
         jobType: 'barcode',
-        html: _printDocument(item, code, copies),
+        pdfBytes: pdfBytes,
       );
       if (mounted) {
         toast(
@@ -213,87 +224,6 @@ class _BarcodeScreenState extends State<BarcodeScreen> {
       }
     }
   }
-
-  String _printDocument(Item item, String code, int copies) {
-    final safeName = _escape(item.nameAr);
-    final safeCode = _escape(code);
-    final svg = _code39(code);
-    final (labelWidth, labelHeight, columns) = switch (template) {
-      'استيكر السعر صغير 20 * 35 مل - 2' => ('35mm', '20mm', 4),
-      'بطاقة رف 30 * 60 مل - 3' => ('60mm', '30mm', 2),
-      _ => ('50mm', '25mm', 3),
-    };
-    final labels = List.filled(copies, '''
-      <article class="label">
-        <div class="name" dir="rtl">$safeName</div>
-        <svg viewBox="0 0 ${svg.$2} 44" role="img" aria-label="باركود $safeCode">
-          <rect width="100%" height="44" fill="white"/>
-          <g fill="#111">${svg.$1}</g>
-        </svg>
-        <div class="code">$safeCode</div>
-        <div class="dates" dir="rtl">
-          <span>إنتاج ${_dateText(productionDate)}</span>
-          <span>انتهاء ${_dateText(expiryDate)}</span>
-        </div>
-      </article>
-      ''').join();
-    return '''
-      <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
-      <title>طباعة باركود</title>
-      <style>
-        *{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:12mm;color:#111}
-        main{display:grid;grid-template-columns:repeat($columns,minmax($labelWidth,1fr));gap:3mm}
-        .label{height:$labelHeight;min-width:$labelWidth;border:1px dashed #aaa;padding:1mm 2mm;text-align:center;overflow:hidden}
-        .name{font-size:9pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        svg{width:100%;height:9mm;margin-top:.5mm}.code{font:8pt monospace;letter-spacing:1px}
-        .dates{display:flex;justify-content:space-between;font-size:6pt;white-space:nowrap}
-        @media print{body{margin:4mm}.label{break-inside:avoid;border-color:#ddd}}
-      </style></head><body><main>$labels</main></body></html>
-    ''';
-  }
-
-  String _escape(String value) => value
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
-
-  /// Renders Code 39 bars for the numeric product codes accepted here.
-  (String, int) _code39(String code) {
-    const patterns = <String, String>{
-      '0': 'nnnwwnwnn',
-      '1': 'wnnwnnnnw',
-      '2': 'nnwwnnnnw',
-      '3': 'wnwwnnnnn',
-      '4': 'nnnwwnnnw',
-      '5': 'wnnwwnnnn',
-      '6': 'nnwwwnnnn',
-      '7': 'nnnwnnwnw',
-      '8': 'wnnwnnwnn',
-      '9': 'nnwwnnwnn',
-      '*': 'nwnnwnwnn',
-    };
-    final symbols = '*$code*'.split('');
-    const narrow = 2;
-    const wide = 5;
-    var x = 0;
-    final bars = StringBuffer();
-    for (var s = 0; s < symbols.length; s++) {
-      final pattern = patterns[symbols[s]]!;
-      for (var i = 0; i < pattern.length; i++) {
-        final width = pattern[i] == 'w' ? wide : narrow;
-        if (i.isEven) {
-          bars.write('<rect x="$x" y="0" width="$width" height="42"/>');
-        }
-        x += width;
-      }
-      if (s != symbols.length - 1) x += narrow;
-    }
-    return (bars.toString(), x);
-  }
-
-  String _dateText(DateTime date) => '${date.day}/${date.month}/${date.year}';
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(

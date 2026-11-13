@@ -4,3 +4,4 @@
 - [Browser file selection](web-file-selection.md) — accounting image uploads use a browser-native picker because the generated web build omitted FilePickerWeb registration.
 - [Inventory unit rows](inventory-groups.md) — New while editing preserves item fields and adds an independent unit row; invoices bill each unit at its own price.
 - [Fluent InfoBar lifecycle](fluent-infobar-lifecycle.md) — `displayInfoBar` returns after overlay insertion, not after dismissal; track deduplication with an explicit lifetime.
+- [Dart printer companion](dart-printer-companion.md) — keep local silent printing in Flutter/Dart; workstations should not require Node.

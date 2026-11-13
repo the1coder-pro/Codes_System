@@ -2,10 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'auth_service.dart';
+import 'printer_companion_stub.dart'
+    if (dart.library.io) 'printer_companion.dart'
+    as printer_companion;
 import 'shell.dart';
 import 'theme.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (const bool.fromEnvironment('PRINTER_COMPANION')) {
+    await printer_companion.runPrinterCompanion();
+    return;
+  }
   runApp(const AccountingApp());
 }
 

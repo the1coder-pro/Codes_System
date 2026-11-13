@@ -224,13 +224,13 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'شغّل Local Printer Service، ثم أدخل رمز الربط الذي يظهر في نافذته. '
+                    'شغّل تطبيق Local Printer Companion على هذا الجهاز، ثم أدخل رمز الربط الظاهر فيه. '
                     'تُحفظ الاختيارات في هذا المتصفح وعلى هذا الجهاز فقط.',
                     textAlign: TextAlign.right,
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'الأمر: pnpm --filter @workspace/local-printer-agent run show-token',
+                    'لا يحتاج التطبيق المرافق إلى Node.js.',
                     textDirection: TextDirection.ltr,
                     textAlign: TextAlign.left,
                   ),

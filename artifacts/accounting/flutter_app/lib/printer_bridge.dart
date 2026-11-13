@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -119,11 +120,13 @@ class PrinterBridgeClient {
     }
   }
 
-  Future<void> printHtml({
+  Future<void> printPdf({
     required PrinterPreferences preferences,
     required String printerName,
     required String jobType,
-    required String html,
+    required Uint8List pdfBytes,
+    double paperWidthMm = 210,
+    double paperHeightMm = 297,
   }) async {
     if (preferences.token.trim().isEmpty) {
       throw const PrinterBridgeException('لم يتم إعداد خدمة الطباعة المحلية');
@@ -142,7 +145,9 @@ class PrinterBridgeClient {
             body: jsonEncode({
               'printerName': printerName,
               'jobType': jobType,
-              'html': html,
+              'pdfBase64': base64Encode(pdfBytes),
+              'paperWidthMm': paperWidthMm,
+              'paperHeightMm': paperHeightMm,
             }),
           )
           .timeout(const Duration(seconds: 45));

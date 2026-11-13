@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
@@ -5,6 +7,7 @@ import 'auth_service.dart';
 import 'item_image.dart';
 import 'models.dart';
 import 'printer_bridge.dart';
+import 'print_documents.dart';
 import 'resizable_split.dart';
 import 'storage.dart';
 import 'theme.dart';
@@ -389,14 +392,15 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     }
     final preferences = await _invoicePrinterPreferences();
     if (!mounted || preferences == null) return;
-    final document = _printDocument();
+    final document = await _invoicePdf();
+    if (!mounted) return;
     if (!await _saveInvoiceAndReset()) return;
     try {
-      await _printerBridge.printHtml(
+      await _printerBridge.printPdf(
         preferences: preferences,
         printerName: preferences.invoicePrinter ?? '',
         jobType: 'invoice',
-        html: document,
+        pdfBytes: document,
       );
       if (mounted) {
         toast(
@@ -437,11 +441,11 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     final preferences = await _invoicePrinterPreferences();
     if (!mounted || preferences == null) return;
     try {
-      await _printerBridge.printHtml(
+      await _printerBridge.printPdf(
         preferences: preferences,
         printerName: preferences.invoicePrinter ?? '',
         jobType: 'invoice',
-        html: _printDocument(),
+        pdfBytes: await _invoicePdf(),
       );
     } catch (error) {
       if (mounted) {
@@ -489,118 +493,41 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     }
   }
 
-  String _printDocument() {
-    String escape(String value) => value
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
-
-    final rows = lines.asMap().entries.map((entry) {
-      final index = entry.key + 1;
-      final line = entry.value;
-      final quantity = line.qty == line.qty.roundToDouble()
-          ? line.qty.toStringAsFixed(0)
-          : line.qty.toString();
-      return '''
-        <tr>
-          <td>$index</td>
-          <td>${escape(line.name)}</td>
-          <td>${escape(line.unit)}</td>
-          <td>$quantity</td>
-          <td>${money(line.price)}</td>
-          <td>${money(line.total)}</td>
-        </tr>
-      ''';
-    }).join();
-    final notes = h['notes']!.text.trim();
-    final number = h['number']!.text.trim();
-    final account = h['account']!.text.trim();
-    final taxNumber = h['taxNo']!.text.trim();
-    final noteSection = notes.isEmpty
-        ? ''
-        : '<section class="notes"><strong>ملاحظات:</strong> ${escape(notes)}</section>';
-
-    return '''
-      <!doctype html>
-      <html lang="ar" dir="rtl">
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <title>${escape(type.ar)} ${escape(number)}</title>
-          <style>
-            * { box-sizing: border-box; }
-            body {
-              color: #15202b;
-              font-family: "IBM Plex Sans Arabic", Arial, sans-serif;
-              margin: 20px auto;
-              max-width: 1000px;
-              padding: 0 18px;
-            }
-            h1 { font-size: 25px; margin: 0 0 4px; }
-            .subtitle { color: #526477; margin-bottom: 20px; }
-            .details {
-              border: 1px solid #b7c7d7;
-              border-radius: 6px;
-              display: grid;
-              gap: 10px 24px;
-              grid-template-columns: repeat(2, minmax(0, 1fr));
-              margin-bottom: 20px;
-              padding: 14px;
-            }
-            .detail-label { color: #526477; font-size: 12px; }
-            .detail-value { font-weight: 700; margin-top: 3px; }
-            table { border-collapse: collapse; width: 100%; }
-            th, td { border: 1px solid #b7c7d7; padding: 8px; text-align: right; }
-            th { background: #edf3f8; }
-            .totals { margin: 18px 0 0 auto; max-width: 420px; width: 100%; }
-            .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
-            .grand-total { border-top: 2px solid #15202b; font-size: 18px; font-weight: 800; }
-            .notes { border-top: 1px solid #b7c7d7; margin-top: 20px; padding-top: 12px; }
-            @page { size: A4; margin: 12mm; }
-            @media print {
-              body { margin: 0; max-width: none; padding: 0; }
-              tr { break-inside: avoid; }
-            }
-          </style>
-        </head>
-        <body>
-          <header>
-            <h1>${escape(type.ar)}</h1>
-            <div class="subtitle">${escape(type.en)}</div>
-          </header>
-          <section class="details">
-            <div><div class="detail-label">رقم الفاتورة</div><div class="detail-value">${number.isEmpty ? '—' : escape(number)}</div></div>
-            <div><div class="detail-label">تاريخ ووقت الفاتورة</div><div class="detail-value">${_fmt(invDate)} ${_time(invDate)}</div></div>
-            <div><div class="detail-label">تاريخ التسليم</div><div class="detail-value">${_fmt(delivDate)}</div></div>
-            <div><div class="detail-label">اسم الحساب</div><div class="detail-value">${account.isEmpty ? '—' : escape(account)}</div></div>
-            <div><div class="detail-label">الرقم الضريبي</div><div class="detail-value">${taxNumber.isEmpty ? '—' : escape(taxNumber)}</div></div>
-            <div><div class="detail-label">حالة الضريبة</div><div class="detail-value">${escape(taxable)}</div></div>
-          </section>
-          <table>
-            <thead><tr>
-              <th>م</th><th>اسم الصنف</th><th>الوحدة</th>
-              <th>الكمية</th><th>سعر الوحدة قبل الضريبة</th><th>الإجمالي قبل الضريبة</th>
-            </tr></thead>
-            <tbody>$rows</tbody>
-          </table>
-          <section class="totals">
-            <div class="total-row"><span>الإجمالي قبل الخصم</span><strong>${money(subtotal)}</strong></div>
-            <div class="total-row"><span>الخصم</span><strong>${money(discount)}</strong></div>
-            <div class="total-row"><span>الضريبة</span><strong>${money(tax)}</strong></div>
-            <div class="total-row grand-total"><span>الصافي</span><strong>${money(net)}</strong></div>
-            <div class="total-row"><span>نقداً</span><strong>${money(_n('cash'))}</strong></div>
-            <div class="total-row"><span>شبكة</span><strong>${money(_n('network'))}</strong></div>
-            <div class="total-row"><span>آجل</span><strong>${money(_n('credit'))}</strong></div>
-            <div class="total-row"><span>رصيد رجيع</span><strong>${money(_n('returnBal'))}</strong></div>
-            <div class="total-row"><span>المتبقي</span><strong>${money(remaining)}</strong></div>
-          </section>
-          $noteSection
-        </body>
-      </html>
-    ''';
-  }
+  Future<Uint8List> _invoicePdf() => buildInvoicePdf(
+    titleAr: type.ar,
+    titleEn: type.en,
+    invoiceNumber: h['number']!.text.trim(),
+    invoiceDateTime: '${_fmt(invDate)} ${_time(invDate)}',
+    deliveryDate: _fmt(delivDate),
+    account: h['account']!.text.trim(),
+    taxNumber: h['taxNo']!.text.trim(),
+    taxStatus: taxable,
+    lines: lines
+        .map(
+          (line) => InvoicePrintLine(
+            name: line.name,
+            unit: line.unit,
+            quantity: line.qty == line.qty.roundToDouble()
+                ? line.qty.toStringAsFixed(0)
+                : line.qty.toString(),
+            unitPrice: money(line.price),
+            total: money(line.total),
+          ),
+        )
+        .toList(),
+    totals: [
+      InvoicePrintTotal('الإجمالي قبل الخصم', money(subtotal)),
+      InvoicePrintTotal('الخصم', money(discount)),
+      InvoicePrintTotal('الضريبة', money(tax)),
+      InvoicePrintTotal('الصافي', money(net), emphasized: true),
+      InvoicePrintTotal('نقداً', money(_n('cash'))),
+      InvoicePrintTotal('شبكة', money(_n('network'))),
+      InvoicePrintTotal('آجل', money(_n('credit'))),
+      InvoicePrintTotal('رصيد رجيع', money(_n('returnBal'))),
+      InvoicePrintTotal('المتبقي', money(remaining)),
+    ],
+    notes: h['notes']!.text.trim(),
+  );
 
   String _fmt(DateTime d) => '${d.month}/${d.day}/${d.year}';
   String _time(DateTime d) {
