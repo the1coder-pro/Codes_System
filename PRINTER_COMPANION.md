@@ -1,14 +1,13 @@
-# Local Printer Companion
+# Standalone Desktop Accounting App
 
-The accounting web app cannot access installed printers silently from the
-browser. The Flutter desktop companion runs on the workstation, exposes a
-loopback-only HTTP service, and uses Flutter's `printing` plugin to discover
-printers and print PDF jobs without a browser dialog.
+The Flutter desktop build runs the complete accounting interface without a
+browser or Node.js. It starts the loopback-only printing service automatically
+and uses Flutter's `printing` plugin to discover printers and print PDFs.
 
-## Build for a workstation
+## Build the standalone system
 
-Install Flutter and the platform's normal desktop build tools on the build
-computer. From the repository root, run one of:
+Install Flutter and the platform's normal desktop build tools. From the
+repository root, run:
 
 ```sh
 flutter build windows --dart-define=PRINTER_COMPANION=true
@@ -16,34 +15,35 @@ flutter build macos --dart-define=PRINTER_COMPANION=true
 flutter build linux --dart-define=PRINTER_COMPANION=true
 ```
 
-The resulting desktop app includes its Flutter runtime and does not require
-Node.js or a separate Dart installation on the workstation.
+The resulting app opens the accounting system and starts printing on the same
+computer. It does not require Node.js or a separate Dart installation. Inventory,
+accounts, invoices, printer preferences, and role passwords stay on this
+computer and are not synchronized with the browser version.
 
-## Pair
+On first launch, all four roles use password `1233`. Sign in as `admin` and use
+**الإدارة → إدارة كلمات المرور** to set new passwords. New passwords must be at
+least eight characters and are stored in the operating system's secure storage.
 
-1. Launch the companion app and leave its window open.
-2. Copy the pairing token shown in the app.
-3. In the accounting web app, open **الإدارة → إدارة الطابعات**.
-4. Paste the token, connect, and choose separate invoice and barcode printers.
-5. Open the barcode form and choose a different printer for an individual job
-   if needed.
+## Use the web app with a separate print-only companion
 
-Printer names and pairing settings are local to that workstation's operating
-system and browser profile. The companion binds to `127.0.0.1:17863` only.
-Accept the browser's local-network permission prompt if it appears.
+For a web app that runs separately, build the old print-only window with
+`--dart-define=PRINTER_SERVICE_ONLY=true`. Leave it open, copy its pairing token,
+and enter it under **الإدارة → إدارة الطابعات** in the browser.
 
 For custom app domains, set `PRINTER_ALLOWED_ORIGINS` to the exact origin (or
 comma-separated origins) when launching the companion. Replit preview and
 published domains are allowed by default.
+
+## Platform setup
+
+- macOS: both debug and release entitlements include printer access, local
+  network client/server access, and Keychain access for secure passwords.
+- Linux: install `libsecret-1-dev` to build and `libsecret-1-0` to run the app.
+- Windows: install Visual Studio Build Tools with the C++ ATL component.
+
 
 ## Print formats
 
 Invoices and barcode sheets are generated as PDFs using IBM Plex Sans Arabic.
 The barcode companion uses the selected printer and the document's A4 page
 format; the barcode label dimensions and grid are laid out inside the page.
-
-## macOS permissions
-
-The macOS app sandbox requires `com.apple.security.print` in both the Debug
-Profile and Release entitlements for printer discovery and printing. Rebuild
-the app after pulling entitlement changes.

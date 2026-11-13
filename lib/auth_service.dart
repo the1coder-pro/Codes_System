@@ -80,6 +80,13 @@ abstract interface class AccountingAuthService {
   Future<bool> authorize(UserSession session, String permission);
 }
 
+abstract interface class AdminPasswordManagementService {
+  Future<void> setRolePasswords(
+    UserSession administrator,
+    Map<AccountingRole, String> passwords,
+  );
+}
+
 class ApiAuthService implements AccountingAuthService {
   const ApiAuthService();
 

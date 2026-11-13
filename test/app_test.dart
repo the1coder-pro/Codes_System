@@ -98,7 +98,7 @@ Future<void> _launchAndLogin(
     await tester.tap(find.byKey(const ValueKey('login-submit')));
     await tester.pumpAndSettle();
     expect(
-      find.text('بيانات الدخول غير صحيحة أو تعذر الاتصال بالخادم'),
+      find.text('بيانات الدخول غير صحيحة أو تعذر تسجيل الدخول'),
       findsOneWidget,
     );
     await tester.tap(find.byKey(const ValueKey('login-clear')));
@@ -111,7 +111,7 @@ Future<void> _launchAndLogin(
       isEmpty,
     );
     expect(
-      find.text('بيانات الدخول غير صحيحة أو تعذر الاتصال بالخادم'),
+      find.text('بيانات الدخول غير صحيحة أو تعذر تسجيل الدخول'),
       findsNothing,
     );
   }

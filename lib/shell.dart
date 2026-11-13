@@ -10,6 +10,7 @@ import 'inventory_screen.dart';
 import 'invoice_menu.dart';
 import 'invoice_screen.dart';
 import 'printer_settings_screen.dart';
+import 'user_passwords_screen.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -21,12 +22,19 @@ enum ShellView {
   accounts,
   barcode,
   printerSettings,
+  userPasswords,
 }
 
 /// Window chrome: title strip, menu bar, ribbon, content canvas, status bar.
 class AppShell extends StatefulWidget {
   final AccountingAuthService authService;
-  const AppShell({super.key, this.authService = const ApiAuthService()});
+  final String? embeddedPrinterToken;
+
+  const AppShell({
+    super.key,
+    this.authService = const ApiAuthService(),
+    this.embeddedPrinterToken,
+  });
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -73,6 +81,7 @@ class _AppShellState extends State<AppShell> {
       ShellView.invoiceMenu || ShellView.invoice => 'invoice.view',
       ShellView.barcode => 'barcode.view',
       ShellView.printerSettings => 'printer.manage',
+      ShellView.userPasswords => 'admin.users',
       ShellView.home => null,
     };
     if (permission != null && !_can(permission)) {
@@ -224,7 +233,10 @@ class _AppShellState extends State<AppShell> {
     }
     final mainMenu = _menu('القائمة الرئيسية', mainEntries);
     final adminMenu = _menu('إدارة', [
-      ('المستخدمون والصلاحيات', () => soon('المستخدمون')),
+      if (widget.authService is AdminPasswordManagementService)
+        ('إدارة كلمات المرور', () => go(ShellView.userPasswords))
+      else
+        ('المستخدمون والصلاحيات', () => soon('المستخدمون')),
       ('بيانات المنشأة', () => soon('بيانات المنشأة')),
       if (_can('printer.manage'))
         ('إدارة الطابعات', () => go(ShellView.printerSettings)),
@@ -530,6 +542,13 @@ class _AppShellState extends State<AppShell> {
       ShellView.printerSettings => PrinterSettingsScreen(
         session: session!,
         authService: widget.authService,
+        embeddedPrinterToken: widget.embeddedPrinterToken,
+        onExit: () => go(ShellView.home),
+      ),
+      ShellView.userPasswords => UserPasswordsScreen(
+        session: session!,
+        authService: widget.authService,
+        passwordService: widget.authService as AdminPasswordManagementService,
         onExit: () => go(ShellView.home),
       ),
     };
@@ -871,7 +890,7 @@ class _LoginDialogState extends State<_LoginDialog> {
     } catch (_) {
       if (mounted) {
         setState(() {
-          error = 'بيانات الدخول غير صحيحة أو تعذر الاتصال بالخادم';
+          error = 'بيانات الدخول غير صحيحة أو تعذر تسجيل الدخول';
           signingIn = false;
         });
       }

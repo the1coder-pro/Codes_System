@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'auth_service.dart';
+import 'local_auth_service_stub.dart'
+    if (dart.library.io) 'local_auth_service.dart'
+    as local_auth;
 import 'printer_companion_stub.dart'
     if (dart.library.io) 'printer_companion.dart'
     as printer_companion;
@@ -10,8 +13,25 @@ import 'theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (const bool.fromEnvironment('PRINTER_COMPANION')) {
+  if (const bool.fromEnvironment('PRINTER_SERVICE_ONLY')) {
     await printer_companion.runPrinterCompanion();
+    return;
+  }
+  if (const bool.fromEnvironment('PRINTER_COMPANION')) {
+    final authService = local_auth.LocalAuthService();
+    final printerController = printer_companion.PrinterCompanionController();
+    try {
+      await authService.initialize();
+      await printerController.start();
+      runApp(
+        AccountingApp(
+          authService: authService,
+          printerController: printerController,
+        ),
+      );
+    } catch (error) {
+      runApp(_StartupErrorApp(error: error));
+    }
     return;
   }
   runApp(const AccountingApp());
@@ -19,7 +39,13 @@ Future<void> main() async {
 
 class AccountingApp extends StatelessWidget {
   final AccountingAuthService authService;
-  const AccountingApp({super.key, this.authService = const ApiAuthService()});
+  final printer_companion.PrinterCompanionController? printerController;
+
+  const AccountingApp({
+    super.key,
+    this.authService = const ApiAuthService(),
+    this.printerController,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +75,38 @@ class AccountingApp extends StatelessWidget {
           ),
         );
       },
-      home: AppShell(authService: authService),
+      home: AppShell(
+        authService: authService,
+        embeddedPrinterToken: printerController?.token,
+      ),
     );
   }
+}
+
+class _StartupErrorApp extends StatelessWidget {
+  final Object error;
+
+  const _StartupErrorApp({required this.error});
+
+  @override
+  Widget build(BuildContext context) => fluent.FluentApp(
+    title: 'المحاسبة المالية العامة',
+    theme: buildFluentTheme(),
+    locale: const Locale('ar'),
+    home: fluent.ScaffoldPage(
+      content: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: fluent.InfoBar(
+            title: const Text('تعذر تشغيل النظام المستقل'),
+            content: Text(
+              'تعذر الوصول إلى مخزن كلمات المرور الآمن في نظام التشغيل. '
+              'أعد تشغيل التطبيق أو تحقق من صلاحيات التخزين الآمن.\\n$error',
+            ),
+            severity: fluent.InfoBarSeverity.error,
+          ),
+        ),
+      ),
+    ),
+  );
 }
