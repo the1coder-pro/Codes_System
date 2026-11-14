@@ -626,6 +626,78 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('multiple invoices keep separate drafts and can switch tabs', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await _launchAndLogin(tester);
+
+    final invoicesButton = find.byKey(
+      const ValueKey('ribbon-الفواتير\nوأوامر الصرف'),
+    );
+    await tester.tap(invoicesButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('فاتورة شراء').first);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('invoice-form-1')), findsOneWidget);
+
+    final firstAccountField = find.descendant(
+      of: find.byKey(const ValueKey('invoice-form-1')),
+      matching: find.byKey(const ValueKey('invoice-account-field')),
+    );
+    await tester.enterText(firstAccountField, 'Supplier One');
+
+    await tester.tap(invoicesButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('فاتورة إرجاع مشتريات').first);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('invoice-form-1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('invoice-form-2')), findsOneWidget);
+    expect(find.byKey(const ValueKey('open-invoice-tabs')), findsOneWidget);
+    expect(find.byKey(const ValueKey('open-invoice-tab-1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('open-invoice-tab-2')), findsOneWidget);
+
+    final secondAccountField = find.descendant(
+      of: find.byKey(const ValueKey('invoice-form-2')),
+      matching: find.byKey(const ValueKey('invoice-account-field')),
+    );
+    await tester.enterText(secondAccountField, 'Supplier Two');
+    await tester.tap(find.byKey(const ValueKey('open-invoice-tab-1')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.byKey(const ValueKey('shell-route-layer-2')),
+          )
+          .ignoring,
+      isFalse,
+    );
+    expect(
+      tester.widget<app_widgets.TextBox>(firstAccountField).controller.text,
+      'Supplier One',
+    );
+    expect(
+      tester.widget<app_widgets.TextBox>(secondAccountField).controller.text,
+      'Supplier Two',
+    );
+
+    await tester.tap(find.byKey(const ValueKey('open-invoice-tab-2')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.byKey(const ValueKey('shell-route-layer-4')),
+          )
+          .ignoring,
+      isFalse,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('menus align right and ribbon buttons stay compact on desktop', (
     tester,
   ) async {

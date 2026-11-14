@@ -9,6 +9,7 @@ import 'barcode_screen.dart';
 import 'inventory_screen.dart';
 import 'invoice_menu.dart';
 import 'invoice_screen.dart';
+import 'models.dart';
 import 'printer_settings_screen.dart';
 import 'user_passwords_screen.dart';
 import 'theme.dart';
@@ -29,8 +30,14 @@ class _ShellRoute {
   final int id;
   final ShellView view;
   final int? invoiceType;
+  final int? invoiceNumber;
 
-  const _ShellRoute({required this.id, required this.view, this.invoiceType});
+  const _ShellRoute({
+    required this.id,
+    required this.view,
+    this.invoiceType,
+    this.invoiceNumber,
+  });
 }
 
 /// Window chrome: title strip, menu bar, ribbon, content canvas, status bar.
@@ -53,10 +60,13 @@ class _AppShellState extends State<AppShell> {
     const _ShellRoute(id: 0, view: ShellView.home),
   ];
   int _nextRouteId = 1;
+  int _nextInvoiceNumber = 1;
   UserSession? session;
   bool _loginDialogOpen = false;
 
   ShellView get view => _routes.last.view;
+  List<_ShellRoute> get _openInvoices =>
+      _routes.where((route) => route.view == ShellView.invoice).toList();
 
   @override
   void initState() {
@@ -114,14 +124,26 @@ class _AppShellState extends State<AppShell> {
   void openInvoice(int t) {
     if (!_can('invoice.view')) return;
     setState(() {
-      _routes.add(
-        _ShellRoute(
-          id: _nextRouteId++,
-          view: ShellView.invoice,
-          invoiceType: t,
-        ),
+      final newInvoice = _ShellRoute(
+        id: _nextRouteId++,
+        view: ShellView.invoice,
+        invoiceType: t,
+        invoiceNumber: _nextInvoiceNumber++,
       );
+      if (view == ShellView.invoiceMenu) {
+        _routes[_routes.length - 1] = newInvoice;
+      } else {
+        _routes.add(newInvoice);
+      }
     });
+  }
+
+  void _activateInvoice(int routeId) {
+    final index = _routes.indexWhere(
+      (route) => route.id == routeId && route.view == ShellView.invoice,
+    );
+    if (index < 0 || index == _routes.length - 1) return;
+    setState(() => _routes.add(_routes.removeAt(index)));
   }
 
   void _closeCurrentView() {
@@ -148,6 +170,7 @@ class _AppShellState extends State<AppShell> {
             id: _nextRouteId++,
             view: ShellView.invoice,
             invoiceType: previous.invoiceType,
+            invoiceNumber: previous.invoiceNumber,
           ),
         );
       }
@@ -195,6 +218,7 @@ class _AppShellState extends State<AppShell> {
             _titleStrip(),
             _menuBar(),
             _ribbon(),
+            if (_openInvoices.length > 1) _openInvoiceTabs(),
             const Divider(height: 1, color: AppColors.line),
             Expanded(child: _content()),
             const _StatusBar(),
@@ -552,6 +576,80 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
+  Widget _openInvoiceTabs() {
+    final invoices = _openInvoices;
+    return Container(
+      key: const ValueKey('open-invoice-tabs'),
+      height: 42,
+      color: const Color(0xFFF0F0F0),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: invoices.length + 1,
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
+        itemBuilder: (context, index) {
+          if (index == invoices.length) {
+            return fluent.Button(
+              key: const ValueKey('open-new-invoice-tab'),
+              onPressed: () => go(ShellView.invoiceMenu),
+              style: fluent.ButtonStyle(
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                ),
+                backgroundColor: const WidgetStatePropertyAll(Colors.white),
+                foregroundColor: const WidgetStatePropertyAll(AppColors.ink),
+                shape: WidgetStatePropertyAll(
+                  RoundedRectangleBorder(
+                    side: const BorderSide(color: AppColors.line),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              child: const Text('＋ فاتورة جديدة'),
+            );
+          }
+          final route = invoices[index];
+          final isActive =
+              view == ShellView.invoice && _routes.last.id == route.id;
+          final typeIndex = (route.invoiceType ?? 0)
+              .clamp(0, invoiceTypes.length - 1)
+              .toInt();
+          return fluent.Button(
+            key: ValueKey('open-invoice-tab-${route.invoiceNumber}'),
+            onPressed: () => _activateInvoice(route.id),
+            style: fluent.ButtonStyle(
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              ),
+              backgroundColor: WidgetStatePropertyAll(
+                isActive ? AppColors.navy : Colors.white,
+              ),
+              foregroundColor: WidgetStatePropertyAll(
+                isActive ? Colors.white : AppColors.ink,
+              ),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(
+                  side: BorderSide(
+                    color: isActive ? AppColors.navy : AppColors.line,
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${invoiceTypes[typeIndex].ar} ${route.invoiceNumber ?? index + 1}',
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _content() {
     final theme = fluent.FluentTheme.of(context);
     return ClipRect(
@@ -590,6 +688,7 @@ class _AppShellState extends State<AppShell> {
         onClose: _closeCurrentView,
       ),
       ShellView.invoice => InvoiceScreen(
+        key: ValueKey('invoice-form-${route.invoiceNumber}'),
         typeIndex: route.invoiceType ?? 0,
         session: session!,
         authService: widget.authService,
@@ -619,6 +718,7 @@ class _AppShellState extends State<AppShell> {
       ),
     };
     return Positioned.fill(
+      key: ValueKey('shell-position-${route.id}'),
       child: IgnorePointer(
         key: ValueKey('shell-route-layer-${route.id}'),
         ignoring: !isTop,
