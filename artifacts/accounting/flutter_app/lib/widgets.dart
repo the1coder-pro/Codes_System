@@ -90,6 +90,7 @@ class TextBox extends StatelessWidget {
   final TextAlign align;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
+  final FocusNode? focusNode;
   final TextInputType? keyboard;
   final String? placeholder;
   final TextDirection? textDirection;
@@ -104,6 +105,7 @@ class TextBox extends StatelessWidget {
     this.align = TextAlign.start,
     this.onChanged,
     this.onSubmitted,
+    this.focusNode,
     this.keyboard,
     this.placeholder,
     this.textDirection,
@@ -122,6 +124,7 @@ class TextBox extends StatelessWidget {
       textDirection: textDirection,
       onChanged: onChanged,
       onSubmitted: onSubmitted,
+      focusNode: focusNode,
       keyboardType: keyboard,
       placeholder: placeholder,
       autofocus: autofocus,
