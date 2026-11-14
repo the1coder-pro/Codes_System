@@ -15,14 +15,14 @@ void main() {
       ),
     );
 
-    expect(find.text('النظام المكتبي المستقل'), findsOneWidget);
-    expect(find.text('رفيق واجهة الويب المحلية'), findsOneWidget);
-    await tester.tap(find.text('تشغيل النظام المستقل'));
+    expect(find.text('تطبيق سطح المكتب'), findsOneWidget);
+    expect(find.text('واجهة الويب في المتصفح'), findsOneWidget);
+    await tester.tap(find.text('فتح تطبيق سطح المكتب'));
     await tester.pump(const Duration(milliseconds: 150));
     expect(standaloneSelected, isTrue);
     expect(webCompanionSelected, isFalse);
 
-    await tester.tap(find.text('تشغيل واجهة الويب'));
+    await tester.tap(find.text('فتح واجهة الويب'));
     await tester.pump(const Duration(milliseconds: 150));
     expect(webCompanionSelected, isTrue);
   });

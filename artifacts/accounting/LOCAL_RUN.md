@@ -10,19 +10,18 @@ standalone Flutter system does not.
 - macOS with Xcode command-line tools
 - Flutter SDK
 
-## Build the desktop app with both choices
+## Build the single companion app
 
-From the Flutter app folder:
+From the full repository root, run one command:
 
 ```sh
-flutter pub get
-flutter build macos
-open build/macos/Build/Products/Release/*.app
+bash scripts/build_accounting_companion.sh
 ```
 
-The app opens a mode chooser. You can also build directly into one mode with
-`--dart-define=PRINTER_COMPANION=true` for the standalone system or
-`--dart-define=PRINTER_WEB_COMPANION=true` for the web companion.
+The script detects macOS, Windows, or Linux and builds the same launcher
+application without mode-specific build flags. On macOS, open
+`artifacts/accounting/flutter_app/build/macos/Build/Products/Release/accounting_ui.app`.
+The launcher asks whether to open the standalone desktop UI or the local web UI.
 
 ## Run the standalone desktop system
 
@@ -44,17 +43,18 @@ does not sync with the browser app. On first launch, all four roles use password
 ## Run the locally hosted web UI from the companion
 
 This mode needs Node.js, pnpm, the Flutter SDK, and a running PostgreSQL database.
-Use a full `main` repository checkout; the `flutter-only` branch does not include
-the web or API source code.
+Use a full repository checkout; the `flutter-only` branch does not include the
+web or API source code.
 
-From the full repository root, install dependencies and configure `.env` with a
-`DATABASE_URL` for the local database:
+On the first launch, select the full repository folder once. The companion saves
+that location, runs `pnpm install --frozen-lockfile`, builds the API and web UI,
+starts the API, web server, and Dart printer service, then opens the browser.
+Later launches start automatically with the saved folder. No terminal commands
+are needed for these services.
 
-```sh
-pnpm install
-```
-
-For a new, empty local database, create its schema once with:
+The local PostgreSQL server must already be running and `DATABASE_URL` must be
+set in the repository's `.env`. For a new, empty database, initialize its schema
+once from the repository root with:
 
 ```sh
 pnpm --filter @workspace/db run push
@@ -63,13 +63,9 @@ pnpm --filter @workspace/db run push
 Only run the schema command against the intended local database; back up any
 existing data before changing its schema. Do not commit `.env`.
 
-Build the desktop launcher from `artifacts/accounting/flutter_app` with
-`--dart-define=PRINTER_WEB_COMPANION=true`, or use the two-choice build above.
-Choose the full repository folder in the companion. It builds the web UI and API,
-starts them on `127.0.0.1:24339` and `127.0.0.1:8080`, starts the Dart printer
-service, and opens the browser. On the first run, pair the browser UI once with
-the printer token shown in the companion. Closing the companion stops its local
-services.
+The companion serves them on `127.0.0.1:24339` and `127.0.0.1:8080`. On the first
+run, pair the browser UI once with the printer token shown in the companion.
+Closing the companion stops its local services.
 
 While the web companion is running, use **إدارة كلمات المرور** in its window to
 change API role passwords. Verify with the current admin password. The first
@@ -88,7 +84,11 @@ Choose thermal 58/80 mm, A4 portrait, or A4 landscape; select Arabic, English,
 or bilingual output; then review the sample in the live preview and save.
 Settings are kept locally on the current browser/device.
 
-## Run the browser version locally
+## Optional: run the browser version manually
+
+Use the companion app above if you want dependency installation and service
+startup handled for you. The following commands are for developers who prefer
+to run each server in a separate terminal.
 
 The steps below use the Node API from `main` and run the UI in a browser.
 Install Node.js and pnpm before continuing.

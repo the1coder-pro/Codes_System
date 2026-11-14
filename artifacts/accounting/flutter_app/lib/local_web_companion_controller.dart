@@ -57,16 +57,17 @@ class LocalWebCompanionController extends ChangeNotifier {
     _notify();
   }
 
-  Future<void> chooseWorkspace() async {
+  Future<bool> chooseWorkspace() async {
     final selected = await FilePicker.getDirectoryPath(
       dialogTitle: 'اختر مجلد Codes_System الكامل',
     );
-    if (selected == null || selected.trim().isEmpty) return;
+    if (selected == null || selected.trim().isEmpty) return false;
     workspacePath = selected;
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_workspacePreferenceKey, selected);
-    status = 'تم اختيار مجلد المشروع. اضغط تشغيل لبدء الخدمات.';
+    status = 'تم اختيار المشروع. جارٍ تثبيت التبعيات وتشغيل النظام...';
     _notify();
+    return true;
   }
 
   Future<void> start() async {
@@ -118,6 +119,12 @@ class LocalWebCompanionController extends ChangeNotifier {
 
       final buildEnvironment = Map<String, String>.from(_environment)
         ..['NODE_ENV'] = 'development';
+      await _runBuild(
+        root.path,
+        const ['install', '--frozen-lockfile'],
+        buildEnvironment,
+        'تثبيت تبعيات المشروع',
+      );
       await _runBuild(
         root.path,
         const ['--filter', '@workspace/api-server', 'run', 'build'],
@@ -349,7 +356,8 @@ class LocalWebCompanionController extends ChangeNotifier {
     }
     final requiredFiles = [
       'pnpm-workspace.yaml',
-      'node_modules/.modules.yaml',
+      'pnpm-lock.yaml',
+      'package.json',
       'artifacts/api-server/package.json',
       'artifacts/accounting/package.json',
       'artifacts/accounting/flutter_app/pubspec.yaml',
@@ -357,8 +365,8 @@ class LocalWebCompanionController extends ChangeNotifier {
     for (final relativePath in requiredFiles) {
       if (!await File('${root.path}/$relativePath').exists()) {
         throw StateError(
-          'المجلد المحدد ليس نسخة Codes_System جاهزة. '
-          'يفقد الملف: $relativePath. شغّل pnpm install أولاً لتثبيت التبعيات.',
+          'المجلد المحدد ليس نسخة Codes_System كاملة. الملف المطلوب غير موجود: '
+          '$relativePath.',
         );
       }
     }

@@ -24,7 +24,13 @@ class _WebCompanionAppState extends State<WebCompanionApp>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _controller = LocalWebCompanionController();
-    unawaited(_controller.restoreLastWorkspace());
+    unawaited(_restoreAndStartIfConfigured());
+  }
+
+  Future<void> _restoreAndStartIfConfigured() async {
+    await _controller.restoreLastWorkspace();
+    if (!mounted || _controller.workspacePath.isEmpty) return;
+    await _controller.start();
   }
 
   @override
@@ -42,7 +48,7 @@ class _WebCompanionAppState extends State<WebCompanionApp>
 
   @override
   Widget build(BuildContext context) => fluent.FluentApp(
-    title: 'رفيق واجهة الويب المحلية',
+    title: 'رفيق النظام المحاسبي',
     debugShowCheckedModeBanner: false,
     theme: buildFluentTheme(),
     locale: const Locale('ar'),
@@ -61,6 +67,11 @@ class _WebCompanionScreen extends StatelessWidget {
   final LocalWebCompanionController controller;
 
   const _WebCompanionScreen({required this.controller});
+
+  Future<void> _chooseWorkspace() async {
+    final selected = await controller.chooseWorkspace();
+    if (selected) await controller.start();
+  }
 
   void _showPasswordDialog(BuildContext context) {
     unawaited(
@@ -105,7 +116,7 @@ class _WebCompanionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => fluent.ScaffoldPage(
-    header: fluent.PageHeader(title: const Text('رفيق واجهة الويب المحلية')),
+    header: fluent.PageHeader(title: const Text('رفيق النظام المحاسبي')),
     content: AnimatedBuilder(
       animation: controller,
       builder: (context, _) => LayoutBuilder(
@@ -151,8 +162,10 @@ class _WebCompanionScreen extends StatelessWidget {
                             child: fluent.Button(
                               onPressed: controller.isBusy
                                   ? null
-                                  : controller.chooseWorkspace,
-                              child: const Text('اختيار مجلد Codes_System'),
+                                  : _chooseWorkspace,
+                              child: const Text(
+                                'اختيار مجلد المشروع وبدء التشغيل',
+                              ),
                             ),
                           ),
                         ],
@@ -160,9 +173,9 @@ class _WebCompanionScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      'اختر نسخة المشروع الكاملة التي تحتوي على '
-                      'pnpm-workspace.yaml. يجب تثبيت Node.js وpnpm وFlutter، '
-                      'وإعداد DATABASE_URL في ملف .env لقاعدة PostgreSQL المحلية.',
+                      'اختر مجلد Codes_System الكامل مرة واحدة. سيُثبّت الرفيق '
+                      'التبعيات ويبني الواجهة والخادم تلقائياً. يلزم توفر Node.js '
+                      'وpnpm وFlutter، وإعداد PostgreSQL المحلي في ملف .env.',
                       textAlign: TextAlign.right,
                     ),
                     const SizedBox(height: 14),
@@ -241,7 +254,7 @@ class _WebCompanionScreen extends StatelessWidget {
                                 ? 'إيقاف النظام المحلي'
                                 : controller.isBusy
                                 ? 'جارٍ التشغيل...'
-                                : 'تشغيل الواجهة والطباعة',
+                                : 'بدء النظام المحلي',
                           ),
                         ),
                         if (controller.isBusy)

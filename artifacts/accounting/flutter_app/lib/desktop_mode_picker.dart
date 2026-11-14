@@ -46,7 +46,7 @@ class DesktopModePickerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => fluent.FluentApp(
-    title: 'المحاسبة المالية العامة',
+    title: 'مشغل النظام المحاسبي',
     debugShowCheckedModeBanner: false,
     theme: buildFluentTheme(),
     locale: const Locale('ar'),
@@ -67,14 +67,13 @@ class DesktopModePickerApp extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
-                  'اختر طريقة تشغيل النظام',
+                  'مشغل النظام المحاسبي',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'يمكنك تشغيل نظام Flutter محلياً أو فتح واجهة الويب المحلية '
-                  'مع رفيق الطباعة.',
+                  'اختر تطبيق سطح المكتب أو واجهة الويب في المتصفح.',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 28),
@@ -85,22 +84,20 @@ class DesktopModePickerApp extends StatelessWidget {
                       final options = [
                         _option(
                           icon: Icons.desktop_windows_rounded,
-                          title: 'النظام المكتبي المستقل',
+                          title: 'تطبيق سطح المكتب',
                           description:
-                              'واجهة Flutter وبيانات محلية على هذا الجهاز. '
-                              'خدمة الطباعة تبدأ تلقائياً، ولا يحتاج هذا الوضع '
-                              'إلى Node.js أو متصفح.',
-                          buttonText: 'تشغيل النظام المستقل',
+                              'يفتح النظام مباشرةً ويبدأ الطباعة. تحفظ البيانات '
+                              'على هذا الجهاز، ولا يحتاج إلى Node.js.',
+                          buttonText: 'فتح تطبيق سطح المكتب',
                           onPressed: onStandalone,
                         ),
                         _option(
                           icon: Icons.web_rounded,
-                          title: 'رفيق واجهة الويب المحلية',
+                          title: 'واجهة الويب في المتصفح',
                           description:
-                              'يشغّل خادم الويب والـAPI من نسخة Codes_System '
-                              'المحلية، يبدأ خدمة الطباعة Dart، ثم يفتح النظام '
-                              'في المتصفح.',
-                          buttonText: 'تشغيل واجهة الويب',
+                              'يثبت التبعيات ويبني الواجهة والخادم تلقائياً، '
+                              'ويبدأ الطباعة ثم يفتح المتصفح.',
+                          buttonText: 'فتح واجهة الويب',
                           onPressed: onWebCompanion,
                         ),
                       ];
@@ -134,8 +131,8 @@ class DesktopModePickerApp extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'وضع الويب المحلي يحتاج إلى Node.js وpnpm وFlutter وقاعدة '
-                  'PostgreSQL محلية مُعدّة.',
+                  'لأول تشغيل للويب، يلزم مجلد المشروع الكامل وNode.js وpnpm وFlutter '
+                  'وقاعدة PostgreSQL محلية مُعدّة.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.muted, fontSize: 12),
                 ),
