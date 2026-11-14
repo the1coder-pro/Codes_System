@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -70,6 +71,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   String storeCredit = 'مشتريات بضاعة بعرض البيع';
   String storeDebit = '-';
   String taxable = 'خاضع للضريبة';
+  String? _cleanInvoiceFingerprint;
 
   InvoiceType get type => invoiceTypes[widget.typeIndex];
   bool get _canEdit => widget.session.can('invoice.save');
@@ -93,9 +95,11 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     final loadedCatalog = await Store.loadItems();
     final number = await Store.nextInvoiceNumber();
     if (!mounted) return;
+    final wasUnchanged = !_hasUnsavedChanges;
     setState(() {
       catalog = loadedCatalog;
       h['number']!.text = number;
+      if (wasUnchanged) _cleanInvoiceFingerprint = null;
     });
     if (!draftCleared) {
       toast(
@@ -311,6 +315,51 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     'lines': lines.map((l) => l.toJson()).toList(),
   };
 
+  String _invoiceFingerprint() {
+    final invoice = _toJson()..remove('pick');
+    return jsonEncode(invoice);
+  }
+
+  bool get _hasUnsavedChanges =>
+      _cleanInvoiceFingerprint != null &&
+      _invoiceFingerprint() != _cleanInvoiceFingerprint;
+
+  Future<void> _requestExit() async {
+    if (!_hasUnsavedChanges) {
+      widget.onExit();
+      return;
+    }
+
+    final discard = await fluent.showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => fluent.ContentDialog(
+        key: const ValueKey('invoice-unsaved-close-dialog'),
+        title: const Text('تغييرات غير محفوظة'),
+        content: const Text(
+          'تحتوي هذه الفاتورة على تغييرات لم يتم حفظها. '
+          'هل تريد تجاهلها وإغلاق الفاتورة؟',
+        ),
+        actions: [
+          fluent.Button(
+            key: const ValueKey('invoice-close-continue'),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('متابعة التعديل'),
+          ),
+          fluent.FilledButton(
+            key: const ValueKey('invoice-close-discard'),
+            style: fluent.ButtonStyle(
+              backgroundColor: const WidgetStatePropertyAll(AppColors.red),
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('تجاهل التغييرات'),
+          ),
+        ],
+      ),
+    );
+    if (discard == true && mounted) widget.onExit();
+  }
+
   Future<bool> _saveInvoiceAndReset() async {
     if (!await requirePermission(
       context: context,
@@ -355,6 +404,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     setState(() {
       _resetInvoiceForm();
       h['number']!.text = nextNumber;
+      _cleanInvoiceFingerprint = null;
     });
     if (!draftCleared) {
       toast(
@@ -653,6 +703,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   @override
   Widget build(BuildContext context) {
     _syncAutomaticPayment();
+    _cleanInvoiceFingerprint ??= _invoiceFingerprint();
     return LayoutBuilder(
       builder: (context, box) {
         final wide = box.maxWidth >= 980;
@@ -1241,12 +1292,13 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                 onTap: () => setState(() => tab = 2),
               ),
               ActionTile(
+                key: const ValueKey('invoice-exit'),
                 assetPath: AppIcons.exit,
                 label: 'خروج F1',
                 hideLabel: true,
                 width: 54,
                 height: 58,
-                onTap: widget.onExit,
+                onTap: _requestExit,
               ),
             ],
           ),

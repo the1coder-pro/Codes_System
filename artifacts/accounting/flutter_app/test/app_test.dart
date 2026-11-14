@@ -544,6 +544,67 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('invoice close only confirms when there are unsaved changes', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    var exitCount = 0;
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: _invoiceScreen(onExit: () => exitCount++)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('invoice-exit')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('invoice-unsaved-close-dialog')),
+      findsNothing,
+    );
+    expect(exitCount, 1);
+
+    final accountField = find.byKey(const ValueKey('invoice-account-field'));
+    await tester.enterText(accountField, 'مورد تجريبي');
+    await tester.tap(find.byKey(const ValueKey('invoice-exit')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('invoice-unsaved-close-dialog')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('invoice-close-continue')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('invoice-unsaved-close-dialog')),
+      findsNothing,
+    );
+    expect(exitCount, 1);
+    expect(
+      tester.widget<app_widgets.TextBox>(accountField).controller.text,
+      'مورد تجريبي',
+    );
+
+    await tester.tap(find.byKey(const ValueKey('invoice-exit')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('invoice-close-discard')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('invoice-unsaved-close-dialog')),
+      findsNothing,
+    );
+    expect(exitCount, 2);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('forms stack and closing restores the previous form', (
     tester,
   ) async {
@@ -1445,6 +1506,12 @@ void main() {
     expect(find.text('مسح المسودة وبدء فاتورة جديدة'), findsNothing);
     expect(find.text('حفظ\nوطباعة'), findsOneWidget);
     expect(find.textContaining('طباعة F7'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('invoice-exit')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('invoice-unsaved-close-dialog')),
+      findsNothing,
+    );
     await tester.tap(find.text('بيانات الفاتورة'));
     await tester.pumpAndSettle();
     expect(find.text('000002'), findsOneWidget);
