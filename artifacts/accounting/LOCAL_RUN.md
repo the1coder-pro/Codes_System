@@ -71,6 +71,15 @@ service, and opens the browser. On the first run, pair the browser UI once with
 the printer token shown in the companion. Closing the companion stops its local
 services.
 
+While the web companion is running, use **إدارة كلمات المرور** in its window to
+change API role passwords. Verify with the current admin password. The first
+setup requires new passwords for all four roles; later updates can target one
+role at a time. New passwords are stored in the operating system's secure
+credential store, not written to `.env`. Saving them restarts the API and signs
+out active browser sessions. These saved credentials are applied when the API
+is started through the web companion. Web-mode passwords are separate from the
+standalone Flutter app's passwords.
+
 ## Run the browser version locally
 
 The steps below use the Node API from `main` and run the UI in a browser.

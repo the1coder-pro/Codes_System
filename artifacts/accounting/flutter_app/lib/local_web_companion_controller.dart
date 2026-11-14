@@ -7,6 +7,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'auth_service.dart';
+import 'local_auth_service.dart';
+import 'local_web_companion_credentials.dart';
 import 'printer_companion.dart';
 
 class LocalWebCompanionController extends ChangeNotifier {
@@ -15,6 +18,7 @@ class LocalWebCompanionController extends ChangeNotifier {
   static const _webPort = 24339;
 
   final PrinterCompanionController printerController;
+  final LocalWebCompanionCredentials _credentials;
   final List<String> _logs = [];
 
   String workspacePath = '';
@@ -22,6 +26,7 @@ class LocalWebCompanionController extends ChangeNotifier {
   bool isBusy = false;
   bool isRunning = false;
   bool _stopping = false;
+  bool _restartingApi = false;
   bool _disposed = false;
 
   Process? _buildProcess;
@@ -30,13 +35,21 @@ class LocalWebCompanionController extends ChangeNotifier {
   int? _apiExitCode;
   int? _webExitCode;
   Map<String, String> _environment = {};
+  Map<AccountingRole, String>? _rolePasswords;
   final Set<String> _redactValues = {};
 
-  LocalWebCompanionController({PrinterCompanionController? printerController})
-    : printerController = printerController ?? PrinterCompanionController();
+  LocalWebCompanionController({
+    PrinterCompanionController? printerController,
+    SecureKeyValueStore? secureStore,
+  }) : printerController = printerController ?? PrinterCompanionController(),
+       _credentials = LocalWebCompanionCredentials(
+         secureStore: secureStore ?? const FlutterSecureKeyValueStore(),
+       );
 
   List<String> get logs => List.unmodifiable(_logs);
   String get webUrl => 'http://127.0.0.1:$_webPort';
+  bool get requiresInitialPasswordSetup =>
+      _rolePasswords?.values.any((password) => password.length < 8) ?? true;
 
   Future<void> restoreLastWorkspace() async {
     final preferences = await SharedPreferences.getInstance();
@@ -68,15 +81,23 @@ class LocalWebCompanionController extends ChangeNotifier {
       final root = Directory(workspacePath);
       await _validateWorkspace(root);
       _environment = await _loadEnvironment(root);
+      final credentials = await _credentials.load(
+        environmentPasswords: _environment['ACCOUNTING_ROLE_PASSWORDS'],
+        environmentSessionSecret: _environment['SESSION_SECRET'],
+        generatedSessionSecret: _createSessionSecret(),
+      );
+      _rolePasswords = credentials.passwords;
+      if (credentials.wasStored) {
+        _environment['ACCOUNTING_ROLE_PASSWORDS'] =
+            credentials.encodedPasswords;
+      }
+      _environment['SESSION_SECRET'] = credentials.sessionSecret;
       final databaseUrl = _environment['DATABASE_URL']?.trim();
       if (databaseUrl == null || databaseUrl.isEmpty) {
         throw StateError(
           'لم يُعثر على DATABASE_URL. أضف اتصال قاعدة PostgreSQL محلية '
           'إلى ملف .env في مجلد المشروع.',
         );
-      }
-      if ((_environment['SESSION_SECRET'] ?? '').trim().isEmpty) {
-        _environment['SESSION_SECRET'] = _createSessionSecret();
       }
       _redactValues
         ..clear()
@@ -85,6 +106,7 @@ class LocalWebCompanionController extends ChangeNotifier {
             databaseUrl,
             _environment['SESSION_SECRET'] ?? '',
             _environment['ACCOUNTING_ROLE_PASSWORDS'] ?? '',
+            ...credentials.passwords.values,
           ].where((value) => value.isNotEmpty),
         );
 
@@ -113,23 +135,7 @@ class LocalWebCompanionController extends ChangeNotifier {
       await printerController.start();
       _log('خدمة الطباعة: ${printerController.status}');
 
-      final apiEnvironment = Map<String, String>.from(buildEnvironment)
-        ..['HOST'] = '127.0.0.1'
-        ..['PORT'] = '$_apiPort';
-      _apiExitCode = null;
-      _apiProcess = await Process.start(
-        'node',
-        const ['--enable-source-maps', 'artifacts/api-server/dist/index.mjs'],
-        workingDirectory: root.path,
-        environment: apiEnvironment,
-        runInShell: Platform.isWindows,
-      );
-      _watchProcess(_apiProcess!, 'خادم API', (code) => _apiExitCode = code);
-      await _waitForHttp(
-        'http://127.0.0.1:$_apiPort/api/healthz',
-        const Duration(seconds: 75),
-        'خادم API',
-      );
+      await _startApiAndWait(root.path);
 
       final webEnvironment = Map<String, String>.from(buildEnvironment)
         ..['HOST'] = '127.0.0.1'
@@ -180,6 +186,162 @@ class LocalWebCompanionController extends ChangeNotifier {
   }
 
   Future<void> openInBrowser() => _openBrowser();
+
+  Future<void> updateRolePasswords({
+    required String currentAdminPassword,
+    required Map<AccountingRole, String> changes,
+  }) async {
+    if (!isRunning || isBusy) {
+      throw const FormatException(
+        'شغّل الواجهة المحلية قبل إدارة كلمات المرور',
+      );
+    }
+    if (currentAdminPassword.isEmpty) {
+      throw const FormatException('أدخل كلمة مرور المسؤول الحالية');
+    }
+    if (changes.isEmpty) {
+      throw const FormatException('أدخل كلمة مرور جديدة لحساب واحد على الأقل');
+    }
+
+    isBusy = true;
+    status = 'جارٍ التحقق من المسؤول الحالي...';
+    _notify();
+    var credentialsSaved = false;
+    try {
+      final updated = Map<AccountingRole, String>.from(_rolePasswords!);
+      for (final entry in changes.entries) {
+        final password = entry.value;
+        if (password.length < 8) {
+          throw const FormatException(
+            'يجب أن تتكون كلمة المرور الجديدة من 8 أحرف على الأقل',
+          );
+        }
+        if (password.trim() != password) {
+          throw const FormatException(
+            'لا تضع مسافات في بداية كلمة المرور أو نهايتها',
+          );
+        }
+        updated[entry.key] = password;
+      }
+      if (updated.values.any((password) => password.length < 8)) {
+        throw const FormatException(
+          'لأول إعداد آمن، أدخل كلمات مرور للحسابات الأربعة. '
+          'بعدها يمكن تغيير حساب واحد فقط في كل مرة.',
+        );
+      }
+      await _verifyAdminPassword(currentAdminPassword);
+
+      final nextSecret = _createSessionSecret();
+      final config = LocalWebCompanionCredentialConfig(
+        passwords: updated,
+        sessionSecret: nextSecret,
+        wasStored: true,
+      );
+      await _credentials.save(config);
+      credentialsSaved = true;
+      _rolePasswords = updated;
+      _environment['ACCOUNTING_ROLE_PASSWORDS'] = config.encodedPasswords;
+      _environment['SESSION_SECRET'] = config.sessionSecret;
+      _redactValues
+        ..add(currentAdminPassword)
+        ..add(config.encodedPasswords)
+        ..add(config.sessionSecret)
+        ..addAll(updated.values);
+
+      status = 'تم حفظ كلمات المرور بأمان. جارٍ إعادة تشغيل خادم API...';
+      _notify();
+      _restartingApi = true;
+      await _stopApiProcess();
+      await _startApiAndWait(workspacePath);
+      status = 'تم تحديث كلمات المرور. سجّل الدخول مجدداً في واجهة الويب.';
+      _log(status);
+    } catch (error) {
+      if (credentialsSaved) {
+        _restartingApi = true;
+        await _stopProcesses();
+        await printerController.stop();
+        isRunning = false;
+        status =
+            'حُفظت كلمات المرور بأمان، لكن تعذر تشغيل الخادم بالإعداد الجديد. '
+            'شغّل النظام المحلي مجدداً.';
+      } else {
+        status = error is FormatException
+            ? error.message.toString()
+            : 'تعذر تحديث كلمات المرور؛ لم يتم تطبيق التغيير.';
+      }
+      _log(status);
+      rethrow;
+    } finally {
+      _restartingApi = false;
+      isBusy = false;
+      _notify();
+    }
+  }
+
+  Future<void> _verifyAdminPassword(String password) async {
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
+    try {
+      final request = await client
+          .postUrl(
+            Uri(
+              scheme: 'http',
+              host: '127.0.0.1',
+              port: _apiPort,
+              path: '/api/auth/login',
+            ),
+          )
+          .timeout(const Duration(seconds: 8));
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode({'username': 'admin', 'password': password}));
+      final response = await request.close().timeout(
+        const Duration(seconds: 8),
+      );
+      await response.drain<void>();
+      if (response.statusCode != HttpStatus.ok) {
+        throw const FormatException(
+          'كلمة مرور المسؤول الحالية غير صحيحة أو تعذر الاتصال بخادم API',
+        );
+      }
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  Future<void> _startApiAndWait(String root) async {
+    final apiEnvironment = Map<String, String>.from(_environment)
+      ..['NODE_ENV'] = 'development'
+      ..['HOST'] = '127.0.0.1'
+      ..['PORT'] = '$_apiPort';
+    _apiExitCode = null;
+    _apiProcess = await Process.start(
+      'node',
+      const ['--enable-source-maps', 'artifacts/api-server/dist/index.mjs'],
+      workingDirectory: root,
+      environment: apiEnvironment,
+      runInShell: Platform.isWindows,
+    );
+    _watchProcess(_apiProcess!, 'خادم API', (code) => _apiExitCode = code);
+    await _waitForHttp(
+      'http://127.0.0.1:$_apiPort/api/healthz',
+      const Duration(seconds: 75),
+      'خادم API',
+    );
+  }
+
+  Future<void> _stopApiProcess() async {
+    final process = _apiProcess;
+    _apiProcess = null;
+    _apiExitCode = null;
+    if (process == null) return;
+    process.kill();
+    await process.exitCode.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        process.kill();
+        return -1;
+      },
+    );
+  }
 
   Future<void> _validateWorkspace(Directory root) async {
     if (workspacePath.trim().isEmpty || !await root.exists()) {
@@ -349,7 +511,7 @@ class LocalWebCompanionController extends ChangeNotifier {
     unawaited(
       process.exitCode.then((code) {
         saveExitCode(code);
-        if (!_stopping && !_disposed) {
+        if (!_stopping && !_restartingApi && !_disposed) {
           status = '$label توقف بشكل غير متوقع (رمز $code).';
           _log(status);
           _notify();

@@ -40,6 +40,17 @@ On first launch, all four roles use password `1233`. Sign in as `admin` and use
 **الإدارة → إدارة كلمات المرور** to set new passwords. New passwords must be at
 least eight characters and are stored in the operating system's secure storage.
 
+## Manage passwords in local web mode
+
+Start the local web companion and use **إدارة كلمات المرور** in its window.
+Verify with the current admin password. The first secure setup requires new
+passwords for all four roles; later updates can target one role at a time.
+Passwords are stored in the operating system's secure storage, not written to
+`.env`. Saving them restarts the local API and invalidates active browser
+sessions. The saved passwords are applied when the API is started through this
+companion. Web-mode passwords are separate from the standalone Flutter app's
+passwords.
+
 ## Use the web app with a separate print-only companion
 
 For a web app that runs separately, build the old print-only window with
