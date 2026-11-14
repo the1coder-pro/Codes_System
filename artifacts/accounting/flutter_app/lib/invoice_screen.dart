@@ -7,6 +7,7 @@ import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'auth_service.dart';
 import 'item_image.dart';
+import 'invoice_history_screen.dart';
 import 'invoice_print_settings.dart';
 import 'models.dart';
 import 'printer_bridge.dart';
@@ -707,6 +708,12 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       }
     }
   }
+
+  Future<void> _openInvoiceHistory() => showInvoiceHistoryDialog(
+    context: context,
+    session: widget.session,
+    authService: widget.authService,
+  );
 
   Future<PrinterPreferences?> _invoicePrinterPreferences() async {
     final saved = await Store.loadPrinterPreferences();
@@ -1467,11 +1474,12 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                   onTap: _printCurrent,
                 ),
               ActionTile(
+                key: const ValueKey('invoice-history-search-open'),
                 assetPath: AppIcons.search,
-                label: 'بحث F2',
+                label: 'بحث\nفاتورة',
                 width: 54,
                 height: 58,
-                onTap: () => setState(() => tab = 2),
+                onTap: _openInvoiceHistory,
               ),
               ActionTile(
                 key: const ValueKey('invoice-exit'),

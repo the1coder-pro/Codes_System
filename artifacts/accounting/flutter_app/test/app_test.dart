@@ -1984,6 +1984,40 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('invoice history search opens as a dialog over the invoice', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: _invoiceScreen(onExit: () {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('invoice-history-search-open')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(InvoiceScreen), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('invoice-history-search-dialog')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('invoice-history-search-submit')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'scanning a barcode and pressing Enter adds and increments item',
     (tester) async {

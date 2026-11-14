@@ -5,6 +5,7 @@ import 'package:pdf/pdf.dart' as pdf;
 import 'package:pdf/widgets.dart' as pw;
 
 import 'invoice_print_settings.dart';
+import 'models.dart';
 
 const _mm = pdf.PdfPageFormat.mm;
 const _pageMarginMm = 12.0;
@@ -242,6 +243,130 @@ Future<Uint8List> buildInvoicePdf({
     );
   }
   return document.save();
+}
+
+/// Builds a printable document directly from a saved invoice snapshot.
+///
+/// This intentionally does not consult the active invoice form or inventory,
+/// so historical values remain stable even if the current invoice changes.
+Future<Uint8List> buildSavedInvoicePdf({
+  required int typeIndex,
+  required Map<String, dynamic> invoice,
+  required DateTime fallbackDate,
+  required InvoicePrintSettings settings,
+}) {
+  final type = invoiceTypes[typeIndex.clamp(0, invoiceTypes.length - 1)];
+  final invoiceDate =
+      DateTime.tryParse('${invoice['invDate'] ?? ''}') ?? fallbackDate;
+  final deliveryDate = DateTime.tryParse('${invoice['delivDate'] ?? ''}');
+  final lines = (invoice['lines'] is List ? invoice['lines'] as List : const [])
+      .whereType<Map>()
+      .map((raw) => Map<String, dynamic>.from(raw))
+      .toList();
+  final subtotal = lines.fold<double>(
+    0,
+    (sum, line) =>
+        sum +
+        _savedInvoiceNumber(line['qty'], fallback: 1) *
+            _savedInvoiceNumber(line['price']),
+  );
+  final discount = _savedInvoiceNumber(invoice['discount']);
+  final taxRate = _savedInvoiceNumber(invoice['taxRate']);
+  final tax = '${invoice['taxable'] ?? ''}' == 'خاضع للضريبة'
+      ? (subtotal - discount).clamp(0, double.infinity) * taxRate
+      : 0.0;
+  final net = subtotal - discount + tax;
+  final cash = _savedInvoiceNumber(invoice['cash']);
+  final network = _savedInvoiceNumber(invoice['network']);
+  final credit = _savedInvoiceNumber(invoice['credit']);
+  final returnBalance = _savedInvoiceNumber(invoice['returnBal']);
+  final notes = '${invoice['notes'] ?? ''}'.trim();
+
+  return buildInvoicePdf(
+    titleAr: type.ar,
+    titleEn: type.en,
+    invoiceNumber: '${invoice['number'] ?? '—'}',
+    invoiceDateTime: _savedInvoiceDateTime(invoiceDate),
+    deliveryDate: deliveryDate == null ? '' : _savedInvoiceDate(deliveryDate),
+    account: '${invoice['account'] ?? ''}'.trim(),
+    taxNumber: '${invoice['taxNo'] ?? ''}'.trim(),
+    taxStatus: '${invoice['taxable'] ?? 'غير خاضع للضريبة'}',
+    taxStatusEn: '${invoice['taxable'] ?? ''}' == 'خاضع للضريبة'
+        ? 'Taxable'
+        : 'Not taxable',
+    lines: [
+      for (final line in lines)
+        InvoicePrintLine(
+          name: '${line['name'] ?? ''}',
+          unit: '${line['unit'] ?? ''}',
+          quantity: _savedInvoiceQuantity(line['qty']),
+          unitPrice: _savedInvoiceMoney(_savedInvoiceNumber(line['price'])),
+          total: _savedInvoiceMoney(
+            _savedInvoiceNumber(line['qty'], fallback: 1) *
+                _savedInvoiceNumber(line['price']),
+          ),
+        ),
+    ],
+    totals: [
+      InvoicePrintTotal(
+        'الإجمالي قبل الخصم',
+        _savedInvoiceMoney(subtotal),
+        labelEn: 'Gross before discount',
+      ),
+      InvoicePrintTotal(
+        'الخصم',
+        _savedInvoiceMoney(discount),
+        labelEn: 'Discount',
+      ),
+      InvoicePrintTotal('الضريبة', _savedInvoiceMoney(tax), labelEn: 'Tax'),
+      InvoicePrintTotal(
+        'الصافي',
+        _savedInvoiceMoney(net),
+        labelEn: 'Net',
+        emphasized: true,
+      ),
+      InvoicePrintTotal('نقداً', _savedInvoiceMoney(cash), labelEn: 'Cash'),
+      InvoicePrintTotal('شبكة', _savedInvoiceMoney(network), labelEn: 'Card'),
+      InvoicePrintTotal('آجل', _savedInvoiceMoney(credit), labelEn: 'Credit'),
+      InvoicePrintTotal(
+        'رصيد رجيع',
+        _savedInvoiceMoney(returnBalance),
+        labelEn: 'Return balance',
+      ),
+      InvoicePrintTotal(
+        'المتبقي',
+        _savedInvoiceMoney(net - cash - network - credit - returnBalance),
+        labelEn: 'Remaining',
+      ),
+    ],
+    notes: notes,
+    settings: settings,
+  );
+}
+
+double _savedInvoiceNumber(dynamic value, {double fallback = 0}) {
+  if (value is num) return value.toDouble();
+  return double.tryParse('$value') ?? fallback;
+}
+
+String _savedInvoiceQuantity(dynamic value) {
+  final quantity = _savedInvoiceNumber(value, fallback: 1);
+  return quantity == quantity.roundToDouble()
+      ? quantity.toStringAsFixed(0)
+      : quantity.toString();
+}
+
+String _savedInvoiceMoney(double value) => value.toStringAsFixed(2);
+
+String _savedInvoiceDate(DateTime date) =>
+    '${date.month}/${date.day}/${date.year}';
+
+String _savedInvoiceDateTime(DateTime date) {
+  final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
+  final minute = date.minute.toString().padLeft(2, '0');
+  final second = date.second.toString().padLeft(2, '0');
+  return '${_savedInvoiceDate(date)} $hour:$minute:$second '
+      '${date.hour < 12 ? 'AM' : 'PM'}';
 }
 
 pw.Widget _thermalInvoice({

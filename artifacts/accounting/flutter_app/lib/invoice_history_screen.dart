@@ -1,15 +1,28 @@
+import 'dart:typed_data';
+
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/material.dart';
 
+import 'auth_service.dart';
+import 'invoice_pdf_download.dart';
 import 'models.dart';
+import 'printer_bridge.dart';
+import 'print_documents.dart';
 import 'storage.dart';
 import 'theme.dart';
 
 /// Read-only browser for invoices that have already been saved locally.
 class InvoiceHistoryScreen extends StatefulWidget {
   final VoidCallback onExit;
+  final UserSession session;
+  final AccountingAuthService authService;
 
-  const InvoiceHistoryScreen({super.key, required this.onExit});
+  const InvoiceHistoryScreen({
+    super.key,
+    required this.onExit,
+    required this.session,
+    required this.authService,
+  });
 
   @override
   State<InvoiceHistoryScreen> createState() => _InvoiceHistoryScreenState();
@@ -17,6 +30,7 @@ class InvoiceHistoryScreen extends StatefulWidget {
 
 class _InvoiceHistoryScreenState extends State<InvoiceHistoryScreen> {
   final _searchController = TextEditingController();
+  final _printerBridge = PrinterBridgeClient();
   List<_SavedInvoice> _invoices = [];
   bool _loading = true;
   int _selectedType = -1;
@@ -31,6 +45,7 @@ class _InvoiceHistoryScreenState extends State<InvoiceHistoryScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _printerBridge.dispose();
     super.dispose();
   }
 
@@ -330,7 +345,70 @@ class _InvoiceHistoryScreenState extends State<InvoiceHistoryScreen> {
   Future<void> _showDetails(_SavedInvoice invoice) async {
     await showDialog<void>(
       context: context,
-      builder: (context) => _InvoiceDetailsDialog(invoice: invoice),
+      builder: (context) => _InvoiceDetailsDialog(
+        invoice: invoice,
+        onPrint: () => _printInvoice(invoice),
+      ),
+    );
+  }
+
+  Future<void> _printInvoice(_SavedInvoice invoice) async {
+    if (!await requirePermission(
+      context: context,
+      session: widget.session,
+      authService: widget.authService,
+      permission: 'invoice.print',
+    )) {
+      return;
+    }
+    if (!mounted) return;
+
+    try {
+      final preferences = PrinterPreferences.fromJson(
+        await Store.loadPrinterPreferences(),
+      );
+      final printerName = preferences.invoicePrinter;
+      if (preferences.token.trim().isEmpty ||
+          printerName == null ||
+          printerName.trim().isEmpty) {
+        throw const PrinterBridgeException(
+          'عيّن طابعة الفواتير من الإدارة ثم أعد المحاولة',
+        );
+      }
+      final printers = await _printerBridge.loadPrinters(preferences);
+      if (!printers.any((printer) => printer.name == printerName)) {
+        throw const PrinterBridgeException(
+          'الطابعة المحددة للفواتير غير مثبتة على هذا الجهاز',
+        );
+      }
+      final settings = await Store.loadInvoicePrintSettings(invoice.typeIndex);
+      final document = await buildSavedInvoicePdf(
+        typeIndex: invoice.typeIndex,
+        invoice: invoice.data,
+        fallbackDate: invoice.date,
+        settings: settings,
+      );
+      if (!mounted) return;
+      await _printerBridge.printPdf(
+        preferences: preferences,
+        printerName: printerName,
+        jobType: 'invoice',
+        pdfBytes: document,
+        paperWidthMm: settings.paperWidthMm,
+        paperHeightMm: settings.paperHeightMmFor(
+          invoice.lines.length,
+          notesLength: invoice.notes.length,
+        ),
+      );
+      if (mounted) _showPrintMessage('تم إرسال الفاتورة المحفوظة للطباعة');
+    } catch (error) {
+      if (mounted) _showPrintMessage('تعذرت الطباعة: $error');
+    }
+  }
+
+  void _showPrintMessage(String message) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 4)),
     );
   }
 }
@@ -403,15 +481,34 @@ class _SavedInvoice {
   }
 }
 
-class _InvoiceDetailsDialog extends StatelessWidget {
+class _InvoiceDetailsDialog extends StatefulWidget {
   final _SavedInvoice invoice;
+  final Future<void> Function() onPrint;
 
-  const _InvoiceDetailsDialog({required this.invoice});
+  const _InvoiceDetailsDialog({required this.invoice, required this.onPrint});
+
+  @override
+  State<_InvoiceDetailsDialog> createState() => _InvoiceDetailsDialogState();
+}
+
+class _InvoiceDetailsDialogState extends State<_InvoiceDetailsDialog> {
+  bool _printing = false;
 
   String _amount(double value) => value.toStringAsFixed(2);
 
+  Future<void> _print() async {
+    if (_printing) return;
+    setState(() => _printing = true);
+    try {
+      await widget.onPrint();
+    } finally {
+      if (mounted) setState(() => _printing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final invoice = widget.invoice;
     final lines = invoice.lines;
     return AlertDialog(
       key: const ValueKey('invoice-history-details'),
@@ -473,6 +570,18 @@ class _InvoiceDetailsDialog extends StatelessWidget {
         ),
       ),
       actions: [
+        FilledButton.icon(
+          key: const ValueKey('invoice-history-print'),
+          onPressed: _printing ? null : _print,
+          icon: _printing
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.print),
+          label: Text(_printing ? 'جارٍ الطباعة…' : 'طباعة الفاتورة'),
+        ),
         TextButton(
           key: const ValueKey('invoice-history-details-close'),
           onPressed: () => Navigator.of(context).pop(),
@@ -513,6 +622,376 @@ class _InvoiceDetailsDialog extends StatelessWidget {
           ],
         ),
       );
+}
+
+Future<void> showInvoiceHistoryDialog({
+  required BuildContext context,
+  required UserSession session,
+  required AccountingAuthService authService,
+}) => showDialog<void>(
+  context: context,
+  builder: (context) =>
+      _InvoiceHistorySearchDialog(session: session, authService: authService),
+);
+
+class _InvoiceHistorySearchDialog extends StatefulWidget {
+  final UserSession session;
+  final AccountingAuthService authService;
+
+  const _InvoiceHistorySearchDialog({
+    required this.session,
+    required this.authService,
+  });
+
+  @override
+  State<_InvoiceHistorySearchDialog> createState() =>
+      _InvoiceHistorySearchDialogState();
+}
+
+class _InvoiceHistorySearchDialogState
+    extends State<_InvoiceHistorySearchDialog> {
+  final _idController = TextEditingController();
+  final _printerBridge = PrinterBridgeClient();
+  List<_SavedInvoice> _allInvoices = [];
+  List<_SavedInvoice> _results = [];
+  _SavedInvoice? _selectedInvoice;
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
+  bool _loading = true;
+  bool _searched = false;
+  bool _working = false;
+  String? _message;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInvoices();
+  }
+
+  @override
+  void dispose() {
+    _idController.dispose();
+    _printerBridge.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadInvoices() async {
+    final saved = await Store.loadInvoices();
+    if (!mounted) return;
+    setState(() {
+      _allInvoices = saved.map(_SavedInvoice.fromJson).toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
+      _loading = false;
+    });
+  }
+
+  void _search() {
+    if (_dateFrom != null && _dateTo != null && _dateFrom!.isAfter(_dateTo!)) {
+      setState(() {
+        _searched = true;
+        _results = [];
+        _selectedInvoice = null;
+        _message = 'تاريخ البداية يجب ألا يتجاوز تاريخ النهاية';
+      });
+      return;
+    }
+    final id = _idController.text.trim().toLowerCase();
+    setState(() {
+      _searched = true;
+      _message = null;
+      _results = _allInvoices.where((invoice) {
+        if (id.isNotEmpty && !invoice.number.toLowerCase().contains(id)) {
+          return false;
+        }
+        final date = DateTime(
+          invoice.date.year,
+          invoice.date.month,
+          invoice.date.day,
+        );
+        if (_dateFrom != null) {
+          final from = DateTime(
+            _dateFrom!.year,
+            _dateFrom!.month,
+            _dateFrom!.day,
+          );
+          if (date.isBefore(from)) return false;
+        }
+        if (_dateTo != null) {
+          final through = DateTime(_dateTo!.year, _dateTo!.month, _dateTo!.day);
+          if (date.isAfter(through)) return false;
+        }
+        return true;
+      }).toList();
+      _selectedInvoice = null;
+    });
+  }
+
+  Future<void> _chooseDate({required bool from}) async {
+    final current = from ? _dateFrom : _dateTo;
+    final date = await showDatePicker(
+      context: context,
+      initialDate: current ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(DateTime.now().year + 10, 12, 31),
+      helpText: from ? 'اختر تاريخ البداية' : 'اختر تاريخ النهاية',
+      cancelText: 'إلغاء',
+      confirmText: 'اختيار',
+    );
+    if (!mounted || date == null) return;
+    setState(() {
+      if (from) {
+        _dateFrom = date;
+      } else {
+        _dateTo = date;
+      }
+      _message = null;
+    });
+  }
+
+  Future<Uint8List> _documentFor(_SavedInvoice invoice) async {
+    final settings = await Store.loadInvoicePrintSettings(invoice.typeIndex);
+    return buildSavedInvoicePdf(
+      typeIndex: invoice.typeIndex,
+      invoice: invoice.data,
+      fallbackDate: invoice.date,
+      settings: settings,
+    );
+  }
+
+  Future<bool> _canExportInvoice() => requirePermission(
+    context: context,
+    session: widget.session,
+    authService: widget.authService,
+    permission: 'invoice.print',
+  );
+
+  Future<void> _downloadInvoice() async {
+    final invoice = _selectedInvoice;
+    if (invoice == null || _working || !await _canExportInvoice()) return;
+    setState(() {
+      _working = true;
+      _message = null;
+    });
+    try {
+      final bytes = await _documentFor(invoice);
+      if (!mounted) return;
+      final safeNumber = invoice.number.replaceAll(
+        RegExp(r'[^A-Za-z0-9_-]'),
+        '_',
+      );
+      final saved = await downloadInvoicePdf(
+        bytes: bytes,
+        fileName: 'invoice-$safeNumber.pdf',
+      );
+      if (mounted) {
+        setState(
+          () => _message = !saved
+              ? 'تم إلغاء التنزيل'
+              : 'تم حفظ الفاتورة بصيغة PDF',
+        );
+      }
+    } catch (error) {
+      if (mounted) setState(() => _message = 'تعذر تنزيل الفاتورة: $error');
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  Future<void> _printInvoice() async {
+    final invoice = _selectedInvoice;
+    if (invoice == null || _working || !await _canExportInvoice()) return;
+    setState(() {
+      _working = true;
+      _message = null;
+    });
+    try {
+      final preferences = PrinterPreferences.fromJson(
+        await Store.loadPrinterPreferences(),
+      );
+      final printerName = preferences.invoicePrinter;
+      if (preferences.token.trim().isEmpty ||
+          printerName == null ||
+          printerName.trim().isEmpty) {
+        throw const PrinterBridgeException(
+          'عيّن طابعة الفواتير من الإدارة ثم أعد المحاولة',
+        );
+      }
+      final printers = await _printerBridge.loadPrinters(preferences);
+      if (!printers.any((printer) => printer.name == printerName)) {
+        throw const PrinterBridgeException(
+          'الطابعة المحددة للفواتير غير مثبتة على هذا الجهاز',
+        );
+      }
+      final settings = await Store.loadInvoicePrintSettings(invoice.typeIndex);
+      final document = await _documentFor(invoice);
+      if (!mounted) return;
+      await _printerBridge.printPdf(
+        preferences: preferences,
+        printerName: printerName,
+        jobType: 'invoice',
+        pdfBytes: document,
+        paperWidthMm: settings.paperWidthMm,
+        paperHeightMm: settings.paperHeightMmFor(
+          invoice.lines.length,
+          notesLength: invoice.notes.length,
+        ),
+      );
+      if (mounted) setState(() => _message = 'تم إرسال الفاتورة للطباعة');
+    } catch (error) {
+      if (mounted) setState(() => _message = 'تعذرت الطباعة: $error');
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  Widget _dateFilter({
+    required String label,
+    required bool from,
+    required DateTime? value,
+  }) => OutlinedButton.icon(
+    key: ValueKey(
+      from ? 'invoice-history-date-from' : 'invoice-history-date-to',
+    ),
+    onPressed: _working ? null : () => _chooseDate(from: from),
+    icon: const Icon(Icons.calendar_today, size: 18),
+    label: Text(
+      value == null ? label : '$label: ${_formatDate(value)}',
+      overflow: TextOverflow.ellipsis,
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final screen = MediaQuery.sizeOf(context);
+    return AlertDialog(
+      key: const ValueKey('invoice-history-search-dialog'),
+      title: const Text('بحث الفواتير المحفوظة'),
+      content: SizedBox(
+        width: screen.width < 600 ? screen.width - 48 : 820,
+        height: screen.height < 720 ? screen.height * .68 : 520,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                SizedBox(
+                  width: screen.width < 600 ? screen.width - 80 : 240,
+                  child: TextField(
+                    key: const ValueKey('invoice-history-id-filter'),
+                    controller: _idController,
+                    textDirection: TextDirection.ltr,
+                    decoration: const InputDecoration(
+                      labelText: 'رقم الفاتورة',
+                      hintText: 'أدخل رقم الفاتورة',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    onSubmitted: (_) => _search(),
+                  ),
+                ),
+                _dateFilter(label: 'من تاريخ', from: true, value: _dateFrom),
+                _dateFilter(label: 'إلى تاريخ', from: false, value: _dateTo),
+                FilledButton.icon(
+                  key: const ValueKey('invoice-history-search-submit'),
+                  onPressed: _loading || _working ? null : _search,
+                  icon: const Icon(Icons.search),
+                  label: const Text('بحث'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 8),
+            Expanded(
+              child: Container(
+                key: const ValueKey('invoice-history-list'),
+                decoration: BoxDecoration(
+                  color: AppColors.paper,
+                  border: Border.all(color: AppColors.line),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : !_searched
+                    ? const Center(child: Text('أدخل معايير البحث ثم اضغط بحث'))
+                    : _results.isEmpty
+                    ? const Center(child: Text('لا توجد فواتير مطابقة'))
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(6),
+                        itemCount: _results.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final invoice = _results[index];
+                          return ListTile(
+                            key: ValueKey(
+                              'invoice-history-result-${invoice.number}',
+                            ),
+                            selected: identical(_selectedInvoice, invoice),
+                            selectedTileColor: AppColors.greenLight,
+                            onTap: () => setState(() {
+                              _selectedInvoice = invoice;
+                              _message = null;
+                            }),
+                            title: Text(
+                              'فاتورة رقم ${invoice.number} · ${invoice.type.ar}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${_formatDate(invoice.date)}'
+                              '${invoice.account.isEmpty ? '' : ' · ${invoice.account}'}'
+                              ' · الصافي ${invoice.total.toStringAsFixed(2)}',
+                            ),
+                            trailing: _selectedInvoice == invoice
+                                ? const Icon(
+                                    Icons.check_circle,
+                                    color: AppColors.green,
+                                  )
+                                : const Icon(Icons.chevron_left),
+                          );
+                        },
+                      ),
+              ),
+            ),
+            if (_message != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _message!,
+                key: const ValueKey('invoice-history-message'),
+                style: const TextStyle(color: AppColors.ink),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        FilledButton.icon(
+          key: const ValueKey('invoice-history-download'),
+          onPressed: _selectedInvoice == null || _working
+              ? null
+              : _downloadInvoice,
+          icon: const Icon(Icons.download),
+          label: const Text('تنزيل الفاتورة'),
+        ),
+        FilledButton.icon(
+          key: const ValueKey('invoice-history-print-selected'),
+          onPressed: _selectedInvoice == null || _working
+              ? null
+              : _printInvoice,
+          icon: const Icon(Icons.print),
+          label: const Text('طباعة الفاتورة'),
+        ),
+        TextButton(
+          onPressed: _working ? null : () => Navigator.of(context).pop(),
+          child: const Text('إغلاق'),
+        ),
+      ],
+    );
+  }
 }
 
 String _twoDigits(int value) => value.toString().padLeft(2, '0');
