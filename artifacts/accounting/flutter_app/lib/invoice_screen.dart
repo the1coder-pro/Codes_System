@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -26,6 +27,8 @@ class InvoiceScreen extends StatefulWidget {
   final AccountingAuthService authService;
   final ValueChanged<InvoiceDirtyCheck>? onCloseGuardReady;
   final VoidCallback? onCloseGuardDisposed;
+  final String? draftId;
+  final InvoiceDraft? initialDraft;
   const InvoiceScreen({
     super.key,
     required this.typeIndex,
@@ -34,6 +37,8 @@ class InvoiceScreen extends StatefulWidget {
     required this.authService,
     this.onCloseGuardReady,
     this.onCloseGuardDisposed,
+    this.draftId,
+    this.initialDraft,
   });
 
   @override
@@ -78,6 +83,9 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   String storeDebit = '-';
   String taxable = 'خاضع للضريبة';
   String? _cleanInvoiceFingerprint;
+  late final String _draftId;
+  Timer? _draftSaveTimer;
+  bool _initializingDraft = true;
 
   InvoiceType get type => invoiceTypes[widget.typeIndex];
   bool get _canEdit => widget.session.can('invoice.save');
@@ -87,38 +95,87 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   @override
   void initState() {
     super.initState();
+    _draftId =
+        widget.draftId ?? 'invoice-${DateTime.now().microsecondsSinceEpoch}';
     h['number']!.text = '000001';
     h['taxRate']!.text = '0.15';
     h['discount']!.text = '0';
     for (final k in _paymentKeys) {
       h[k]!.text = '0';
     }
+    for (final controller in h.values) {
+      controller.addListener(_scheduleDraftSave);
+    }
     widget.onCloseGuardReady?.call(() => _hasUnsavedChanges);
     _initializeInvoice();
   }
 
   Future<void> _initializeInvoice() async {
-    final draftCleared = await Store.clearDraft(widget.typeIndex);
     final loadedCatalog = await Store.loadItems();
     final number = await Store.nextInvoiceNumber();
     if (!mounted) return;
-    final wasUnchanged = !_hasUnsavedChanges;
     setState(() {
       catalog = loadedCatalog;
-      h['number']!.text = number;
-      if (wasUnchanged) _cleanInvoiceFingerprint = null;
+      if (widget.initialDraft != null) {
+        _restoreInvoiceDraft(widget.initialDraft!.invoice);
+      } else {
+        h['number']!.text = number;
+      }
     });
-    if (!draftCleared) {
-      toast(
-        context,
-        'تعذر مسح بيانات الفاتورة السابقة',
-        severity: fluent.InfoBarSeverity.warning,
-      );
+    _syncAutomaticPayment();
+    _cleanInvoiceFingerprint = _invoiceFingerprint();
+    _initializingDraft = false;
+  }
+
+  void _restoreInvoiceDraft(Map<String, dynamic> data) {
+    _initializingDraft = true;
+    final currentDate = DateTime.now();
+    invDate = DateTime.tryParse('${data['invDate'] ?? ''}') ?? currentDate;
+    delivDate = DateTime.tryParse('${data['delivDate'] ?? ''}') ?? invDate;
+    for (final entry in data.entries) {
+      final controller = h[entry.key];
+      if (controller != null && entry.value != null) {
+        controller.text = '${entry.value}';
+      }
     }
+    creditor = data['creditor'] as String? ?? creditor;
+    debtor = data['debtor'] as String? ?? debtor;
+    storeCredit = data['storeCredit'] as String? ?? storeCredit;
+    storeDebit = data['storeDebit'] as String? ?? storeDebit;
+    taxable = data['taxable'] as String? ?? taxable;
+    selectedPayment = data['selectedPayment'] as String? ?? 'cash';
+    paymentAuto = data['paymentAuto'] as bool? ?? true;
+    lines.clear();
+    for (final rawLine in (data['lines'] as List? ?? const [])) {
+      try {
+        final line = InvoiceLine.fromJson(
+          Map<String, dynamic>.from(rawLine as Map),
+        );
+        lines.add(line);
+        lineCtl[line.id] = [
+          TextEditingController(text: line.name),
+          TextEditingController(
+            text: line.qty % 1 == 0
+                ? line.qty.toInt().toString()
+                : '${line.qty}',
+          ),
+          TextEditingController(text: money(line.price)),
+        ];
+      } catch (_) {
+        // A damaged line should not prevent restoring the rest of the draft.
+      }
+    }
+    selected = lines.isEmpty ? null : 0;
+    selectedLineIds.clear();
+    _initializingDraft = false;
   }
 
   @override
   void dispose() {
+    _draftSaveTimer?.cancel();
+    for (final controller in h.values) {
+      controller.removeListener(_scheduleDraftSave);
+    }
     widget.onCloseGuardDisposed?.call();
     _printerBridge.dispose();
     _itemSearchFocus.dispose();
@@ -131,6 +188,33 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       }
     }
     super.dispose();
+  }
+
+  void _scheduleDraftSave() {
+    if (_initializingDraft || !mounted) return;
+    _draftSaveTimer?.cancel();
+    _draftSaveTimer = Timer(const Duration(milliseconds: 350), () async {
+      if (!mounted) return;
+      if (_hasUnsavedChanges) {
+        final saved = await Store.saveInvoiceDraft(
+          InvoiceDraft(
+            id: _draftId,
+            typeIndex: widget.typeIndex,
+            invoice: _toJson(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+        if (!saved && mounted) {
+          toast(
+            context,
+            'تعذر حفظ مسودة الفاتورة محلياً',
+            severity: fluent.InfoBarSeverity.error,
+          );
+        }
+      } else {
+        await Store.clearInvoiceDraft(_draftId);
+      }
+    });
   }
 
   double _n(String k) => double.tryParse(h[k]!.text) ?? 0;
@@ -177,6 +261,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       existing.qty += 1;
       _syncQty(existing);
       selected = existingIndex;
+      _scheduleDraftSave();
       return;
     }
 
@@ -195,6 +280,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       TextEditingController(text: money(price)),
     ];
     selected = lines.length - 1;
+    _scheduleDraftSave();
   }
 
   void _submitItemSearch(String scannedValue) {
@@ -245,6 +331,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       l.qty = (l.qty + d).clamp(1, 99999).toDouble();
       _syncQty(l);
     });
+    _scheduleDraftSave();
   }
 
   void _move(int d) {
@@ -307,6 +394,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           ? lines.length - 1
           : activeIndex;
     });
+    _scheduleDraftSave();
   }
 
   Map<String, dynamic> _toJson() => {
@@ -365,7 +453,53 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   Future<void> _requestExit() async {
-    if (await _confirmDiscardChanges() && mounted) widget.onExit();
+    final hadUnsavedChanges = _hasUnsavedChanges;
+    if (!await _confirmDiscardChanges() || !mounted) return;
+    if (hadUnsavedChanges && !await Store.clearInvoiceDraft(_draftId)) {
+      if (mounted) {
+        toast(
+          context,
+          'تعذر تجاهل مسودة الفاتورة',
+          severity: fluent.InfoBarSeverity.error,
+        );
+      }
+      return;
+    }
+    if (mounted) widget.onExit();
+  }
+
+  Future<void> _discardDraft() async {
+    final discard = await confirmDialog(
+      context,
+      'مسح المسودة',
+      'سيتم حذف هذه المسودة فقط وبدء فاتورة جديدة. هل تريد المتابعة؟',
+    );
+    if (!discard || !mounted) return;
+    if (!await Store.clearInvoiceDraft(_draftId)) {
+      if (mounted) {
+        toast(
+          context,
+          'تعذر مسح مسودة الفاتورة',
+          severity: fluent.InfoBarSeverity.error,
+        );
+      }
+      return;
+    }
+    final nextNumber = await Store.nextInvoiceNumber();
+    if (!mounted) return;
+    _initializingDraft = true;
+    setState(() {
+      _resetInvoiceForm();
+      h['number']!.text = nextNumber;
+    });
+    _syncAutomaticPayment();
+    _cleanInvoiceFingerprint = _invoiceFingerprint();
+    _initializingDraft = false;
+    toast(
+      context,
+      'تم مسح المسودة وبدء فاتورة جديدة',
+      severity: fluent.InfoBarSeverity.success,
+    );
   }
 
   Future<bool> _saveInvoiceAndReset() async {
@@ -406,14 +540,17 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       );
       return false;
     }
-    final draftCleared = await Store.clearDraft(widget.typeIndex);
+    final draftCleared = await Store.clearInvoiceDraft(_draftId);
     final nextNumber = await Store.nextInvoiceNumber();
     if (!mounted) return false;
+    _initializingDraft = true;
     setState(() {
       _resetInvoiceForm();
       h['number']!.text = nextNumber;
-      _cleanInvoiceFingerprint = null;
     });
+    _syncAutomaticPayment();
+    _cleanInvoiceFingerprint = _invoiceFingerprint();
+    _initializingDraft = false;
     if (!draftCleared) {
       toast(
         context,
@@ -705,6 +842,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     );
     if (confirmed == true && mounted) {
       setState(() => invoice ? invDate = chosen : delivDate = chosen);
+      _scheduleDraftSave();
     }
   }
 
@@ -871,7 +1009,12 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               'شركة النخبة',
             ],
             compact: true,
-            onChanged: canEdit ? (v) => setState(() => creditor = v) : null,
+            onChanged: canEdit
+                ? (v) {
+                    setState(() => creditor = v);
+                    _scheduleDraftSave();
+                  }
+                : null,
           ),
         ),
         FieldRow(
@@ -886,7 +1029,12 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               'الصندوق',
             ],
             compact: true,
-            onChanged: canEdit ? (v) => setState(() => debtor = v) : null,
+            onChanged: canEdit
+                ? (v) {
+                    setState(() => debtor = v);
+                    _scheduleDraftSave();
+                  }
+                : null,
           ),
         ),
         FieldRow(
@@ -922,7 +1070,12 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               '-',
             ],
             compact: true,
-            onChanged: canEdit ? (v) => setState(() => storeCredit = v) : null,
+            onChanged: canEdit
+                ? (v) {
+                    setState(() => storeCredit = v);
+                    _scheduleDraftSave();
+                  }
+                : null,
           ),
         ),
         FieldRow(
@@ -933,7 +1086,12 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             value: storeDebit,
             options: const ['-', 'المستودع الرئيسي', 'مستودع الفرع'],
             compact: true,
-            onChanged: canEdit ? (v) => setState(() => storeDebit = v) : null,
+            onChanged: canEdit
+                ? (v) {
+                    setState(() => storeDebit = v);
+                    _scheduleDraftSave();
+                  }
+                : null,
           ),
         ),
       ],
@@ -948,7 +1106,12 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             value: taxable,
             options: const ['خاضع للضريبة', 'غير خاضع'],
             compact: true,
-            onChanged: canEdit ? (v) => setState(() => taxable = v) : null,
+            onChanged: canEdit
+                ? (v) {
+                    setState(() => taxable = v);
+                    _scheduleDraftSave();
+                  }
+                : null,
           ),
         ),
         FieldRow(
@@ -1274,6 +1437,17 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                   height: 58,
                   onTap: _save,
                 ),
+              if (_canEdit)
+                ActionTile(
+                  key: const ValueKey('invoice-discard-draft'),
+                  assetPath: AppIcons.delete,
+                  label: 'مسح المسودة',
+                  glyphColor: AppColors.red,
+                  hideLabel: true,
+                  width: 54,
+                  height: 58,
+                  onTap: _discardDraft,
+                ),
               if (_canEdit && _can('invoice.print'))
                 ActionTile(
                   key: const ValueKey('invoice-save-and-print'),
@@ -1565,6 +1739,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       }
       selectedPayment = key;
     });
+    _scheduleDraftSave();
   }
 
   Widget _pay(String label, String iconAsset, String key) => Expanded(

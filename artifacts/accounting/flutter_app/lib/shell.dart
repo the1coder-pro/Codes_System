@@ -14,6 +14,7 @@ import 'invoice_history_screen.dart';
 import 'invoice_screen.dart';
 import 'models.dart';
 import 'printer_settings_screen.dart';
+import 'storage.dart';
 import 'user_passwords_screen.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -35,12 +36,16 @@ class _ShellRoute {
   final ShellView view;
   final int? invoiceType;
   final int? invoiceNumber;
+  final String? draftId;
+  final InvoiceDraft? invoiceDraft;
 
   const _ShellRoute({
     required this.id,
     required this.view,
     this.invoiceType,
     this.invoiceNumber,
+    this.draftId,
+    this.invoiceDraft,
   });
 }
 
@@ -96,6 +101,27 @@ class _AppShellState extends State<AppShell> {
       return;
     }
     setState(() => session = loggedInSession);
+    unawaited(_restoreSavedInvoiceDrafts());
+  }
+
+  Future<void> _restoreSavedInvoiceDrafts() async {
+    final drafts = await Store.loadInvoiceDrafts();
+    if (!mounted || drafts.isEmpty) return;
+    setState(() {
+      for (final draft in drafts) {
+        final invoiceNumber = int.tryParse('${draft.invoice['number'] ?? ''}');
+        _routes.add(
+          _ShellRoute(
+            id: _nextRouteId++,
+            view: ShellView.invoice,
+            invoiceType: draft.typeIndex,
+            invoiceNumber: invoiceNumber,
+            draftId: draft.id,
+            invoiceDraft: draft,
+          ),
+        );
+      }
+    });
   }
 
   bool _can(String permission) => session?.can(permission) ?? false;
@@ -180,12 +206,15 @@ class _AppShellState extends State<AppShell> {
 
   void openInvoice(int t) {
     if (!_can('invoice.view')) return;
+    final draftId =
+        'invoice-${DateTime.now().microsecondsSinceEpoch}-$_nextRouteId';
     setState(() {
       final newInvoice = _ShellRoute(
         id: _nextRouteId++,
         view: ShellView.invoice,
         invoiceType: t,
         invoiceNumber: _nextInvoiceNumber++,
+        draftId: draftId,
       );
       if (view == ShellView.invoiceMenu) {
         _routes[_routes.length - 1] = newInvoice;
@@ -231,6 +260,8 @@ class _AppShellState extends State<AppShell> {
             view: ShellView.invoice,
             invoiceType: previous.invoiceType,
             invoiceNumber: previous.invoiceNumber,
+            draftId: previous.draftId,
+            invoiceDraft: previous.invoiceDraft,
           ),
         );
       }
@@ -768,6 +799,8 @@ class _AppShellState extends State<AppShell> {
         onExit: _closeCurrentView,
         onCloseGuardReady: (isDirty) => _invoiceDirtyChecks[route.id] = isDirty,
         onCloseGuardDisposed: () => _invoiceDirtyChecks.remove(route.id),
+        draftId: route.draftId,
+        initialDraft: route.invoiceDraft,
       ),
       ShellView.accounts => AccountsScreen(
         session: session!,

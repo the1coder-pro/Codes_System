@@ -275,6 +275,34 @@ class InvoiceLine {
   );
 }
 
+class InvoiceDraft {
+  final String id;
+  final int typeIndex;
+  final Map<String, dynamic> invoice;
+  final DateTime updatedAt;
+
+  const InvoiceDraft({
+    required this.id,
+    required this.typeIndex,
+    required this.invoice,
+    required this.updatedAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'typeIndex': typeIndex,
+    'invoice': invoice,
+    'updatedAt': updatedAt.toIso8601String(),
+  };
+
+  factory InvoiceDraft.fromJson(Map<String, dynamic> json) => InvoiceDraft(
+    id: json['id'] as String,
+    typeIndex: json['typeIndex'] as int,
+    invoice: Map<String, dynamic>.from(json['invoice'] as Map),
+    updatedAt: DateTime.parse(json['updatedAt'] as String),
+  );
+}
+
 class InvoiceType {
   final String ar;
   final String en;

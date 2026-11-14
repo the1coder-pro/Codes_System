@@ -15,6 +15,7 @@ class Store {
   static const _invoiceSequenceKey = 'invoice_next_number_v1';
   static const _printerPreferencesKey = 'printer_preferences_v1';
   static const _invoicePrintSettingsKey = 'invoice_print_settings_v1';
+  static const _invoiceDraftPrefix = 'invoice_draft_v1_';
 
   static Future<String> exportBackup({DateTime? createdAt}) async {
     final prefs = await SharedPreferences.getInstance();
@@ -246,6 +247,51 @@ class Store {
       return raw == null ? null : Map<String, dynamic>.from(jsonDecode(raw));
     } catch (_) {
       return null;
+    }
+  }
+
+  static Future<List<InvoiceDraft>> loadInvoiceDrafts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final drafts = <InvoiceDraft>[];
+    for (final key in prefs.getKeys()) {
+      if (!key.startsWith(_invoiceDraftPrefix)) continue;
+      try {
+        final raw = prefs.getString(key);
+        if (raw == null) continue;
+        final draft = InvoiceDraft.fromJson(
+          Map<String, dynamic>.from(jsonDecode(raw) as Map),
+        );
+        if (draft.typeIndex < 0 || draft.typeIndex >= invoiceTypes.length) {
+          continue;
+        }
+        drafts.add(draft);
+      } catch (_) {
+        // Ignore malformed drafts without affecting other saved invoices.
+      }
+    }
+    drafts.sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
+    return drafts;
+  }
+
+  static Future<bool> saveInvoiceDraft(InvoiceDraft draft) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return await prefs.setString(
+        '$_invoiceDraftPrefix${draft.id}',
+        jsonEncode(draft.toJson()),
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> clearInvoiceDraft(String id) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('$_invoiceDraftPrefix$id');
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 

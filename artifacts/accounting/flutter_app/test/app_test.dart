@@ -48,11 +48,16 @@ class _TestAuthService implements AccountingAuthService {
 InvoiceScreen _invoiceScreen({
   required VoidCallback onExit,
   UserSession session = _adminSession,
+  int typeIndex = 0,
+  String? draftId,
+  InvoiceDraft? initialDraft,
 }) => InvoiceScreen(
-  typeIndex: 0,
+  typeIndex: typeIndex,
   onExit: onExit,
   session: session,
   authService: _testAuthService,
+  draftId: draftId,
+  initialDraft: initialDraft,
 );
 
 InventoryScreen _inventoryScreen({
@@ -129,6 +134,8 @@ Future<void> _launchAndLogin(
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   test(
     'role matrix separates viewing, editing, discounting, and administration',
     () {
@@ -860,6 +867,7 @@ void main() {
   testWidgets('menus align right and ribbon buttons stay compact on desktop', (
     tester,
   ) async {
+    SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(1024, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -1547,35 +1555,34 @@ void main() {
         ],
       ),
     ]);
-    await Store.saveDraft(0, {
-      'number': '999999',
-      'lines': [
-        {
-          'id': 'stale-line',
-          'code': 'OLD-1',
-          'name': 'صنف من مسودة سابقة',
-          'unitNo': '1',
-          'unit': 'حبة',
-          'qty': 1,
-          'price': 99,
-        },
-      ],
-    });
-
+    final savedDraft = InvoiceDraft(
+      id: 'draft-being-saved',
+      typeIndex: 0,
+      updatedAt: DateTime(2026, 11, 13),
+      invoice: {'number': '000001', 'lines': []},
+    );
+    final otherDraft = InvoiceDraft(
+      id: 'other-open-draft',
+      typeIndex: 1,
+      updatedAt: DateTime(2026, 11, 13),
+      invoice: {'number': '000099', 'lines': []},
+    );
+    await Store.saveInvoiceDraft(savedDraft);
+    await Store.saveInvoiceDraft(otherDraft);
     await tester.pumpWidget(
       fluent.FluentApp(
         theme: buildFluentTheme(),
         home: Directionality(
           textDirection: TextDirection.rtl,
-          child: Scaffold(body: _invoiceScreen(onExit: () {})),
+          child: Scaffold(
+            body: _invoiceScreen(onExit: () {}, draftId: savedDraft.id),
+          ),
         ),
       ),
     );
     await tester.pumpAndSettle();
     expect(find.text('000001'), findsOneWidget);
     expect(find.byKey(const ValueKey('invoice-side-row-0')), findsNothing);
-    expect(find.text('صنف من مسودة سابقة'), findsNothing);
-    expect(await Store.loadDraft(0), isNull);
     await tester.tap(find.text('إضافة الأصناف'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('invoice-item-add-SAVE-1')));
@@ -1599,7 +1606,9 @@ void main() {
     expect(savedLines.single['name'], 'صنف للحفظ');
     expect(invoice['number'], '000001');
     expect(DateTime.tryParse(invoice['invDate'] as String), isNotNull);
-    expect(await Store.loadDraft(0), isNull);
+    expect((await Store.loadInvoiceDrafts()).map((draft) => draft.id), [
+      otherDraft.id,
+    ]);
     expect(find.byKey(const ValueKey('invoice-side-row-0')), findsNothing);
     expect(find.text('مسح المسودة وبدء فاتورة جديدة'), findsNothing);
     expect(find.text('حفظ\nوطباعة'), findsOneWidget);
@@ -1616,6 +1625,219 @@ void main() {
 
     await tester.pump(const Duration(seconds: 3));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('restored invoice draft keeps its fields and can be discarded', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final draft = InvoiceDraft(
+      id: 'restored-invoice',
+      typeIndex: 4,
+      updatedAt: DateTime(2026, 11, 14),
+      invoice: {
+        'number': '000042',
+        'invDate': DateTime(2026, 11, 10).toIso8601String(),
+        'delivDate': DateTime(2026, 11, 11).toIso8601String(),
+        'account': 'عميل محفوظ',
+        'taxNo': '300123456700003',
+        'notes': 'ملاحظات المسودة',
+        'discount': '4',
+        'taxRate': '0.15',
+        'cash': '5',
+        'network': '12',
+        'credit': '0',
+        'returnBal': '1',
+        'pick': '',
+        'creditor': 'شركة النخبة',
+        'debtor': 'الصندوق',
+        'storeCredit': '-',
+        'storeDebit': 'المستودع الرئيسي',
+        'taxable': 'غير خاضع',
+        'selectedPayment': 'network',
+        'paymentAuto': false,
+        'lines': [
+          {
+            'id': 'draft-line-1',
+            'code': 'DRAFT-1',
+            'name': 'صنف محفوظ',
+            'unitNo': '2',
+            'unit': 'كرتون',
+            'qty': 3,
+            'price': 7.5,
+          },
+        ],
+      },
+    );
+    expect(await Store.saveInvoiceDraft(draft), isTrue);
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: _invoiceScreen(
+              onExit: () {},
+              typeIndex: 4,
+              draftId: draft.id,
+              initialDraft: draft,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('000042'), findsOneWidget);
+    expect(find.byKey(const ValueKey('invoice-side-row-0')), findsOneWidget);
+    expect(find.text('صنف محفوظ • كرتون'), findsOneWidget);
+    expect(
+      tester
+          .widget<app_widgets.TextBox>(
+            find.byKey(const ValueKey('invoice-account-field')),
+          )
+          .controller
+          .text,
+      'عميل محفوظ',
+    );
+    expect(
+      tester
+          .widget<fluent.TextBox>(
+            find.byKey(const ValueKey('payment-field-network')),
+          )
+          .controller!
+          .text,
+      '12',
+    );
+
+    await tester.tap(find.byKey(const ValueKey('invoice-discard-draft')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('نعم، تأكيد'));
+    await tester.pumpAndSettle();
+    expect(await Store.loadInvoiceDrafts(), isEmpty);
+    expect(find.byKey(const ValueKey('invoice-side-row-0')), findsNothing);
+    expect(find.text('000001'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('saved invoice drafts reopen after signing in', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final draft = InvoiceDraft(
+      id: 'startup-recovery',
+      typeIndex: 2,
+      updatedAt: DateTime(2026, 11, 14),
+      invoice: {
+        'number': '000077',
+        'invDate': DateTime(2026, 11, 12).toIso8601String(),
+        'delivDate': DateTime(2026, 11, 13).toIso8601String(),
+        'account': 'حساب مستعاد',
+        'taxNo': '',
+        'notes': '',
+        'discount': '0',
+        'taxRate': '0.15',
+        'cash': '0',
+        'network': '0',
+        'credit': '0',
+        'returnBal': '0',
+        'pick': '',
+        'paymentAuto': false,
+        'lines': [
+          {
+            'id': 'startup-line',
+            'code': 'STARTUP-1',
+            'name': 'بند مستعاد',
+            'unitNo': '1',
+            'unit': 'حبة',
+            'qty': 2,
+            'price': 11,
+          },
+        ],
+      },
+    );
+    await Store.saveInvoiceDraft(draft);
+
+    await _launchAndLogin(tester);
+
+    expect(find.byType(InvoiceScreen), findsOneWidget);
+    expect(find.text('000077'), findsOneWidget);
+    expect(find.text('بند مستعاد • حبة'), findsOneWidget);
+    expect(
+      tester
+          .widget<app_widgets.TextBox>(
+            find.byKey(const ValueKey('invoice-account-field')),
+          )
+          .controller
+          .text,
+      'حساب مستعاد',
+    );
+  });
+
+  testWidgets('invoice edits are saved automatically as an independent draft', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await Store.saveItems([
+      Item(
+        id: 'AUTO-1',
+        nameAr: 'صنف للمسودة',
+        units: [
+          UnitRow(unitNo: '1', size: 'حبة', priceBefore: '9', quick: true),
+        ],
+      ),
+    ]);
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: _invoiceScreen(onExit: () {}, draftId: 'autosave-test'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('إضافة الأصناف'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('invoice-item-add-AUTO-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('بيانات الفاتورة'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('invoice-account-field')),
+      'حساب يحفظ تلقائياً',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('payment-field-network')),
+      '23.5',
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    final savedDrafts = await Store.loadInvoiceDrafts();
+    expect(savedDrafts, hasLength(1));
+    expect(savedDrafts.single.id, 'autosave-test');
+    expect(savedDrafts.single.typeIndex, 0);
+    expect(savedDrafts.single.invoice['account'], 'حساب يحفظ تلقائياً');
+    expect(savedDrafts.single.invoice['network'], '23.5');
+    final savedLines = savedDrafts.single.invoice['lines'] as List;
+    expect(savedLines, hasLength(1));
+    expect((savedLines.single as Map)['qty'], 1);
+    expect((savedLines.single as Map)['name'], 'صنف للمسودة');
   });
 
   testWidgets('inventory adds a unit row without clearing item fields', (
