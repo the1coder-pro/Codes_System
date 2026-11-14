@@ -4,35 +4,30 @@ The Flutter desktop build runs the complete accounting interface without a
 browser or Node.js. It starts the loopback-only printing service automatically
 and uses Flutter's `printing` plugin to discover printers and print PDFs.
 
-## Choose between the two desktop modes
+## Build the single companion app
 
-Build without a mode define to show the startup chooser:
-
-```sh
-flutter build macos
-```
-
-Choose either the standalone Flutter system or the local web companion. To
-build directly into one mode, use `PRINTER_COMPANION=true` for the standalone
-system or `PRINTER_WEB_COMPANION=true` for the local web companion.
-
-The Flutter-only branch does not contain the web or API source. For the web
-companion, select the folder of a full `Codes_System` checkout. It needs
-Node.js, pnpm, Flutter, a configured local PostgreSQL database, and the full
-repository's dependencies. The companion builds and starts the API and web UI,
-starts the Dart printer service, then opens the browser. Pair once using the
-printer token shown in the companion.
-
-## Build the standalone system
-
-Install Flutter and the platform's normal desktop build tools. From the
-repository root, run:
+From the Flutter app root, build the platform-specific launcher with one
+command:
 
 ```sh
-flutter build windows --dart-define=PRINTER_COMPANION=true
-flutter build macos --dart-define=PRINTER_COMPANION=true
-flutter build linux --dart-define=PRINTER_COMPANION=true
+bash scripts/build_accounting_companion.sh
 ```
+
+The same app opens a simple choice: the standalone desktop UI or the local web
+UI in a browser. Do not add a mode-specific `--dart-define`; the launcher starts
+the selected UI and the Dart printer service.
+
+On Windows, run `.\scripts\build_accounting_companion.ps1` from PowerShell.
+
+For web mode, choose a full `Codes_System` checkout on first launch. The
+companion saves its location, runs `pnpm install --frozen-lockfile`, builds the
+API and web UI, starts both plus the Dart printer service, and opens the browser.
+Later launches start automatically from the saved checkout. Web mode requires
+Node.js, pnpm, Flutter, and a running local PostgreSQL database configured in
+`.env`.
+
+The standalone option keeps records on this device and does not need Node.js,
+pnpm, Flutter SDK, or a browser after the launcher has been built.
 
 The resulting app opens the accounting system and starts printing on the same
 computer. It does not require Node.js or a separate Dart installation. Inventory,
@@ -62,7 +57,7 @@ formats are thermal 58/80 mm, A4 portrait, and A4 landscape. Choose Arabic,
 English, or bilingual output, review the live sample preview, and save. Settings
 are stored locally on the current device.
 
-## Use the web app with a separate print-only companion
+## Advanced: use a print-only helper with a separately started web app
 
 For a web app that runs separately, build the old print-only window with
 `--dart-define=PRINTER_SERVICE_ONLY=true`. Leave it open, copy its pairing token,
