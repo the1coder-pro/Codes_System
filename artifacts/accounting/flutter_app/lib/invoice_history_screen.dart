@@ -10,6 +10,7 @@ import 'printer_bridge.dart';
 import 'print_documents.dart';
 import 'storage.dart';
 import 'theme.dart';
+import 'widgets.dart' as app_widgets;
 
 /// Read-only browser for invoices that have already been saved locally.
 class InvoiceHistoryScreen extends StatefulWidget {
@@ -343,7 +344,7 @@ class _InvoiceHistoryScreenState extends State<InvoiceHistoryScreen> {
   );
 
   Future<void> _showDetails(_SavedInvoice invoice) async {
-    await showDialog<void>(
+    await fluent.showDialog<void>(
       context: context,
       builder: (context) => _InvoiceDetailsDialog(
         invoice: invoice,
@@ -510,15 +511,20 @@ class _InvoiceDetailsDialogState extends State<_InvoiceDetailsDialog> {
   Widget build(BuildContext context) {
     final invoice = widget.invoice;
     final lines = invoice.lines;
-    return AlertDialog(
+    final screen = MediaQuery.sizeOf(context);
+    final contentWidth = (screen.width - 64).clamp(280.0, 640.0).toDouble();
+    final contentHeight = (screen.height - 220).clamp(220.0, 560.0).toDouble();
+    return fluent.ContentDialog(
       key: const ValueKey('invoice-history-details'),
+      constraints: BoxConstraints(maxWidth: contentWidth + 40),
+      style: _historyDialogStyle(),
       title: Text(invoice.type.ar),
       content: SizedBox(
-        width: 640,
+        width: contentWidth,
+        height: contentHeight,
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 'رقم الفاتورة: ${invoice.number}',
@@ -570,22 +576,26 @@ class _InvoiceDetailsDialogState extends State<_InvoiceDetailsDialog> {
         ),
       ),
       actions: [
-        FilledButton.icon(
-          key: const ValueKey('invoice-history-print'),
-          onPressed: _printing ? null : _print,
-          icon: _printing
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.print),
-          label: Text(_printing ? 'جارٍ الطباعة…' : 'طباعة الفاتورة'),
-        ),
-        TextButton(
-          key: const ValueKey('invoice-history-details-close'),
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('إغلاق'),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.end,
+          children: [
+            _historyImageButton(
+              key: const ValueKey('invoice-history-print'),
+              imagePath: app_widgets.AppIcons.printer,
+              label: _printing ? 'جارٍ الطباعة…' : 'طباعة الفاتورة',
+              onPressed: _printing ? null : _print,
+              icon: _printing ? const fluent.ProgressRing() : null,
+              primary: true,
+            ),
+            _historyImageButton(
+              key: const ValueKey('invoice-history-details-close'),
+              imagePath: app_widgets.AppIcons.exit,
+              label: 'إغلاق',
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
         ),
       ],
     );
@@ -628,7 +638,7 @@ Future<void> showInvoiceHistoryDialog({
   required BuildContext context,
   required UserSession session,
   required AccountingAuthService authService,
-}) => showDialog<void>(
+}) => fluent.showDialog<void>(
   context: context,
   builder: (context) =>
       _InvoiceHistorySearchDialog(session: session, authService: authService),
@@ -728,14 +738,47 @@ class _InvoiceHistorySearchDialogState
 
   Future<void> _chooseDate({required bool from}) async {
     final current = from ? _dateFrom : _dateTo;
-    final date = await showDatePicker(
+    final now = DateTime.now();
+    final date = await fluent.showDialog<DateTime>(
       context: context,
-      initialDate: current ?? DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(DateTime.now().year + 10, 12, 31),
-      helpText: from ? 'اختر تاريخ البداية' : 'اختر تاريخ النهاية',
-      cancelText: 'إلغاء',
-      confirmText: 'اختيار',
+      builder: (dialogContext) {
+        var selectedDate = current ?? now;
+        return StatefulBuilder(
+          builder: (context, setDialogState) => fluent.ContentDialog(
+            constraints: const BoxConstraints(maxWidth: 380),
+            style: _historyDialogStyle(),
+            title: Text(from ? 'اختر تاريخ البداية' : 'اختر تاريخ النهاية'),
+            content: SizedBox(
+              width: 340,
+              child: fluent.DatePicker(
+                selected: selectedDate,
+                startDate: DateTime(2000),
+                endDate: DateTime(now.year + 10, 12, 31),
+                onChanged: (value) =>
+                    setDialogState(() => selectedDate = value),
+                locale: const Locale('ar'),
+              ),
+            ),
+            actions: [
+              Wrap(
+                spacing: 8,
+                alignment: WrapAlignment.end,
+                children: [
+                  fluent.Button(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('إلغاء'),
+                  ),
+                  fluent.FilledButton(
+                    onPressed: () =>
+                        Navigator.of(dialogContext).pop(selectedDate),
+                    child: const Text('تطبيق'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
     if (!mounted || date == null) return;
     setState(() {
@@ -848,27 +891,40 @@ class _InvoiceHistorySearchDialogState
     required String label,
     required bool from,
     required DateTime? value,
-  }) => OutlinedButton.icon(
+  }) => fluent.Button(
     key: ValueKey(
       from ? 'invoice-history-date-from' : 'invoice-history-date-to',
     ),
     onPressed: _working ? null : () => _chooseDate(from: from),
-    icon: const Icon(Icons.calendar_today, size: 18),
-    label: Text(
-      value == null ? label : '$label: ${_formatDate(value)}',
-      overflow: TextOverflow.ellipsis,
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(fluent.FluentIcons.calendar, size: 16),
+        const SizedBox(width: 6),
+        Text(
+          value == null ? label : '$label: ${_formatDate(value)}',
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     ),
   );
 
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.sizeOf(context);
-    return AlertDialog(
+    return fluent.ContentDialog(
       key: const ValueKey('invoice-history-search-dialog'),
+      constraints: BoxConstraints(
+        maxWidth: screen.width < 600 ? screen.width - 24 : 900,
+        maxHeight: screen.height - 32,
+      ),
+      style: _historyDialogStyle(),
       title: const Text('بحث الفواتير المحفوظة'),
       content: SizedBox(
-        width: screen.width < 600 ? screen.width - 48 : 820,
-        height: screen.height < 720 ? screen.height * .68 : 520,
+        width: screen.width < 600 ? screen.width - 72 : 860,
+        height: screen.height < 720
+            ? (screen.height - 180).clamp(240.0, 460.0).toDouble()
+            : 520,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -878,43 +934,58 @@ class _InvoiceHistorySearchDialogState
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 SizedBox(
-                  width: screen.width < 600 ? screen.width - 80 : 240,
-                  child: TextField(
-                    key: const ValueKey('invoice-history-id-filter'),
-                    controller: _idController,
-                    textDirection: TextDirection.ltr,
-                    decoration: const InputDecoration(
-                      labelText: 'رقم الفاتورة',
-                      hintText: 'أدخل رقم الفاتورة',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    onSubmitted: (_) => _search(),
+                  width: screen.width < 600 ? screen.width - 96 : 240,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'رقم الفاتورة',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 4),
+                      app_widgets.TextBox(
+                        key: const ValueKey('invoice-history-id-filter'),
+                        controller: _idController,
+                        placeholder: 'أدخل رقم الفاتورة',
+                        textDirection: TextDirection.ltr,
+                        onSubmitted: (_) => _search(),
+                        compact: true,
+                      ),
+                    ],
                   ),
                 ),
                 _dateFilter(label: 'من تاريخ', from: true, value: _dateFrom),
                 _dateFilter(label: 'إلى تاريخ', from: false, value: _dateTo),
-                FilledButton.icon(
+                fluent.FilledButton(
                   key: const ValueKey('invoice-history-search-submit'),
                   onPressed: _loading || _working ? null : _search,
-                  icon: const Icon(Icons.search),
-                  label: const Text('بحث'),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const app_widgets.AppImageIcon(
+                        app_widgets.AppIcons.search,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 6),
+                      const Text('بحث'),
+                    ],
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            const Divider(height: 1),
+            Container(height: 1, color: AppColors.line),
             const SizedBox(height: 8),
             Expanded(
               child: Container(
                 key: const ValueKey('invoice-history-list'),
                 decoration: BoxDecoration(
-                  color: AppColors.paper,
+                  color: Colors.white,
                   border: Border.all(color: AppColors.line),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: _loading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const Center(child: fluent.ProgressRing())
                     : !_searched
                     ? const Center(child: Text('أدخل معايير البحث ثم اضغط بحث'))
                     : _results.isEmpty
@@ -922,36 +993,78 @@ class _InvoiceHistorySearchDialogState
                     : ListView.separated(
                         padding: const EdgeInsets.all(6),
                         itemCount: _results.length,
-                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        separatorBuilder: (_, _) =>
+                            Container(height: 1, color: AppColors.grid),
                         itemBuilder: (context, index) {
                           final invoice = _results[index];
-                          return ListTile(
+                          final isSelected = identical(
+                            _selectedInvoice,
+                            invoice,
+                          );
+                          return fluent.Button(
                             key: ValueKey(
                               'invoice-history-result-${invoice.number}',
                             ),
-                            selected: identical(_selectedInvoice, invoice),
-                            selectedTileColor: AppColors.greenLight,
-                            onTap: () => setState(() {
+                            onPressed: () => setState(() {
                               _selectedInvoice = invoice;
                               _message = null;
                             }),
-                            title: Text(
-                              'فاتورة رقم ${invoice.number} · ${invoice.type.ar}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
+                            style: fluent.ButtonStyle(
+                              padding: const WidgetStatePropertyAll(
+                                EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                              ),
+                              backgroundColor: WidgetStateProperty.resolveWith((
+                                states,
+                              ) {
+                                if (isSelected) return AppColors.mint;
+                                if (states.contains(WidgetState.hovered)) {
+                                  return const Color(0xFFEAF2FB);
+                                }
+                                return Colors.white;
+                              }),
+                              shape: WidgetStatePropertyAll(
+                                RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
                               ),
                             ),
-                            subtitle: Text(
-                              '${_formatDate(invoice.date)}'
-                              '${invoice.account.isEmpty ? '' : ' · ${invoice.account}'}'
-                              ' · الصافي ${invoice.total.toStringAsFixed(2)}',
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'فاتورة رقم ${invoice.number} · ${invoice.type.ar}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        '${_formatDate(invoice.date)}'
+                                        '${invoice.account.isEmpty ? '' : ' · ${invoice.account}'}'
+                                        ' · الصافي ${invoice.total.toStringAsFixed(2)}',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (isSelected)
+                                  const Padding(
+                                    padding: EdgeInsetsDirectional.only(
+                                      start: 8,
+                                    ),
+                                    child: Icon(
+                                      fluent.FluentIcons.check_mark,
+                                      color: AppColors.green,
+                                    ),
+                                  ),
+                              ],
                             ),
-                            trailing: _selectedInvoice == invoice
-                                ? const Icon(
-                                    Icons.check_circle,
-                                    color: AppColors.green,
-                                  )
-                                : const Icon(Icons.chevron_left),
                           );
                         },
                       ),
@@ -959,39 +1072,108 @@ class _InvoiceHistorySearchDialogState
             ),
             if (_message != null) ...[
               const SizedBox(height: 8),
-              Text(
-                _message!,
+              Container(
                 key: const ValueKey('invoice-history-message'),
-                style: const TextStyle(color: AppColors.ink),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF2F6FA),
+                  border: Border.all(color: AppColors.line),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  _message!,
+                  style: const TextStyle(color: AppColors.ink),
+                ),
               ),
             ],
           ],
         ),
       ),
       actions: [
-        FilledButton.icon(
-          key: const ValueKey('invoice-history-download'),
-          onPressed: _selectedInvoice == null || _working
-              ? null
-              : _downloadInvoice,
-          icon: const Icon(Icons.download),
-          label: const Text('تنزيل الفاتورة'),
-        ),
-        FilledButton.icon(
-          key: const ValueKey('invoice-history-print-selected'),
-          onPressed: _selectedInvoice == null || _working
-              ? null
-              : _printInvoice,
-          icon: const Icon(Icons.print),
-          label: const Text('طباعة الفاتورة'),
-        ),
-        TextButton(
-          onPressed: _working ? null : () => Navigator.of(context).pop(),
-          child: const Text('إغلاق'),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.end,
+          children: [
+            _historyImageButton(
+              key: const ValueKey('invoice-history-download'),
+              imagePath: app_widgets.AppIcons.save,
+              label: 'تنزيل الفاتورة',
+              onPressed: _selectedInvoice == null || _working
+                  ? null
+                  : _downloadInvoice,
+            ),
+            _historyImageButton(
+              key: const ValueKey('invoice-history-print-selected'),
+              imagePath: app_widgets.AppIcons.printer,
+              label: 'طباعة الفاتورة',
+              onPressed: _selectedInvoice == null || _working
+                  ? null
+                  : _printInvoice,
+              primary: true,
+            ),
+            _historyImageButton(
+              key: const ValueKey('invoice-history-search-close'),
+              imagePath: app_widgets.AppIcons.exit,
+              label: 'إغلاق',
+              onPressed: _working ? null : () => Navigator.of(context).pop(),
+            ),
+          ],
         ),
       ],
     );
   }
+}
+
+fluent.ContentDialogThemeData _historyDialogStyle() =>
+    fluent.ContentDialogThemeData(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33000000),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      barrierColor: Colors.black.withValues(alpha: 0.42),
+      titlePadding: const EdgeInsetsDirectional.only(bottom: 12),
+      bodyPadding: EdgeInsets.zero,
+      actionsDecoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.line)),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
+      ),
+      actionsPadding: const EdgeInsets.all(12),
+      actionsSpacing: 8,
+    );
+
+Widget _historyImageButton({
+  Key? key,
+  required String imagePath,
+  required String label,
+  required VoidCallback? onPressed,
+  Widget? icon,
+  bool primary = false,
+}) {
+  final child = Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      icon ?? app_widgets.AppImageIcon(imagePath, size: 20),
+      const SizedBox(width: 7),
+      Text(label),
+    ],
+  );
+  if (primary) {
+    return fluent.FilledButton(key: key, onPressed: onPressed, child: child);
+  }
+  return fluent.Button(key: key, onPressed: onPressed, child: child);
 }
 
 String _twoDigits(int value) => value.toString().padLeft(2, '0');

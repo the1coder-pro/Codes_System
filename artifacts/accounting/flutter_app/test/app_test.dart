@@ -1610,7 +1610,7 @@ void main() {
       otherDraft.id,
     ]);
     expect(find.byKey(const ValueKey('invoice-side-row-0')), findsNothing);
-    expect(find.text('مسح المسودة وبدء فاتورة جديدة'), findsNothing);
+    expect(find.byKey(const ValueKey('invoice-discard-draft')), findsNothing);
     expect(find.text('حفظ\nوطباعة'), findsOneWidget);
     expect(find.textContaining('طباعة F7'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('invoice-exit')));
@@ -1627,7 +1627,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('restored invoice draft keeps its fields and can be discarded', (
+  testWidgets('restored invoice draft can be discarded when exiting', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -1675,17 +1675,26 @@ void main() {
     );
     expect(await Store.saveInvoiceDraft(draft), isTrue);
 
+    var didExit = false;
+    var showInvoice = true;
     await tester.pumpWidget(
       fluent.FluentApp(
         theme: buildFluentTheme(),
         home: Directionality(
           textDirection: TextDirection.rtl,
-          child: Scaffold(
-            body: _invoiceScreen(
-              onExit: () {},
-              typeIndex: 4,
-              draftId: draft.id,
-              initialDraft: draft,
+          child: StatefulBuilder(
+            builder: (context, setHomeState) => Scaffold(
+              body: showInvoice
+                  ? _invoiceScreen(
+                      onExit: () {
+                        didExit = true;
+                        setHomeState(() => showInvoice = false);
+                      },
+                      typeIndex: 4,
+                      draftId: draft.id,
+                      initialDraft: draft,
+                    )
+                  : const SizedBox.shrink(),
             ),
           ),
         ),
@@ -1715,15 +1724,21 @@ void main() {
       '12',
     );
 
-    await tester.tap(find.byKey(const ValueKey('invoice-discard-draft')));
+    await tester.enterText(
+      find.byKey(const ValueKey('invoice-account-field')),
+      'تعديل مؤقت',
+    );
+    await tester.tap(find.byKey(const ValueKey('invoice-exit')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('نعم، تأكيد'));
+    expect(
+      find.byKey(const ValueKey('invoice-unsaved-close-dialog')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('invoice-close-discard')));
     await tester.pumpAndSettle();
     expect(await Store.loadInvoiceDrafts(), isEmpty);
-    expect(find.byKey(const ValueKey('invoice-side-row-0')), findsNothing);
-    expect(find.text('000001'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 3));
-    await tester.pumpAndSettle();
+    expect(didExit, isTrue);
+    expect(find.byKey(const ValueKey('invoice-discard-draft')), findsNothing);
   });
 
   testWidgets('saved invoice drafts reopen after signing in', (tester) async {
