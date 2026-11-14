@@ -239,7 +239,7 @@ class _AppShellState extends State<AppShell> {
         ('المستخدمون والصلاحيات', () => soon('المستخدمون')),
       ('بيانات المنشأة', () => soon('بيانات المنشأة')),
       if (_can('printer.manage'))
-        ('إدارة الطابعات', () => go(ShellView.printerSettings)),
+        ('إدارة الطابعات والفواتير', () => go(ShellView.printerSettings)),
     ]);
     final toolsMenu = _menu('أدوات', [
       ('آلة حاسبة', calculator),

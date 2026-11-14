@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'invoice_print_settings.dart';
 import 'models.dart';
 
 /// Local persistence (shared_preferences). Failures fall back silently.
@@ -11,6 +12,7 @@ class Store {
   static const _invoicesKey = 'invoices_v1';
   static const _invoiceSequenceKey = 'invoice_next_number_v1';
   static const _printerPreferencesKey = 'printer_preferences_v1';
+  static const _invoicePrintSettingsKey = 'invoice_print_settings_v1';
 
   static List<Account> _seedAccounts() => [
     Account(code: '1000001', nameAr: 'النقدية'),
@@ -181,6 +183,42 @@ class Store {
     try {
       final prefs = await SharedPreferences.getInstance();
       return prefs.setString(_printerPreferencesKey, jsonEncode(preferences));
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<InvoicePrintSettings> loadInvoicePrintSettings(
+    int typeIndex,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_invoicePrintSettingsKey);
+      if (raw == null) return const InvoicePrintSettings();
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        return const InvoicePrintSettings();
+      }
+      final settings = decoded['$typeIndex'];
+      if (settings is! Map) return const InvoicePrintSettings();
+      return InvoicePrintSettings.fromJson(Map<String, dynamic>.from(settings));
+    } catch (_) {
+      return const InvoicePrintSettings();
+    }
+  }
+
+  static Future<bool> saveInvoicePrintSettings(
+    int typeIndex,
+    InvoicePrintSettings settings,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_invoicePrintSettingsKey);
+      final existing = raw == null
+          ? <String, dynamic>{}
+          : Map<String, dynamic>.from(jsonDecode(raw) as Map);
+      existing['$typeIndex'] = settings.toJson();
+      return prefs.setString(_invoicePrintSettingsKey, jsonEncode(existing));
     } catch (_) {
       return false;
     }

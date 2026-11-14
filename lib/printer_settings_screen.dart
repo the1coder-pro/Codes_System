@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'auth_service.dart';
+import 'invoice_print_design_tab.dart';
 import 'printer_bridge.dart';
 import 'storage.dart';
 import 'theme.dart';
@@ -34,6 +35,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
   String? _status;
   bool _working = false;
   bool _connected = false;
+  int _activeTab = 0;
 
   @override
   void initState() {
@@ -182,8 +184,61 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) => SingleChildScrollView(
+  Widget _tabs() {
+    const names = ['الطابعات', 'الفواتير'];
+    return Container(
+      key: const ValueKey('printer-invoice-tabs-strip'),
+      width: double.infinity,
+      color: const Color(0xFFEFF1F3),
+      padding: const EdgeInsets.only(top: 6, left: 6),
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Row(
+          children: [
+            for (var index = 0; index < names.length; index++)
+              GestureDetector(
+                key: ValueKey('printer-invoice-tab-$index'),
+                onTap: () => setState(() => _activeTab = index),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _activeTab == index
+                        ? Colors.white
+                        : const Color(0xFFE2E5E8),
+                    border: Border(
+                      top: BorderSide(
+                        color: _activeTab == index
+                            ? AppColors.green
+                            : AppColors.line,
+                        width: _activeTab == index ? 2.5 : 1,
+                      ),
+                      left: const BorderSide(color: AppColors.line),
+                      right: const BorderSide(color: AppColors.line),
+                    ),
+                  ),
+                  child: Text(
+                    names[index],
+                    textDirection: TextDirection.rtl,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: _activeTab == index
+                          ? FontWeight.w800
+                          : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _printerTab() => SingleChildScrollView(
     padding: const EdgeInsets.all(12),
     child: Align(
       alignment: Alignment.topCenter,
@@ -192,26 +247,6 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'إدارة الطابعات',
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      fontSize: 25,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                fluent.Button(
-                  key: const ValueKey('printer-settings-exit'),
-                  onPressed: widget.onExit,
-                  child: const AppImageIcon(AppIcons.exit, size: 20),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               color: AppColors.cyan,
@@ -331,5 +366,43 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
         ),
       ),
     ),
+  );
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+        child: Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'إدارة الطابعات والفواتير',
+                textAlign: TextAlign.right,
+                style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
+              ),
+            ),
+            fluent.Button(
+              key: const ValueKey('printer-settings-exit'),
+              onPressed: widget.onExit,
+              child: const AppImageIcon(AppIcons.exit, size: 20),
+            ),
+          ],
+        ),
+      ),
+      _tabs(),
+      Expanded(
+        child: IndexedStack(
+          index: _activeTab,
+          children: [
+            _printerTab(),
+            InvoicePrintDesignTab(
+              session: widget.session,
+              authService: widget.authService,
+            ),
+          ],
+        ),
+      ),
+    ],
   );
 }
