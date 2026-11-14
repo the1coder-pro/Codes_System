@@ -759,6 +759,80 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('returning home confirms every changed open invoice', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await _launchAndLogin(tester);
+
+    final invoicesButton = find.byKey(
+      const ValueKey('ribbon-الفواتير\nوأوامر الصرف'),
+    );
+    await tester.tap(invoicesButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('فاتورة شراء').first);
+    await tester.pumpAndSettle();
+    final firstAccountField = find.descendant(
+      of: find.byKey(const ValueKey('invoice-form-1')),
+      matching: find.byKey(const ValueKey('invoice-account-field')),
+    );
+    await tester.enterText(firstAccountField, 'مورد أول');
+
+    await tester.tap(invoicesButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('فاتورة إرجاع مشتريات').first);
+    await tester.pumpAndSettle();
+    final secondAccountField = find.descendant(
+      of: find.byKey(const ValueKey('invoice-form-2')),
+      matching: find.byKey(const ValueKey('invoice-account-field')),
+    );
+    await tester.enterText(secondAccountField, 'مورد ثانٍ');
+
+    Future<void> chooseHome() async {
+      await tester.tap(find.text('القائمة الرئيسية'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('الشاشة الرئيسية'));
+      await tester.pumpAndSettle();
+    }
+
+    await chooseHome();
+    expect(
+      find.byKey(const ValueKey('invoice-unsaved-close-dialog')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('invoice-close-discard')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('invoice-unsaved-close-dialog')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('invoice-close-continue')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(InvoiceScreen), findsNWidgets(2));
+    expect(
+      tester.widget<app_widgets.TextBox>(firstAccountField).controller.text,
+      'مورد أول',
+    );
+    expect(
+      tester.widget<app_widgets.TextBox>(secondAccountField).controller.text,
+      'مورد ثانٍ',
+    );
+
+    await chooseHome();
+    await tester.tap(find.byKey(const ValueKey('invoice-close-discard')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('invoice-close-discard')));
+    await tester.pumpAndSettle();
+    expect(find.byType(InvoiceScreen), findsNothing);
+    expect(find.byKey(const ValueKey('shell-home-background')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('menus align right and ribbon buttons stay compact on desktop', (
     tester,
   ) async {

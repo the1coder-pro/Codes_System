@@ -15,6 +15,8 @@ import 'storage.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
+typedef InvoiceCloseGuard = Future<bool> Function();
+
 /// Invoice form: right main form with tabs, left payments/items sidebar,
 /// bottom green totals strip. Drafts persist per invoice type.
 class InvoiceScreen extends StatefulWidget {
@@ -22,12 +24,16 @@ class InvoiceScreen extends StatefulWidget {
   final VoidCallback onExit;
   final UserSession session;
   final AccountingAuthService authService;
+  final ValueChanged<InvoiceCloseGuard>? onCloseGuardReady;
+  final VoidCallback? onCloseGuardDisposed;
   const InvoiceScreen({
     super.key,
     required this.typeIndex,
     required this.onExit,
     required this.session,
     required this.authService,
+    this.onCloseGuardReady,
+    this.onCloseGuardDisposed,
   });
 
   @override
@@ -87,6 +93,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     for (final k in _paymentKeys) {
       h[k]!.text = '0';
     }
+    widget.onCloseGuardReady?.call(_confirmDiscardChanges);
     _initializeInvoice();
   }
 
@@ -112,6 +119,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
 
   @override
   void dispose() {
+    widget.onCloseGuardDisposed?.call();
     _printerBridge.dispose();
     _itemSearchFocus.dispose();
     for (final controller in h.values) {
@@ -324,12 +332,8 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       _cleanInvoiceFingerprint != null &&
       _invoiceFingerprint() != _cleanInvoiceFingerprint;
 
-  Future<void> _requestExit() async {
-    if (!_hasUnsavedChanges) {
-      widget.onExit();
-      return;
-    }
-
+  Future<bool> _confirmDiscardChanges() async {
+    if (!_hasUnsavedChanges) return true;
     final discard = await fluent.showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -357,7 +361,11 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
         ],
       ),
     );
-    if (discard == true && mounted) widget.onExit();
+    return discard == true;
+  }
+
+  Future<void> _requestExit() async {
+    if (await _confirmDiscardChanges() && mounted) widget.onExit();
   }
 
   Future<bool> _saveInvoiceAndReset() async {

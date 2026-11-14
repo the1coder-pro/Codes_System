@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -61,6 +62,7 @@ class _AppShellState extends State<AppShell> {
   final List<_ShellRoute> _routes = [
     const _ShellRoute(id: 0, view: ShellView.home),
   ];
+  final Map<int, InvoiceCloseGuard> _invoiceCloseGuards = {};
   int _nextRouteId = 1;
   int _nextInvoiceNumber = 1;
   UserSession? session;
@@ -112,15 +114,33 @@ class _AppShellState extends State<AppShell> {
       soon('هذه الشاشة');
       return;
     }
+    if (v == ShellView.home) {
+      unawaited(_returnHomeSafely());
+      return;
+    }
     setState(() {
-      if (v == ShellView.home) {
-        _routes
-          ..clear()
-          ..add(const _ShellRoute(id: 0, view: ShellView.home));
-        return;
-      }
       if (_routes.last.view == v) return;
       _routes.add(_ShellRoute(id: _nextRouteId++, view: v));
+    });
+  }
+
+  Future<bool> _confirmOpenInvoicesCanClose() async {
+    final openInvoices = _routes
+        .where((route) => route.view == ShellView.invoice)
+        .toList();
+    for (final route in openInvoices) {
+      final guard = _invoiceCloseGuards[route.id];
+      if (guard != null && !await guard()) return false;
+    }
+    return true;
+  }
+
+  Future<void> _returnHomeSafely() async {
+    if (!await _confirmOpenInvoicesCanClose() || !mounted) return;
+    setState(() {
+      _routes
+        ..clear()
+        ..add(const _ShellRoute(id: 0, view: ShellView.home));
     });
   }
 
@@ -154,7 +174,10 @@ class _AppShellState extends State<AppShell> {
     setState(() => _routes.removeLast());
   }
 
-  void _logout() {
+  void _logout() => unawaited(_logoutSafely());
+
+  Future<void> _logoutSafely() async {
+    if (!await _confirmOpenInvoicesCanClose() || !mounted) return;
     setState(() {
       session = null;
       _routes
@@ -700,6 +723,8 @@ class _AppShellState extends State<AppShell> {
         session: session!,
         authService: widget.authService,
         onExit: _closeCurrentView,
+        onCloseGuardReady: (guard) => _invoiceCloseGuards[route.id] = guard,
+        onCloseGuardDisposed: () => _invoiceCloseGuards.remove(route.id),
       ),
       ShellView.accounts => AccountsScreen(
         session: session!,
