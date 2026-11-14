@@ -1,0 +1,262 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/CMakeDetermineSystem.cmake:205 (message)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      The system is: Linux - 6.18.63 - x86_64
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+      Compiler: /nix/store/4bb195ym905lzvwnbm86nxz2j625hrv4-clang-wrapper-19.1.7/bin/clang++ 
+      Build flags: -isystem;/nix/store/b2aj478jxny0yvwqr6zglcmp99r3563b-libX11-1.8.12-dev/include;-isystem;/nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/include;-isystem;/nix/store/rxd3kdsc7k72198g58wk0qp3xdip5x5d-zlib-1.3.1-dev/include
+      Id flags:  
+      
+      The output was:
+      0
+      
+      
+      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "a.out"
+      
+      The CXX compiler identification is Clang, found in:
+        /home/runner/workspace/artifacts/accounting/flutter_app/build/linux/x64/release/CMakeFiles/3.31.6/CompilerIdCXX/a.out
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:74 (try_compile)"
+      - "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:3 (project)"
+    checks:
+      - "Detecting CXX compiler ABI info"
+    directories:
+      source: "/home/runner/workspace/artifacts/accounting/flutter_app/build/linux/x64/release/CMakeFiles/CMakeScratch/TryCompile-XARmeP"
+      binary: "/home/runner/workspace/artifacts/accounting/flutter_app/build/linux/x64/release/CMakeFiles/CMakeScratch/TryCompile-XARmeP"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: "-isystem /nix/store/b2aj478jxny0yvwqr6zglcmp99r3563b-libX11-1.8.12-dev/include -isystem /nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/include -isystem /nix/store/rxd3kdsc7k72198g58wk0qp3xdip5x5d-zlib-1.3.1-dev/include"
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_CXX_SCAN_FOR_MODULES: "OFF"
+      CMAKE_EXE_LINKER_FLAGS: "-Wl,-rpath,/nix/store/qrij2csr7p6jsfa40d7h4ckzqg4wd5w2-at-spi2-core-2.56.2/lib -Wl,-rpath,/nix/store/prjwp9nyczsza4kga6a2bcb3qz1mvxg7-cairo-1.18.2/lib -Wl,-rpath,/nix/store/88zx26jgcxgl6abfvakbv3phrywkl339-gdk-pixbuf-2.42.12/lib -Wl,-rpath,/nix/store/y3nxdc2x8hwivppzgx5hkrhacsh87l21-glib-2.84.3/lib -Wl,-rpath,/nix/store/6x7s7vfydrik42pk4599sm1jcqxmi1qp-gtk+3-3.24.49/lib -Wl,-rpath,/nix/store/90qal753blhl7mrwzs2k8b00zby9r9xr-harfbuzz-10.2.0/lib -Wl,-rpath,/nix/store/p61f1q6kh1ds3wfzk3hghdh90ki10mqv-libepoxy-1.5.10/lib -Wl,-rpath,/nix/store/802n2ppbgbsk6211wjkg6dcjmifdcfr6-pango-1.56.3/lib -Wl,-rpath,/nix/store/1nsvsrqp5zm96r9p3rrq3yhlyw8jiy91-libX11-1.8.12/lib -Wl,-rpath,/nix/store/8xj3g825qwj894bxafa8h98scxxyvxps-libdeflate-1.23/lib"
+    buildResult:
+      variable: "CMAKE_CXX_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: '/home/runner/workspace/artifacts/accounting/flutter_app/build/linux/x64/release/CMakeFiles/CMakeScratch/TryCompile-XARmeP'
+        
+        Run Build Command(s): /nix/store/mrkrlw6g3a7gp9a50dawfzirzhw8945v-ninja-1.12.1/bin/ninja -v cmTC_d815a
+        [1/2] /nix/store/4bb195ym905lzvwnbm86nxz2j625hrv4-clang-wrapper-19.1.7/bin/clang++   -isystem /nix/store/b2aj478jxny0yvwqr6zglcmp99r3563b-libX11-1.8.12-dev/include -isystem /nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/include -isystem /nix/store/rxd3kdsc7k72198g58wk0qp3xdip5x5d-zlib-1.3.1-dev/include    -v -MD -MT CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o -MF CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o.d -o CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o -c /nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/CMakeCXXCompilerABI.cpp
+        clang version 19.1.7
+        Target: x86_64-unknown-linux-gnu
+        Thread model: posix
+        InstalledDir: /nix/store/x6rsdc4s0f1j9bn1cx2h1l5fj8765ykw-clang-19.1.7/bin
+        Found candidate GCC installation: /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1
+        Selected GCC installation: /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1
+        Candidate multilib: .;@m64
+        Selected multilib: .;@m64
+         (in-process)
+         "/nix/store/x6rsdc4s0f1j9bn1cx2h1l5fj8765ykw-clang-19.1.7/bin/clang++" -cc1 -triple x86_64-unknown-linux-gnu -emit-obj -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCXXCompilerABI.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fdebug-compilation-dir=/home/runner/workspace/artifacts/accounting/flutter_app/build/linux/x64/release/CMakeFiles/CMakeScratch/TryCompile-XARmeP -v -fcoverage-compilation-dir=/home/runner/workspace/artifacts/accounting/flutter_app/build/linux/x64/release/CMakeFiles/CMakeScratch/TryCompile-XARmeP -nostdsysteminc -resource-dir /nix/store/4bb195ym905lzvwnbm86nxz2j625hrv4-clang-wrapper-19.1.7/resource-root -dependency-file CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o.d -MT CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o -sys-header-deps -isystem /nix/store/b2aj478jxny0yvwqr6zglcmp99r3563b-libX11-1.8.12-dev/include -isystem /nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/include -isystem /nix/store/rxd3kdsc7k72198g58wk0qp3xdip5x5d-zlib-1.3.1-dev/include -idirafter /nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include -isystem /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322 -isystem /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/x86_64-unknown-linux-gnu -internal-isystem /nix/store/4bb195ym905lzvwnbm86nxz2j625hrv4-clang-wrapper-19.1.7/resource-root/include -fdeprecated-macro -ferror-limit 19 -fgnuc-version=4.2.1 -fskip-odr-check-in-gmf -fcxx-exceptions -fexceptions -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o -x c++ /nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/CMakeCXXCompilerABI.cpp
+        clang -cc1 version 19.1.7 based upon LLVM 19.1.7 default target x86_64-unknown-linux-gnu
+        #include "..." search starts here:
+        #include <...> search starts here:
+         /nix/store/b2aj478jxny0yvwqr6zglcmp99r3563b-libX11-1.8.12-dev/include
+         /nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/include
+         /nix/store/rxd3kdsc7k72198g58wk0qp3xdip5x5d-zlib-1.3.1-dev/include
+         /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322
+         /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/x86_64-unknown-linux-gnu
+         /nix/store/4bb195ym905lzvwnbm86nxz2j625hrv4-clang-wrapper-19.1.7/resource-root/include
+         /nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include
+        End of search list.
+        [2/2] : && /nix/store/4bb195ym905lzvwnbm86nxz2j625hrv4-clang-wrapper-19.1.7/bin/clang++ -isystem /nix/store/b2aj478jxny0yvwqr6zglcmp99r3563b-libX11-1.8.12-dev/include -isystem /nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/include -isystem /nix/store/rxd3kdsc7k72198g58wk0qp3xdip5x5d-zlib-1.3.1-dev/include -Wl,-rpath,/nix/store/qrij2csr7p6jsfa40d7h4ckzqg4wd5w2-at-spi2-core-2.56.2/lib -Wl,-rpath,/nix/store/prjwp9nyczsza4kga6a2bcb3qz1mvxg7-cairo-1.18.2/lib -Wl,-rpath,/nix/store/88zx26jgcxgl6abfvakbv3phrywkl339-gdk-pixbuf-2.42.12/lib -Wl,-rpath,/nix/store/y3nxdc2x8hwivppzgx5hkrhacsh87l21-glib-2.84.3/lib -Wl,-rpath,/nix/store/6x7s7vfydrik42pk4599sm1jcqxmi1qp-gtk+3-3.24.49/lib -Wl,-rpath,/nix/store/90qal753blhl7mrwzs2k8b00zby9r9xr-harfbuzz-10.2.0/lib -Wl,-rpath,/nix/store/p61f1q6kh1ds3wfzk3hghdh90ki10mqv-libepoxy-1.5.10/lib -Wl,-rpath,/nix/store/802n2ppbgbsk6211wjkg6dcjmifdcfr6-pango-1.56.3/lib -Wl,-rpath,/nix/store/1nsvsrqp5zm96r9p3rrq3yhlyw8jiy91-libX11-1.8.12/lib -Wl,-rpath,/nix/store/8xj3g825qwj894bxafa8h98scxxyvxps-libdeflate-1.23/lib -v -Wl,-v CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_d815a   && :
+        clang version 19.1.7
+        Target: x86_64-unknown-linux-gnu
+        Thread model: posix
+        InstalledDir: /nix/store/x6rsdc4s0f1j9bn1cx2h1l5fj8765ykw-clang-19.1.7/bin
+        Found candidate GCC installation: /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1
+        Selected GCC installation: /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1
+        Candidate multilib: .;@m64
+        Selected multilib: .;@m64
+         "/nix/store/vkxrkqv0kfi51w4ckly1slj62wa5iryp-binutils-wrapper-2.44/bin/ld" -z relro --hash-style=gnu --eh-frame-hdr -m elf_x86_64 -pie -o cmTC_d815a /nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/Scrt1.o /nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/crti.o /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1/crtbeginS.o -L/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib -L/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1.20250322 -L/nix/store/bmi5znnqk4kg2grkrhk6py0irc8phf6l-gcc-14.2.1.20250322-lib/lib -L/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322//lib -L/nix/store/d98657x0vlbfs87rr2ngwbhl1zs46m7f-gcc-14.2.1.20250322-libgcc/lib -L/nix/store/9b8h4b98vj92v7ql5chmim0447x2w220-clang-19.1.7-lib/lib -L/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1 -L/lib/x86_64-linux-gnu -L/lib/../lib64 -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib64 -L/lib -L/usr/lib -L/nix/store/1nsvsrqp5zm96r9p3rrq3yhlyw8jiy91-libX11-1.8.12/lib -L/nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/lib -L/nix/store/jl19fdc7gdxqz9a1s368r9d15vpirnqy-zlib-1.3.1/lib -dynamic-linker=/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/ld-linux-x86-64.so.2 -rpath /nix/store/qrij2csr7p6jsfa40d7h4ckzqg4wd5w2-at-spi2-core-2.56.2/lib -rpath /nix/store/prjwp9nyczsza4kga6a2bcb3qz1mvxg7-cairo-1.18.2/lib -rpath /nix/store/88zx26jgcxgl6abfvakbv3phrywkl339-gdk-pixbuf-2.42.12/lib -rpath /nix/store/y3nxdc2x8hwivppzgx5hkrhacsh87l21-glib-2.84.3/lib -rpath /nix/store/6x7s7vfydrik42pk4599sm1jcqxmi1qp-gtk+3-3.24.49/lib -rpath /nix/store/90qal753blhl7mrwzs2k8b00zby9r9xr-harfbuzz-10.2.0/lib -rpath /nix/store/p61f1q6kh1ds3wfzk3hghdh90ki10mqv-libepoxy-1.5.10/lib -rpath /nix/store/802n2ppbgbsk6211wjkg6dcjmifdcfr6-pango-1.56.3/lib -rpath /nix/store/1nsvsrqp5zm96r9p3rrq3yhlyw8jiy91-libX11-1.8.12/lib -rpath /nix/store/8xj3g825qwj894bxafa8h98scxxyvxps-libdeflate-1.23/lib -v CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1/crtendS.o /nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/crtn.o
+        GNU ld (GNU Binutils) 2.44
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:182 (message)"
+      - "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Parsed CXX implicit include dir info: rv=done
+        found start of include info
+        found start of implicit include info
+          add: [/nix/store/b2aj478jxny0yvwqr6zglcmp99r3563b-libX11-1.8.12-dev/include]
+          add: [/nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/include]
+          add: [/nix/store/rxd3kdsc7k72198g58wk0qp3xdip5x5d-zlib-1.3.1-dev/include]
+          add: [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322]
+          add: [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/x86_64-unknown-linux-gnu]
+          add: [/nix/store/4bb195ym905lzvwnbm86nxz2j625hrv4-clang-wrapper-19.1.7/resource-root/include]
+          add: [/nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include]
+        end of search list found
+        collapse include dir [/nix/store/b2aj478jxny0yvwqr6zglcmp99r3563b-libX11-1.8.12-dev/include] ==> [/nix/store/b2aj478jxny0yvwqr6zglcmp99r3563b-libX11-1.8.12-dev/include]
+        collapse include dir [/nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/include] ==> [/nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/include]
+        collapse include dir [/nix/store/rxd3kdsc7k72198g58wk0qp3xdip5x5d-zlib-1.3.1-dev/include] ==> [/nix/store/rxd3kdsc7k72198g58wk0qp3xdip5x5d-zlib-1.3.1-dev/include]
+        collapse include dir [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322] ==> [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322]
+        collapse include dir [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/x86_64-unknown-linux-gnu] ==> [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/x86_64-unknown-linux-gnu]
+        collapse include dir [/nix/store/4bb195ym905lzvwnbm86nxz2j625hrv4-clang-wrapper-19.1.7/resource-root/include] ==> [/nix/store/4bb195ym905lzvwnbm86nxz2j625hrv4-clang-wrapper-19.1.7/resource-root/include]
+        collapse include dir [/nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include] ==> [/nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include]
+        implicit include dirs: [/nix/store/b2aj478jxny0yvwqr6zglcmp99r3563b-libX11-1.8.12-dev/include;/nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/include;/nix/store/rxd3kdsc7k72198g58wk0qp3xdip5x5d-zlib-1.3.1-dev/include;/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322;/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/x86_64-unknown-linux-gnu;/nix/store/4bb195ym905lzvwnbm86nxz2j625hrv4-clang-wrapper-19.1.7/resource-root/include;/nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include]
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:218 (message)"
+      - "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Parsed CXX implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(\\.[a-z]+)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(ld[0-9]*(\\.[a-z]+)?))("|,| |$)]
+        ignore line: [Change Dir: '/home/runner/workspace/artifacts/accounting/flutter_app/build/linux/x64/release/CMakeFiles/CMakeScratch/TryCompile-XARmeP']
+        ignore line: []
+        ignore line: [Run Build Command(s): /nix/store/mrkrlw6g3a7gp9a50dawfzirzhw8945v-ninja-1.12.1/bin/ninja -v cmTC_d815a]
+        ignore line: [[1/2] /nix/store/4bb195ym905lzvwnbm86nxz2j625hrv4-clang-wrapper-19.1.7/bin/clang++   -isystem /nix/store/b2aj478jxny0yvwqr6zglcmp99r3563b-libX11-1.8.12-dev/include -isystem /nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/include -isystem /nix/store/rxd3kdsc7k72198g58wk0qp3xdip5x5d-zlib-1.3.1-dev/include    -v -MD -MT CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o -MF CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o.d -o CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o -c /nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/CMakeCXXCompilerABI.cpp]
+        ignore line: [clang version 19.1.7]
+        ignore line: [Target: x86_64-unknown-linux-gnu]
+        ignore line: [Thread model: posix]
+        ignore line: [InstalledDir: /nix/store/x6rsdc4s0f1j9bn1cx2h1l5fj8765ykw-clang-19.1.7/bin]
+        ignore line: [Found candidate GCC installation: /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1]
+        ignore line: [Selected GCC installation: /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1]
+        ignore line: [Candidate multilib: .]
+        ignore line: [@m64]
+        ignore line: [Selected multilib: .]
+        ignore line: [@m64]
+        ignore line: [ (in-process)]
+        ignore line: [ "/nix/store/x6rsdc4s0f1j9bn1cx2h1l5fj8765ykw-clang-19.1.7/bin/clang++" -cc1 -triple x86_64-unknown-linux-gnu -emit-obj -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCXXCompilerABI.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fdebug-compilation-dir=/home/runner/workspace/artifacts/accounting/flutter_app/build/linux/x64/release/CMakeFiles/CMakeScratch/TryCompile-XARmeP -v -fcoverage-compilation-dir=/home/runner/workspace/artifacts/accounting/flutter_app/build/linux/x64/release/CMakeFiles/CMakeScratch/TryCompile-XARmeP -nostdsysteminc -resource-dir /nix/store/4bb195ym905lzvwnbm86nxz2j625hrv4-clang-wrapper-19.1.7/resource-root -dependency-file CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o.d -MT CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o -sys-header-deps -isystem /nix/store/b2aj478jxny0yvwqr6zglcmp99r3563b-libX11-1.8.12-dev/include -isystem /nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/include -isystem /nix/store/rxd3kdsc7k72198g58wk0qp3xdip5x5d-zlib-1.3.1-dev/include -idirafter /nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include -isystem /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322 -isystem /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/x86_64-unknown-linux-gnu -internal-isystem /nix/store/4bb195ym905lzvwnbm86nxz2j625hrv4-clang-wrapper-19.1.7/resource-root/include -fdeprecated-macro -ferror-limit 19 -fgnuc-version=4.2.1 -fskip-odr-check-in-gmf -fcxx-exceptions -fexceptions -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o -x c++ /nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/CMakeCXXCompilerABI.cpp]
+        ignore line: [clang -cc1 version 19.1.7 based upon LLVM 19.1.7 default target x86_64-unknown-linux-gnu]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ /nix/store/b2aj478jxny0yvwqr6zglcmp99r3563b-libX11-1.8.12-dev/include]
+        ignore line: [ /nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/include]
+        ignore line: [ /nix/store/rxd3kdsc7k72198g58wk0qp3xdip5x5d-zlib-1.3.1-dev/include]
+        ignore line: [ /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322]
+        ignore line: [ /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/include/c++/14.2.1.20250322/x86_64-unknown-linux-gnu]
+        ignore line: [ /nix/store/4bb195ym905lzvwnbm86nxz2j625hrv4-clang-wrapper-19.1.7/resource-root/include]
+        ignore line: [ /nix/store/41pf3md9zgpda9kwh6rzn5kaddf7i0lp-glibc-2.40-66-dev/include]
+        ignore line: [End of search list.]
+        ignore line: [[2/2] : && /nix/store/4bb195ym905lzvwnbm86nxz2j625hrv4-clang-wrapper-19.1.7/bin/clang++ -isystem /nix/store/b2aj478jxny0yvwqr6zglcmp99r3563b-libX11-1.8.12-dev/include -isystem /nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/include -isystem /nix/store/rxd3kdsc7k72198g58wk0qp3xdip5x5d-zlib-1.3.1-dev/include -Wl -rpath /nix/store/qrij2csr7p6jsfa40d7h4ckzqg4wd5w2-at-spi2-core-2.56.2/lib -Wl -rpath /nix/store/prjwp9nyczsza4kga6a2bcb3qz1mvxg7-cairo-1.18.2/lib -Wl -rpath /nix/store/88zx26jgcxgl6abfvakbv3phrywkl339-gdk-pixbuf-2.42.12/lib -Wl -rpath /nix/store/y3nxdc2x8hwivppzgx5hkrhacsh87l21-glib-2.84.3/lib -Wl -rpath /nix/store/6x7s7vfydrik42pk4599sm1jcqxmi1qp-gtk+3-3.24.49/lib -Wl -rpath /nix/store/90qal753blhl7mrwzs2k8b00zby9r9xr-harfbuzz-10.2.0/lib -Wl -rpath /nix/store/p61f1q6kh1ds3wfzk3hghdh90ki10mqv-libepoxy-1.5.10/lib -Wl -rpath /nix/store/802n2ppbgbsk6211wjkg6dcjmifdcfr6-pango-1.56.3/lib -Wl -rpath /nix/store/1nsvsrqp5zm96r9p3rrq3yhlyw8jiy91-libX11-1.8.12/lib -Wl -rpath /nix/store/8xj3g825qwj894bxafa8h98scxxyvxps-libdeflate-1.23/lib -v -Wl -v CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_d815a   && :]
+        ignore line: [clang version 19.1.7]
+        ignore line: [Target: x86_64-unknown-linux-gnu]
+        ignore line: [Thread model: posix]
+        ignore line: [InstalledDir: /nix/store/x6rsdc4s0f1j9bn1cx2h1l5fj8765ykw-clang-19.1.7/bin]
+        ignore line: [Found candidate GCC installation: /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1]
+        ignore line: [Selected GCC installation: /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1]
+        ignore line: [Candidate multilib: .]
+        ignore line: [@m64]
+        ignore line: [Selected multilib: .]
+        ignore line: [@m64]
+        link line: [ "/nix/store/vkxrkqv0kfi51w4ckly1slj62wa5iryp-binutils-wrapper-2.44/bin/ld" -z relro --hash-style=gnu --eh-frame-hdr -m elf_x86_64 -pie -o cmTC_d815a /nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/Scrt1.o /nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/crti.o /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1/crtbeginS.o -L/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib -L/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1.20250322 -L/nix/store/bmi5znnqk4kg2grkrhk6py0irc8phf6l-gcc-14.2.1.20250322-lib/lib -L/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322//lib -L/nix/store/d98657x0vlbfs87rr2ngwbhl1zs46m7f-gcc-14.2.1.20250322-libgcc/lib -L/nix/store/9b8h4b98vj92v7ql5chmim0447x2w220-clang-19.1.7-lib/lib -L/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1 -L/lib/x86_64-linux-gnu -L/lib/../lib64 -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib64 -L/lib -L/usr/lib -L/nix/store/1nsvsrqp5zm96r9p3rrq3yhlyw8jiy91-libX11-1.8.12/lib -L/nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/lib -L/nix/store/jl19fdc7gdxqz9a1s368r9d15vpirnqy-zlib-1.3.1/lib -dynamic-linker=/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/ld-linux-x86-64.so.2 -rpath /nix/store/qrij2csr7p6jsfa40d7h4ckzqg4wd5w2-at-spi2-core-2.56.2/lib -rpath /nix/store/prjwp9nyczsza4kga6a2bcb3qz1mvxg7-cairo-1.18.2/lib -rpath /nix/store/88zx26jgcxgl6abfvakbv3phrywkl339-gdk-pixbuf-2.42.12/lib -rpath /nix/store/y3nxdc2x8hwivppzgx5hkrhacsh87l21-glib-2.84.3/lib -rpath /nix/store/6x7s7vfydrik42pk4599sm1jcqxmi1qp-gtk+3-3.24.49/lib -rpath /nix/store/90qal753blhl7mrwzs2k8b00zby9r9xr-harfbuzz-10.2.0/lib -rpath /nix/store/p61f1q6kh1ds3wfzk3hghdh90ki10mqv-libepoxy-1.5.10/lib -rpath /nix/store/802n2ppbgbsk6211wjkg6dcjmifdcfr6-pango-1.56.3/lib -rpath /nix/store/1nsvsrqp5zm96r9p3rrq3yhlyw8jiy91-libX11-1.8.12/lib -rpath /nix/store/8xj3g825qwj894bxafa8h98scxxyvxps-libdeflate-1.23/lib -v CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1/crtendS.o /nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/crtn.o]
+          arg [/nix/store/vkxrkqv0kfi51w4ckly1slj62wa5iryp-binutils-wrapper-2.44/bin/ld] ==> ignore
+          arg [-zrelro] ==> ignore
+          arg [--hash-style=gnu] ==> ignore
+          arg [--eh-frame-hdr] ==> ignore
+          arg [-m] ==> ignore
+          arg [elf_x86_64] ==> ignore
+          arg [-pie] ==> ignore
+          arg [-o] ==> ignore
+          arg [cmTC_d815a] ==> ignore
+          arg [/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/Scrt1.o] ==> obj [/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/Scrt1.o]
+          arg [/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/crti.o] ==> obj [/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/crti.o]
+          arg [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1/crtbeginS.o] ==> obj [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1/crtbeginS.o]
+          arg [-L/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib] ==> dir [/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib]
+          arg [-L/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1.20250322] ==> dir [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1.20250322]
+          arg [-L/nix/store/bmi5znnqk4kg2grkrhk6py0irc8phf6l-gcc-14.2.1.20250322-lib/lib] ==> dir [/nix/store/bmi5znnqk4kg2grkrhk6py0irc8phf6l-gcc-14.2.1.20250322-lib/lib]
+          arg [-L/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322//lib] ==> dir [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322//lib]
+          arg [-L/nix/store/d98657x0vlbfs87rr2ngwbhl1zs46m7f-gcc-14.2.1.20250322-libgcc/lib] ==> dir [/nix/store/d98657x0vlbfs87rr2ngwbhl1zs46m7f-gcc-14.2.1.20250322-libgcc/lib]
+          arg [-L/nix/store/9b8h4b98vj92v7ql5chmim0447x2w220-clang-19.1.7-lib/lib] ==> dir [/nix/store/9b8h4b98vj92v7ql5chmim0447x2w220-clang-19.1.7-lib/lib]
+          arg [-L/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1] ==> dir [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1]
+          arg [-L/lib/x86_64-linux-gnu] ==> dir [/lib/x86_64-linux-gnu]
+          arg [-L/lib/../lib64] ==> dir [/lib/../lib64]
+          arg [-L/usr/lib/x86_64-linux-gnu] ==> dir [/usr/lib/x86_64-linux-gnu]
+          arg [-L/usr/lib/../lib64] ==> dir [/usr/lib/../lib64]
+          arg [-L/lib] ==> dir [/lib]
+          arg [-L/usr/lib] ==> dir [/usr/lib]
+          arg [-L/nix/store/1nsvsrqp5zm96r9p3rrq3yhlyw8jiy91-libX11-1.8.12/lib] ==> dir [/nix/store/1nsvsrqp5zm96r9p3rrq3yhlyw8jiy91-libX11-1.8.12/lib]
+          arg [-L/nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/lib] ==> dir [/nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/lib]
+          arg [-L/nix/store/jl19fdc7gdxqz9a1s368r9d15vpirnqy-zlib-1.3.1/lib] ==> dir [/nix/store/jl19fdc7gdxqz9a1s368r9d15vpirnqy-zlib-1.3.1/lib]
+          arg [-dynamic-linker=/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/ld-linux-x86-64.so.2] ==> ignore
+          arg [-rpath] ==> ignore
+          arg [/nix/store/qrij2csr7p6jsfa40d7h4ckzqg4wd5w2-at-spi2-core-2.56.2/lib] ==> ignore
+          arg [-rpath] ==> ignore
+          arg [/nix/store/prjwp9nyczsza4kga6a2bcb3qz1mvxg7-cairo-1.18.2/lib] ==> ignore
+          arg [-rpath] ==> ignore
+          arg [/nix/store/88zx26jgcxgl6abfvakbv3phrywkl339-gdk-pixbuf-2.42.12/lib] ==> ignore
+          arg [-rpath] ==> ignore
+          arg [/nix/store/y3nxdc2x8hwivppzgx5hkrhacsh87l21-glib-2.84.3/lib] ==> ignore
+          arg [-rpath] ==> ignore
+          arg [/nix/store/6x7s7vfydrik42pk4599sm1jcqxmi1qp-gtk+3-3.24.49/lib] ==> ignore
+          arg [-rpath] ==> ignore
+          arg [/nix/store/90qal753blhl7mrwzs2k8b00zby9r9xr-harfbuzz-10.2.0/lib] ==> ignore
+          arg [-rpath] ==> ignore
+          arg [/nix/store/p61f1q6kh1ds3wfzk3hghdh90ki10mqv-libepoxy-1.5.10/lib] ==> ignore
+          arg [-rpath] ==> ignore
+          arg [/nix/store/802n2ppbgbsk6211wjkg6dcjmifdcfr6-pango-1.56.3/lib] ==> ignore
+          arg [-rpath] ==> ignore
+          arg [/nix/store/1nsvsrqp5zm96r9p3rrq3yhlyw8jiy91-libX11-1.8.12/lib] ==> ignore
+          arg [-rpath] ==> ignore
+          arg [/nix/store/8xj3g825qwj894bxafa8h98scxxyvxps-libdeflate-1.23/lib] ==> ignore
+          arg [-v] ==> ignore
+          arg [CMakeFiles/cmTC_d815a.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
+          arg [-lstdc++] ==> lib [stdc++]
+          arg [-lm] ==> lib [m]
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [-lgcc] ==> lib [gcc]
+          arg [-lc] ==> lib [c]
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [-lgcc] ==> lib [gcc]
+          arg [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1/crtendS.o] ==> obj [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1/crtendS.o]
+          arg [/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/crtn.o] ==> obj [/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/crtn.o]
+        linker tool for 'CXX': /nix/store/vkxrkqv0kfi51w4ckly1slj62wa5iryp-binutils-wrapper-2.44/bin/ld
+        collapse library dir [/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib] ==> [/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib]
+        collapse library dir [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1.20250322] ==> [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1.20250322]
+        collapse library dir [/nix/store/bmi5znnqk4kg2grkrhk6py0irc8phf6l-gcc-14.2.1.20250322-lib/lib] ==> [/nix/store/bmi5znnqk4kg2grkrhk6py0irc8phf6l-gcc-14.2.1.20250322-lib/lib]
+        collapse library dir [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322//lib] ==> [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib]
+        collapse library dir [/nix/store/d98657x0vlbfs87rr2ngwbhl1zs46m7f-gcc-14.2.1.20250322-libgcc/lib] ==> [/nix/store/d98657x0vlbfs87rr2ngwbhl1zs46m7f-gcc-14.2.1.20250322-libgcc/lib]
+        collapse library dir [/nix/store/9b8h4b98vj92v7ql5chmim0447x2w220-clang-19.1.7-lib/lib] ==> [/nix/store/9b8h4b98vj92v7ql5chmim0447x2w220-clang-19.1.7-lib/lib]
+        collapse library dir [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1] ==> [/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1]
+        collapse library dir [/lib/x86_64-linux-gnu] ==> [/lib/x86_64-linux-gnu]
+        collapse library dir [/lib/../lib64] ==> [/lib64]
+        collapse library dir [/usr/lib/x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+        collapse library dir [/usr/lib/../lib64] ==> [/usr/lib64]
+        collapse library dir [/lib] ==> [/lib]
+        collapse library dir [/usr/lib] ==> [/usr/lib]
+        collapse library dir [/nix/store/1nsvsrqp5zm96r9p3rrq3yhlyw8jiy91-libX11-1.8.12/lib] ==> [/nix/store/1nsvsrqp5zm96r9p3rrq3yhlyw8jiy91-libX11-1.8.12/lib]
+        collapse library dir [/nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/lib] ==> [/nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/lib]
+        collapse library dir [/nix/store/jl19fdc7gdxqz9a1s368r9d15vpirnqy-zlib-1.3.1/lib] ==> [/nix/store/jl19fdc7gdxqz9a1s368r9d15vpirnqy-zlib-1.3.1/lib]
+        implicit libs: [stdc++;m;gcc_s;gcc;c;gcc_s;gcc]
+        implicit objs: [/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/Scrt1.o;/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/crti.o;/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1/crtbeginS.o;/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1/crtendS.o;/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib/crtn.o]
+        implicit dirs: [/nix/store/zdpby3l6azi78sl83cpad2qjpfj25aqx-glibc-2.40-66/lib;/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1.20250322;/nix/store/bmi5znnqk4kg2grkrhk6py0irc8phf6l-gcc-14.2.1.20250322-lib/lib;/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib;/nix/store/d98657x0vlbfs87rr2ngwbhl1zs46m7f-gcc-14.2.1.20250322-libgcc/lib;/nix/store/9b8h4b98vj92v7ql5chmim0447x2w220-clang-19.1.7-lib/lib;/nix/store/6i862vz60awrlsila8vw18rg4d4l66iy-gcc-14.2.1.20250322/lib/gcc/x86_64-unknown-linux-gnu/14.2.1;/lib/x86_64-linux-gnu;/lib64;/usr/lib/x86_64-linux-gnu;/usr/lib64;/lib;/usr/lib;/nix/store/1nsvsrqp5zm96r9p3rrq3yhlyw8jiy91-libX11-1.8.12/lib;/nix/store/spg20iadf5ylh7pl1l9q8ydf7dqghdfi-xorgproto-2024.1/lib;/nix/store/jl19fdc7gdxqz9a1s368r9d15vpirnqy-zlib-1.3.1/lib]
+        implicit fwks: []
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/Internal/CMakeDetermineLinkerId.cmake:40 (message)"
+      - "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:255 (cmake_determine_linker_id)"
+      - "/nix/store/29ax4k0a83zhz43lb73cv610d95wdsx1-cmake-3.31.6/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Running the CXX compiler's linker: "/nix/store/vkxrkqv0kfi51w4ckly1slj62wa5iryp-binutils-wrapper-2.44/bin/ld" "-v"
+      GNU ld (GNU Binutils) 2.44
+...
