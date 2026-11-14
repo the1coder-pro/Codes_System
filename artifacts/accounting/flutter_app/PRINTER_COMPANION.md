@@ -51,6 +51,14 @@ sessions. The saved passwords are applied when the API is started through this
 companion. Web-mode passwords are separate from the standalone Flutter app's
 passwords.
 
+## Configure invoice print layouts
+
+Open **إدارة → إدارة الطابعات والفواتير**, then choose the **الفواتير** tab.
+Each invoice type has its own paper, design, and language settings. Available
+formats are thermal 58/80 mm, A4 portrait, and A4 landscape. Choose Arabic,
+English, or bilingual output, review the live sample preview, and save. Settings
+are stored locally on the current device.
+
 ## Use the web app with a separate print-only companion
 
 For a web app that runs separately, build the old print-only window with

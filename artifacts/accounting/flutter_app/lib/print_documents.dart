@@ -2,11 +2,14 @@ import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart' as pdf;
 import 'package:pdf/widgets.dart' as pw;
 
+import 'invoice_print_settings.dart';
+
 const _mm = pdf.PdfPageFormat.mm;
 const _pageMarginMm = 12.0;
 
 class InvoicePrintLine {
   final String name;
+  final String nameEn;
   final String unit;
   final String quantity;
   final String unitPrice;
@@ -14,6 +17,7 @@ class InvoicePrintLine {
 
   const InvoicePrintLine({
     required this.name,
+    this.nameEn = '',
     required this.unit,
     required this.quantity,
     required this.unitPrice,
@@ -23,10 +27,16 @@ class InvoicePrintLine {
 
 class InvoicePrintTotal {
   final String label;
+  final String labelEn;
   final String value;
   final bool emphasized;
 
-  const InvoicePrintTotal(this.label, this.value, {this.emphasized = false});
+  const InvoicePrintTotal(
+    this.label,
+    this.value, {
+    this.labelEn = '',
+    this.emphasized = false,
+  });
 }
 
 class PrintFonts {
@@ -63,11 +73,54 @@ Future<Uint8List> buildInvoicePdf({
   required List<InvoicePrintLine> lines,
   required List<InvoicePrintTotal> totals,
   required String notes,
+  required String taxStatusEn,
+  required InvoicePrintSettings settings,
 }) async {
   final fonts = await PrintFonts.load();
   final document = pw.Document(theme: fonts.theme);
-  const rowsPerPage = 16;
+  if (settings.isThermal) {
+    final height = settings.thermalHeightMm(
+      lines.length,
+      notesLength: notes.length,
+    );
+    document.addPage(
+      pw.Page(
+        pageFormat: pdf.PdfPageFormat(
+          settings.paperWidthMm * _mm,
+          height * _mm,
+        ),
+        margin: pw.EdgeInsets.symmetric(
+          horizontal: (settings.paperWidthMm == 58 ? 3 : 4) * _mm,
+          vertical: 4 * _mm,
+        ),
+        build: (context) => _thermalInvoice(
+          titleAr: titleAr,
+          titleEn: titleEn,
+          invoiceNumber: invoiceNumber,
+          invoiceDateTime: invoiceDateTime,
+          deliveryDate: deliveryDate,
+          account: account,
+          taxNumber: taxNumber,
+          taxStatus: taxStatus,
+          taxStatusEn: taxStatusEn,
+          lines: lines,
+          totals: totals,
+          notes: notes,
+          fonts: fonts,
+          settings: settings,
+        ),
+      ),
+    );
+    return document.save();
+  }
+
+  final rowsPerPage = settings.paperSize == InvoicePaperSize.a4Landscape
+      ? 24
+      : 16;
   final pageCount = (lines.length / rowsPerPage).ceil().clamp(1, 1000);
+  final format = settings.paperSize == InvoicePaperSize.a4Landscape
+      ? pdf.PdfPageFormat.a4.landscape
+      : pdf.PdfPageFormat.a4;
 
   for (var pageIndex = 0; pageIndex < pageCount; pageIndex++) {
     final pageLines = lines.skip(pageIndex * rowsPerPage).take(rowsPerPage);
@@ -75,10 +128,10 @@ Future<Uint8List> buildInvoicePdf({
     final isLastPage = pageIndex == pageCount - 1;
     document.addPage(
       pw.Page(
-        pageFormat: pdf.PdfPageFormat.a4,
+        pageFormat: format,
         margin: const pw.EdgeInsets.all(_pageMarginMm * _mm),
         build: (context) => pw.Directionality(
-          textDirection: pw.TextDirection.rtl,
+          textDirection: _textDirection(settings.language),
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
@@ -87,29 +140,54 @@ Future<Uint8List> buildInvoicePdf({
                 titleEn,
                 invoiceNumber,
                 fonts,
+                settings: settings,
                 compact: !isFirstPage,
               ),
               if (isFirstPage) ...[
                 pw.SizedBox(height: 10),
-                _invoiceDetails([
-                  ('رقم الفاتورة', invoiceNumber),
-                  ('تاريخ ووقت الفاتورة', invoiceDateTime),
-                  ('تاريخ التسليم', deliveryDate),
-                  ('اسم الحساب', account),
-                  ('الرقم الضريبي', taxNumber),
-                  ('حالة الضريبة', taxStatus),
-                ], fonts),
+                _invoiceDetails(
+                  [
+                    (
+                      _label('رقم الفاتورة', 'Invoice No.', settings),
+                      invoiceNumber,
+                    ),
+                    (
+                      _label(
+                        'تاريخ ووقت الفاتورة',
+                        'Invoice date & time',
+                        settings,
+                      ),
+                      invoiceDateTime,
+                    ),
+                    (
+                      _label('تاريخ التسليم', 'Delivery date', settings),
+                      deliveryDate,
+                    ),
+                    (_label('اسم الحساب', 'Account', settings), account),
+                    (
+                      _label('الرقم الضريبي', 'Tax number', settings),
+                      taxNumber,
+                    ),
+                    (
+                      _label('حالة الضريبة', 'Tax status', settings),
+                      _label(taxStatus, taxStatusEn, settings),
+                    ),
+                  ],
+                  fonts,
+                  settings,
+                ),
                 pw.SizedBox(height: 14),
               ] else
                 pw.SizedBox(height: 12),
               _invoiceTable(
                 pageLines.toList(),
                 fonts,
+                settings: settings,
                 startIndex: pageIndex * rowsPerPage,
               ),
               if (isLastPage) ...[
                 pw.SizedBox(height: 12),
-                _invoiceTotals(totals, fonts),
+                _invoiceTotals(totals, fonts, settings),
                 if (notes.trim().isNotEmpty) ...[
                   pw.SizedBox(height: 12),
                   pw.Container(
@@ -123,7 +201,7 @@ Future<Uint8List> buildInvoicePdf({
                       text: pw.TextSpan(
                         children: [
                           pw.TextSpan(
-                            text: 'ملاحظات: ',
+                            text: '${_label('ملاحظات', 'Notes', settings)}: ',
                             style: pw.TextStyle(font: fonts.bold, fontSize: 10),
                           ),
                           pw.TextSpan(
@@ -148,75 +226,380 @@ Future<Uint8List> buildInvoicePdf({
   return document.save();
 }
 
+pw.Widget _thermalInvoice({
+  required String titleAr,
+  required String titleEn,
+  required String invoiceNumber,
+  required String invoiceDateTime,
+  required String deliveryDate,
+  required String account,
+  required String taxNumber,
+  required String taxStatus,
+  required String taxStatusEn,
+  required List<InvoicePrintLine> lines,
+  required List<InvoicePrintTotal> totals,
+  required String notes,
+  required PrintFonts fonts,
+  required InvoicePrintSettings settings,
+}) {
+  final accent = settings.design == InvoiceDesignStyle.highlighted
+      ? pdf.PdfColors.blue700
+      : pdf.PdfColors.grey800;
+  final dense = settings.design == InvoiceDesignStyle.compact;
+  final title = settings.language == InvoicePrintLanguage.english
+      ? titleEn
+      : titleAr;
+  final details = <(String, String)>[
+    (_label('رقم الفاتورة', 'Invoice No.', settings), invoiceNumber),
+    (_label('التاريخ والوقت', 'Date & time', settings), invoiceDateTime),
+    if (deliveryDate.trim().isNotEmpty)
+      (_label('التسليم', 'Delivery', settings), deliveryDate),
+    if (account.trim().isNotEmpty)
+      (_label('الحساب', 'Account', settings), account),
+    if (taxNumber.trim().isNotEmpty)
+      (_label('الرقم الضريبي', 'Tax No.', settings), taxNumber),
+    (
+      _label('الضريبة', 'Tax', settings),
+      _label(taxStatus, taxStatusEn, settings),
+    ),
+  ];
+  return pw.Directionality(
+    textDirection: _textDirection(settings.language),
+    child: pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+      children: [
+        pw.Container(
+          padding: pw.EdgeInsets.symmetric(
+            vertical: dense ? 3 : 6,
+            horizontal: dense ? 2 : 4,
+          ),
+          decoration: settings.design == InvoiceDesignStyle.highlighted
+              ? pw.BoxDecoration(
+                  color: accent,
+                  borderRadius: const pw.BorderRadius.all(
+                    pw.Radius.circular(3),
+                  ),
+                )
+              : null,
+          child: pw.Column(
+            children: [
+              pw.Text(
+                title,
+                textAlign: pw.TextAlign.center,
+                style: pw.TextStyle(
+                  font: fonts.bold,
+                  fontSize: settings.paperWidthMm == 58 ? 12 : 15,
+                  color: settings.design == InvoiceDesignStyle.highlighted
+                      ? pdf.PdfColors.white
+                      : accent,
+                ),
+              ),
+              if (settings.language == InvoicePrintLanguage.bilingual) ...[
+                pw.SizedBox(height: 2),
+                pw.Text(
+                  titleEn,
+                  textDirection: pw.TextDirection.ltr,
+                  textAlign: pw.TextAlign.center,
+                  style: pw.TextStyle(
+                    font: fonts.regular,
+                    fontSize: 8,
+                    color: settings.design == InvoiceDesignStyle.highlighted
+                        ? pdf.PdfColors.white
+                        : accent,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        pw.SizedBox(height: dense ? 4 : 7),
+        _receiptDivider(accent),
+        for (final detail in details)
+          pw.Padding(
+            padding: pw.EdgeInsets.symmetric(vertical: dense ? 1 : 2),
+            child: pw.Row(
+              children: [
+                pw.Expanded(
+                  child: pw.Text(
+                    detail.$1,
+                    style: pw.TextStyle(
+                      font: fonts.regular,
+                      fontSize: dense ? 7 : 8,
+                      color: pdf.PdfColors.grey700,
+                    ),
+                  ),
+                ),
+                pw.SizedBox(width: 4),
+                pw.Flexible(
+                  child: pw.Text(
+                    detail.$2,
+                    textAlign: settings.language == InvoicePrintLanguage.english
+                        ? pw.TextAlign.left
+                        : pw.TextAlign.right,
+                    style: pw.TextStyle(
+                      font: fonts.bold,
+                      fontSize: dense ? 7 : 8,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        pw.SizedBox(height: dense ? 3 : 5),
+        _receiptDivider(accent),
+        for (var index = 0; index < lines.length; index++)
+          _thermalLine(lines[index], index, fonts, settings),
+        _receiptDivider(accent),
+        pw.SizedBox(height: dense ? 3 : 5),
+        for (final total in totals) _thermalTotal(total, fonts, settings),
+        if (notes.trim().isNotEmpty) ...[
+          pw.SizedBox(height: dense ? 4 : 7),
+          _receiptDivider(accent),
+          pw.Text(
+            '${_label('ملاحظات', 'Notes', settings)}: ${notes.trim()}',
+            textAlign: settings.language == InvoicePrintLanguage.english
+                ? pw.TextAlign.left
+                : pw.TextAlign.right,
+            style: pw.TextStyle(font: fonts.regular, fontSize: dense ? 7 : 8),
+          ),
+        ],
+        pw.SizedBox(height: dense ? 5 : 9),
+        _receiptDivider(accent),
+        pw.SizedBox(height: dense ? 3 : 5),
+        pw.Text(
+          _label('شكراً لكم', 'Thank you', settings),
+          textAlign: pw.TextAlign.center,
+          style: pw.TextStyle(font: fonts.bold, fontSize: dense ? 8 : 9),
+        ),
+      ],
+    ),
+  );
+}
+
+pw.Widget _thermalLine(
+  InvoicePrintLine line,
+  int index,
+  PrintFonts fonts,
+  InvoicePrintSettings settings,
+) {
+  final name = _itemName(line, settings);
+  final unit = _unitName(line.unit, settings);
+  final dense = settings.design == InvoiceDesignStyle.compact;
+  return pw.Container(
+    padding: pw.EdgeInsets.symmetric(vertical: dense ? 2 : 4),
+    decoration: settings.design == InvoiceDesignStyle.minimal
+        ? null
+        : const pw.BoxDecoration(
+            border: pw.Border(
+              bottom: pw.BorderSide(color: pdf.PdfColors.grey300, width: 0.4),
+            ),
+          ),
+    child: pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+      children: [
+        pw.Text(
+          '${index + 1}. $name',
+          textAlign: settings.language == InvoicePrintLanguage.english
+              ? pw.TextAlign.left
+              : pw.TextAlign.right,
+          style: pw.TextStyle(
+            font: fonts.bold,
+            fontSize: settings.paperWidthMm == 58 ? 8 : 9,
+          ),
+        ),
+        pw.SizedBox(height: 2),
+        pw.Row(
+          children: [
+            pw.Expanded(
+              child: pw.Text(
+                '$unit  ${line.quantity} × ${line.unitPrice}',
+                style: pw.TextStyle(
+                  font: fonts.regular,
+                  fontSize: dense ? 7 : 8,
+                ),
+              ),
+            ),
+            pw.Text(
+              line.total,
+              style: pw.TextStyle(font: fonts.bold, fontSize: dense ? 7 : 8),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+pw.Widget _thermalTotal(
+  InvoicePrintTotal total,
+  PrintFonts fonts,
+  InvoicePrintSettings settings,
+) => pw.Container(
+  padding: const pw.EdgeInsets.symmetric(vertical: 2),
+  decoration: total.emphasized
+      ? const pw.BoxDecoration(
+          border: pw.Border(
+            top: pw.BorderSide(color: pdf.PdfColors.black, width: 0.8),
+          ),
+        )
+      : null,
+  child: pw.Row(
+    children: [
+      pw.Expanded(
+        child: pw.Text(
+          _label(total.label, total.labelEn, settings),
+          style: pw.TextStyle(
+            font: total.emphasized ? fonts.bold : fonts.regular,
+            fontSize: total.emphasized ? 10 : 8,
+          ),
+        ),
+      ),
+      pw.Text(
+        total.value,
+        style: pw.TextStyle(
+          font: fonts.bold,
+          fontSize: total.emphasized ? 11 : 8,
+        ),
+      ),
+    ],
+  ),
+);
+
+pw.Widget _receiptDivider(pdf.PdfColor color) =>
+    pw.Container(height: 0.7, color: color);
+
+String _label(String arabic, String english, InvoicePrintSettings settings) =>
+    switch (settings.language) {
+      InvoicePrintLanguage.arabic => arabic,
+      InvoicePrintLanguage.english => english,
+      InvoicePrintLanguage.bilingual => '$arabic / $english',
+    };
+
+String _itemName(InvoicePrintLine line, InvoicePrintSettings settings) {
+  final english = line.nameEn.trim().isEmpty ? line.name : line.nameEn;
+  return _label(line.name, english, settings);
+}
+
+String _unitName(String unit, InvoicePrintSettings settings) {
+  const translations = {
+    'حبة': 'piece',
+    'قطعة': 'piece',
+    'كرتون': 'carton',
+    'كجم': 'kg',
+    'كيلو': 'kg',
+    'جرام': 'g',
+    'لتر': 'liter',
+    'مل': 'ml',
+    'متر': 'meter',
+    'علبة': 'box',
+    'عبوة': 'bottle',
+    'كيس': 'bag',
+    'صندوق': 'box',
+    'يوم': 'day',
+    'ساعة': 'hour',
+    'خدمة': 'service',
+  };
+  return _label(unit, translations[unit] ?? unit, settings);
+}
+
+pw.TextDirection _textDirection(InvoicePrintLanguage language) =>
+    language == InvoicePrintLanguage.english
+    ? pw.TextDirection.ltr
+    : pw.TextDirection.rtl;
+
 pw.Widget _invoiceHeading(
   String titleAr,
   String titleEn,
   String invoiceNumber,
   PrintFonts fonts, {
+  required InvoicePrintSettings settings,
   required bool compact,
 }) => pw.Column(
   crossAxisAlignment: pw.CrossAxisAlignment.stretch,
   children: [
     pw.Text(
-      titleAr,
-      textAlign: pw.TextAlign.right,
-      style: pw.TextStyle(font: fonts.bold, fontSize: compact ? 15 : 22),
+      settings.language == InvoicePrintLanguage.english ? titleEn : titleAr,
+      textAlign: settings.language == InvoicePrintLanguage.english
+          ? pw.TextAlign.left
+          : pw.TextAlign.right,
+      style: pw.TextStyle(
+        font: fonts.bold,
+        fontSize: compact ? 15 : 22,
+        color: settings.design == InvoiceDesignStyle.highlighted
+            ? pdf.PdfColors.blue700
+            : pdf.PdfColors.black,
+      ),
     ),
-    pw.Row(
-      children: [
-        pw.Expanded(
-          child: pw.Text(
-            titleEn,
-            textAlign: pw.TextAlign.right,
-            style: pw.TextStyle(
-              font: fonts.regular,
-              fontSize: compact ? 8 : 10,
-              color: pdf.PdfColors.blueGrey,
-            ),
-          ),
+    if (settings.language == InvoicePrintLanguage.bilingual)
+      pw.Text(
+        titleEn,
+        textAlign: pw.TextAlign.left,
+        textDirection: pw.TextDirection.ltr,
+        style: pw.TextStyle(
+          font: fonts.regular,
+          fontSize: compact ? 8 : 10,
+          color: pdf.PdfColors.blueGrey,
         ),
-        if (compact)
-          pw.Text(
-            'رقم الفاتورة: $invoiceNumber',
-            style: pw.TextStyle(font: fonts.bold, fontSize: 9),
-          ),
-      ],
-    ),
+      ),
+    if (compact)
+      pw.Text(
+        '${_label('رقم الفاتورة', 'Invoice No.', settings)}: $invoiceNumber',
+        textAlign: settings.language == InvoicePrintLanguage.english
+            ? pw.TextAlign.left
+            : pw.TextAlign.right,
+        style: pw.TextStyle(font: fonts.bold, fontSize: 9),
+      ),
   ],
 );
 
-pw.Widget _invoiceDetails(List<(String, String)> details, PrintFonts fonts) =>
-    pw.Container(
-      padding: const pw.EdgeInsets.all(10),
-      decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: pdf.PdfColors.blueGrey, width: 0.7),
-        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-      ),
-      child: pw.Table(
-        columnWidths: const {
-          0: pw.FlexColumnWidth(1),
-          1: pw.FlexColumnWidth(1),
-        },
-        children: [
-          for (var i = 0; i < details.length; i += 2)
-            pw.TableRow(
-              children: [
-                _detailCell(details[i + 1], fonts),
-                _detailCell(details[i], fonts),
-              ],
-            ),
-        ],
-      ),
-    );
+pw.Widget _invoiceDetails(
+  List<(String, String)> details,
+  PrintFonts fonts,
+  InvoicePrintSettings settings,
+) => pw.Container(
+  padding: const pw.EdgeInsets.all(10),
+  decoration: pw.BoxDecoration(
+    border: pw.Border.all(
+      color: settings.design == InvoiceDesignStyle.highlighted
+          ? pdf.PdfColors.blue700
+          : pdf.PdfColors.blueGrey,
+      width: settings.design == InvoiceDesignStyle.compact ? 0.4 : 0.7,
+    ),
+    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+  ),
+  child: pw.Table(
+    columnWidths: const {0: pw.FlexColumnWidth(1), 1: pw.FlexColumnWidth(1)},
+    children: [
+      for (var i = 0; i < details.length; i += 2)
+        pw.TableRow(
+          children: settings.language == InvoicePrintLanguage.english
+              ? [
+                  _detailCell(details[i], fonts, settings),
+                  _detailCell(details[i + 1], fonts, settings),
+                ]
+              : [
+                  _detailCell(details[i + 1], fonts, settings),
+                  _detailCell(details[i], fonts, settings),
+                ],
+        ),
+    ],
+  ),
+);
 
-pw.Widget _detailCell((String, String) detail, PrintFonts fonts) => pw.Padding(
+pw.Widget _detailCell(
+  (String, String) detail,
+  PrintFonts fonts,
+  InvoicePrintSettings settings,
+) => pw.Padding(
   padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 5),
   child: pw.Column(
     crossAxisAlignment: pw.CrossAxisAlignment.stretch,
     children: [
       pw.Text(
         detail.$1,
-        textAlign: pw.TextAlign.right,
+        textAlign: settings.language == InvoicePrintLanguage.english
+            ? pw.TextAlign.left
+            : pw.TextAlign.right,
         style: pw.TextStyle(
           font: fonts.regular,
           fontSize: 8,
@@ -226,7 +609,9 @@ pw.Widget _detailCell((String, String) detail, PrintFonts fonts) => pw.Padding(
       pw.SizedBox(height: 2),
       pw.Text(
         detail.$2.trim().isEmpty ? '—' : detail.$2,
-        textAlign: pw.TextAlign.right,
+        textAlign: settings.language == InvoicePrintLanguage.english
+            ? pw.TextAlign.left
+            : pw.TextAlign.right,
         style: pw.TextStyle(font: fonts.bold, fontSize: 9),
       ),
     ],
@@ -236,46 +621,86 @@ pw.Widget _detailCell((String, String) detail, PrintFonts fonts) => pw.Padding(
 pw.Widget _invoiceTable(
   List<InvoicePrintLine> lines,
   PrintFonts fonts, {
+  required InvoicePrintSettings settings,
   required int startIndex,
 }) {
-  const labels = [
-    'م',
-    'اسم الصنف',
-    'الوحدة',
-    'الكمية',
-    'سعر الوحدة قبل الضريبة',
-    'الإجمالي قبل الضريبة',
+  final labels = [
+    _label('م', 'No.', settings),
+    _label('اسم الصنف', 'Item', settings),
+    _label('الوحدة', 'Unit', settings),
+    _label('الكمية', 'Quantity', settings),
+    _label('سعر الوحدة قبل الضريبة', 'Unit price before tax', settings),
+    _label('الإجمالي قبل الضريبة', 'Total before tax', settings),
   ];
-  final headerCells = labels.reversed.map((label) {
+  final headers = settings.language == InvoicePrintLanguage.english
+      ? labels
+      : labels.reversed.toList();
+  final headerCells = headers.map((label) {
     return _tableCell(
       label,
       fonts,
       isHeader: true,
+      settings: settings,
       alignment: pw.TextAlign.center,
     );
   }).toList();
-  final rows = <pw.TableRow>[
+  final rows = <pw.TableRow>[];
+  final headerColor = switch (settings.design) {
+    InvoiceDesignStyle.classic => pdf.PdfColors.blue100,
+    InvoiceDesignStyle.compact => pdf.PdfColors.grey200,
+    InvoiceDesignStyle.minimal => pdf.PdfColors.white,
+    InvoiceDesignStyle.highlighted => pdf.PdfColors.blue700,
+  };
+  rows.add(
     pw.TableRow(
-      decoration: const pw.BoxDecoration(color: pdf.PdfColors.blue100),
+      decoration: pw.BoxDecoration(color: headerColor),
       children: headerCells,
     ),
-    for (var index = 0; index < lines.length; index++)
+  );
+  for (var index = 0; index < lines.length; index++) {
+    final line = lines[index];
+    final values = settings.language == InvoicePrintLanguage.english
+        ? [
+            '${startIndex + index + 1}',
+            _itemName(line, settings),
+            _unitName(line.unit, settings),
+            line.quantity,
+            line.unitPrice,
+            line.total,
+          ]
+        : [
+            line.total,
+            line.unitPrice,
+            line.quantity,
+            _unitName(line.unit, settings),
+            _itemName(line, settings),
+            '${startIndex + index + 1}',
+          ];
+    rows.add(
       pw.TableRow(
-        decoration: index.isOdd
+        decoration: index.isOdd && settings.design != InvoiceDesignStyle.minimal
             ? const pw.BoxDecoration(color: pdf.PdfColors.grey100)
             : null,
-        children: [
-          lines[index].total,
-          lines[index].unitPrice,
-          lines[index].quantity,
-          lines[index].unit,
-          lines[index].name,
-          '${startIndex + index + 1}',
-        ].map((value) => _tableCell(value, fonts)).toList(),
+        children: values
+            .map((value) => _tableCell(value, fonts, settings: settings))
+            .toList(),
       ),
-  ];
+    );
+  }
   return pw.Table(
-    border: pw.TableBorder.all(color: pdf.PdfColors.blueGrey, width: 0.5),
+    border: settings.design == InvoiceDesignStyle.minimal
+        ? pw.TableBorder(
+            horizontalInside: pw.BorderSide(
+              color: pdf.PdfColors.grey400,
+              width: 0.35,
+            ),
+          )
+        : pw.TableBorder.all(
+            color: settings.design == InvoiceDesignStyle.highlighted
+                ? pdf.PdfColors.blueGrey
+                : pdf.PdfColors.blueGrey,
+            width: settings.design == InvoiceDesignStyle.compact ? 0.3 : 0.5,
+          ),
     columnWidths: const {
       0: pw.FlexColumnWidth(1.15),
       1: pw.FlexColumnWidth(1.25),
@@ -291,67 +716,81 @@ pw.Widget _invoiceTable(
 pw.Widget _tableCell(
   String value,
   PrintFonts fonts, {
+  required InvoicePrintSettings settings,
   bool isHeader = false,
   pw.TextAlign alignment = pw.TextAlign.right,
 }) => pw.Padding(
-  padding: const pw.EdgeInsets.symmetric(vertical: 5, horizontal: 4),
+  padding: pw.EdgeInsets.symmetric(
+    vertical: settings.design == InvoiceDesignStyle.compact ? 2 : 5,
+    horizontal: settings.design == InvoiceDesignStyle.compact ? 2 : 4,
+  ),
   child: pw.Text(
     value,
     textAlign: alignment,
     maxLines: isHeader ? 3 : 2,
     style: pw.TextStyle(
-      font: isHeader ? fonts.bold : fonts.regular,
+      font: isHeader || settings.design == InvoiceDesignStyle.highlighted
+          ? fonts.bold
+          : fonts.regular,
+      color: isHeader && settings.design == InvoiceDesignStyle.highlighted
+          ? pdf.PdfColors.white
+          : null,
       fontSize: isHeader ? 7.3 : 8.2,
     ),
   ),
 );
 
-pw.Widget _invoiceTotals(List<InvoicePrintTotal> totals, PrintFonts fonts) =>
-    pw.Align(
-      alignment: pw.Alignment.centerLeft,
-      child: pw.Container(
-        width: 280,
-        child: pw.Column(
-          children: [
-            for (final total in totals)
-              pw.Container(
-                padding: const pw.EdgeInsets.symmetric(vertical: 3),
-                decoration: total.emphasized
-                    ? const pw.BoxDecoration(
-                        border: pw.Border(
-                          top: pw.BorderSide(
-                            color: pdf.PdfColors.blueGrey,
-                            width: 1.2,
-                          ),
-                        ),
-                      )
-                    : null,
-                child: pw.Row(
-                  children: [
-                    pw.Expanded(
-                      child: pw.Text(
-                        total.label,
-                        textAlign: pw.TextAlign.right,
-                        style: pw.TextStyle(
-                          font: total.emphasized ? fonts.bold : fonts.regular,
-                          fontSize: total.emphasized ? 11 : 8.5,
-                        ),
+pw.Widget _invoiceTotals(
+  List<InvoicePrintTotal> totals,
+  PrintFonts fonts,
+  InvoicePrintSettings settings,
+) => pw.Align(
+  alignment: pw.Alignment.centerLeft,
+  child: pw.Container(
+    width: 280,
+    child: pw.Column(
+      children: [
+        for (final total in totals)
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(vertical: 3),
+            decoration: total.emphasized
+                ? const pw.BoxDecoration(
+                    border: pw.Border(
+                      top: pw.BorderSide(
+                        color: pdf.PdfColors.blueGrey,
+                        width: 1.2,
                       ),
                     ),
-                    pw.Text(
-                      total.value,
-                      style: pw.TextStyle(
-                        font: fonts.bold,
-                        fontSize: total.emphasized ? 12 : 8.5,
-                      ),
+                  )
+                : null,
+            child: pw.Row(
+              children: [
+                pw.Expanded(
+                  child: pw.Text(
+                    _label(total.label, total.labelEn, settings),
+                    textAlign: settings.language == InvoicePrintLanguage.english
+                        ? pw.TextAlign.left
+                        : pw.TextAlign.right,
+                    style: pw.TextStyle(
+                      font: total.emphasized ? fonts.bold : fonts.regular,
+                      fontSize: total.emphasized ? 11 : 8.5,
                     ),
-                  ],
+                  ),
                 ),
-              ),
-          ],
-        ),
-      ),
-    );
+                pw.Text(
+                  total.value,
+                  style: pw.TextStyle(
+                    font: fonts.bold,
+                    fontSize: total.emphasized ? 12 : 8.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    ),
+  ),
+);
 
 Future<Uint8List> buildBarcodePdf({
   required String itemName,

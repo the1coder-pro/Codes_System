@@ -80,6 +80,14 @@ out active browser sessions. These saved credentials are applied when the API
 is started through the web companion. Web-mode passwords are separate from the
 standalone Flutter app's passwords.
 
+## Configure invoice receipt and page layouts
+
+In the application, open **إدارة → إدارة الطابعات والفواتير**. The **الفواتير**
+tab stores an independent paper size, design, and language for each invoice type.
+Choose thermal 58/80 mm, A4 portrait, or A4 landscape; select Arabic, English,
+or bilingual output; then review the sample in the live preview and save.
+Settings are kept locally on the current browser/device.
+
 ## Run the browser version locally
 
 The steps below use the Node API from `main` and run the UI in a browser.

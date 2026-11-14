@@ -5,6 +5,7 @@ import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'auth_service.dart';
 import 'item_image.dart';
+import 'invoice_print_settings.dart';
 import 'models.dart';
 import 'printer_bridge.dart';
 import 'print_documents.dart';
@@ -392,7 +393,10 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     }
     final preferences = await _invoicePrinterPreferences();
     if (!mounted || preferences == null) return;
-    final document = await _invoicePdf();
+    final printSettings = await Store.loadInvoicePrintSettings(
+      widget.typeIndex,
+    );
+    final document = await _invoicePdf(printSettings);
     if (!mounted) return;
     if (!await _saveInvoiceAndReset()) return;
     try {
@@ -401,6 +405,11 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
         printerName: preferences.invoicePrinter ?? '',
         jobType: 'invoice',
         pdfBytes: document,
+        paperWidthMm: printSettings.paperWidthMm,
+        paperHeightMm: printSettings.paperHeightMmFor(
+          lines.length,
+          notesLength: h['notes']!.text.trim().length,
+        ),
       );
       if (mounted) {
         toast(
@@ -440,12 +449,21 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     }
     final preferences = await _invoicePrinterPreferences();
     if (!mounted || preferences == null) return;
+    final printSettings = await Store.loadInvoicePrintSettings(
+      widget.typeIndex,
+    );
+    final document = await _invoicePdf(printSettings);
     try {
       await _printerBridge.printPdf(
         preferences: preferences,
         printerName: preferences.invoicePrinter ?? '',
         jobType: 'invoice',
-        pdfBytes: await _invoicePdf(),
+        pdfBytes: document,
+        paperWidthMm: printSettings.paperWidthMm,
+        paperHeightMm: printSettings.paperHeightMmFor(
+          lines.length,
+          notesLength: h['notes']!.text.trim().length,
+        ),
       );
     } catch (error) {
       if (mounted) {
@@ -493,41 +511,65 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     }
   }
 
-  Future<Uint8List> _invoicePdf() => buildInvoicePdf(
-    titleAr: type.ar,
-    titleEn: type.en,
-    invoiceNumber: h['number']!.text.trim(),
-    invoiceDateTime: '${_fmt(invDate)} ${_time(invDate)}',
-    deliveryDate: _fmt(delivDate),
-    account: h['account']!.text.trim(),
-    taxNumber: h['taxNo']!.text.trim(),
-    taxStatus: taxable,
-    lines: lines
-        .map(
-          (line) => InvoicePrintLine(
-            name: line.name,
-            unit: line.unit,
-            quantity: line.qty == line.qty.roundToDouble()
-                ? line.qty.toStringAsFixed(0)
-                : line.qty.toString(),
-            unitPrice: money(line.price),
-            total: money(line.total),
-          ),
-        )
-        .toList(),
-    totals: [
-      InvoicePrintTotal('الإجمالي قبل الخصم', money(subtotal)),
-      InvoicePrintTotal('الخصم', money(discount)),
-      InvoicePrintTotal('الضريبة', money(tax)),
-      InvoicePrintTotal('الصافي', money(net), emphasized: true),
-      InvoicePrintTotal('نقداً', money(_n('cash'))),
-      InvoicePrintTotal('شبكة', money(_n('network'))),
-      InvoicePrintTotal('آجل', money(_n('credit'))),
-      InvoicePrintTotal('رصيد رجيع', money(_n('returnBal'))),
-      InvoicePrintTotal('المتبقي', money(remaining)),
-    ],
-    notes: h['notes']!.text.trim(),
-  );
+  Future<Uint8List> _invoicePdf([
+    InvoicePrintSettings? requestedSettings,
+  ]) async {
+    final settings =
+        requestedSettings ??
+        await Store.loadInvoicePrintSettings(widget.typeIndex);
+    return buildInvoicePdf(
+      titleAr: type.ar,
+      titleEn: type.en,
+      invoiceNumber: h['number']!.text.trim(),
+      invoiceDateTime: '${_fmt(invDate)} ${_time(invDate)}',
+      deliveryDate: _fmt(delivDate),
+      account: h['account']!.text.trim(),
+      taxNumber: h['taxNo']!.text.trim(),
+      taxStatus: taxable,
+      taxStatusEn: taxable == 'خاضع للضريبة' ? 'Taxable' : 'Not taxable',
+      lines: lines.map((line) {
+        final matchingItems = catalog.where(
+          (item) => item.id == line.code || item.nameAr == line.name,
+        );
+        return InvoicePrintLine(
+          name: line.name,
+          nameEn: matchingItems.isEmpty ? '' : matchingItems.first.nameEn,
+          unit: line.unit,
+          quantity: line.qty == line.qty.roundToDouble()
+              ? line.qty.toStringAsFixed(0)
+              : line.qty.toString(),
+          unitPrice: money(line.price),
+          total: money(line.total),
+        );
+      }).toList(),
+      totals: [
+        InvoicePrintTotal(
+          'الإجمالي قبل الخصم',
+          money(subtotal),
+          labelEn: 'Gross before discount',
+        ),
+        InvoicePrintTotal('الخصم', money(discount), labelEn: 'Discount'),
+        InvoicePrintTotal('الضريبة', money(tax), labelEn: 'Tax'),
+        InvoicePrintTotal(
+          'الصافي',
+          money(net),
+          labelEn: 'Net',
+          emphasized: true,
+        ),
+        InvoicePrintTotal('نقداً', money(_n('cash')), labelEn: 'Cash'),
+        InvoicePrintTotal('شبكة', money(_n('network')), labelEn: 'Card'),
+        InvoicePrintTotal('آجل', money(_n('credit')), labelEn: 'Credit'),
+        InvoicePrintTotal(
+          'رصيد رجيع',
+          money(_n('returnBal')),
+          labelEn: 'Return balance',
+        ),
+        InvoicePrintTotal('المتبقي', money(remaining), labelEn: 'Remaining'),
+      ],
+      notes: h['notes']!.text.trim(),
+      settings: settings,
+    );
+  }
 
   String _fmt(DateTime d) => '${d.month}/${d.day}/${d.year}';
   String _time(DateTime d) {
