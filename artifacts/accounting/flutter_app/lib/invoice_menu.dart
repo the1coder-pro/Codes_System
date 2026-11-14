@@ -7,8 +7,14 @@ import 'theme.dart';
 /// Green bilingual list of invoice types on a light-gray canvas.
 class InvoiceMenu extends StatelessWidget {
   final ValueChanged<int> onPick;
+  final VoidCallback? onHistory;
   final VoidCallback onClose;
-  const InvoiceMenu({super.key, required this.onPick, required this.onClose});
+  const InvoiceMenu({
+    super.key,
+    required this.onPick,
+    this.onHistory,
+    required this.onClose,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -32,26 +38,56 @@ class InvoiceMenu extends StatelessWidget {
             ),
           ),
           PositionedDirectional(
+            start: 10,
             end: 10,
             bottom: 10,
-            child: fluent.Button(
-              style: fluent.ButtonStyle(
-                padding: const WidgetStatePropertyAll(
-                  EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                ),
-                backgroundColor: WidgetStateProperty.resolveWith(
-                  (states) => states.contains(WidgetState.hovered)
-                      ? const Color(0xFFEAF2FB)
-                      : Colors.white,
-                ),
-                shape: WidgetStatePropertyAll(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (onHistory != null)
+                  fluent.Button(
+                    key: const ValueKey('invoice-history-open'),
+                    style: fluent.ButtonStyle(
+                      padding: const WidgetStatePropertyAll(
+                        EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      ),
+                      backgroundColor: WidgetStateProperty.resolveWith(
+                        (states) => states.contains(WidgetState.hovered)
+                            ? const Color(0xFFEAF2FB)
+                            : Colors.white,
+                      ),
+                      shape: WidgetStatePropertyAll(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                    onPressed: onHistory,
+                    child: const Text(
+                      'سجل الفواتير المحفوظة',
+                      style: TextStyle(fontSize: 15),
+                    ),
                   ),
+                fluent.Button(
+                  style: fluent.ButtonStyle(
+                    padding: const WidgetStatePropertyAll(
+                      EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    ),
+                    backgroundColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.hovered)
+                          ? const Color(0xFFEAF2FB)
+                          : Colors.white,
+                    ),
+                    shape: WidgetStatePropertyAll(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  onPressed: onClose,
+                  child: const Text('إغلاق', style: TextStyle(fontSize: 15)),
                 ),
-              ),
-              onPressed: onClose,
-              child: const Text('إغلاق', style: TextStyle(fontSize: 15)),
+              ],
             ),
           ),
         ],

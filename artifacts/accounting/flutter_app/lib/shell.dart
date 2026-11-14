@@ -8,6 +8,7 @@ import 'auth_service.dart';
 import 'barcode_screen.dart';
 import 'inventory_screen.dart';
 import 'invoice_menu.dart';
+import 'invoice_history_screen.dart';
 import 'invoice_screen.dart';
 import 'models.dart';
 import 'printer_settings_screen.dart';
@@ -19,6 +20,7 @@ enum ShellView {
   home,
   inventory,
   invoiceMenu,
+  invoiceHistory,
   invoice,
   accounts,
   barcode,
@@ -100,6 +102,7 @@ class _AppShellState extends State<AppShell> {
       ShellView.inventory => 'inventory.view',
       ShellView.accounts => 'accounts.view',
       ShellView.invoiceMenu || ShellView.invoice => 'invoice.view',
+      ShellView.invoiceHistory => 'invoice.view',
       ShellView.barcode => 'barcode.view',
       ShellView.printerSettings => 'printer.manage',
       ShellView.userPasswords => 'admin.users',
@@ -685,7 +688,11 @@ class _AppShellState extends State<AppShell> {
       ),
       ShellView.invoiceMenu => InvoiceMenu(
         onPick: openInvoice,
+        onHistory: () => go(ShellView.invoiceHistory),
         onClose: _closeCurrentView,
+      ),
+      ShellView.invoiceHistory => InvoiceHistoryScreen(
+        onExit: _closeCurrentView,
       ),
       ShellView.invoice => InvoiceScreen(
         key: ValueKey('invoice-form-${route.invoiceNumber}'),
