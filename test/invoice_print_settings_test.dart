@@ -12,6 +12,12 @@ void main() {
       paperSize: InvoicePaperSize.thermal80,
       language: InvoicePrintLanguage.bilingual,
       design: InvoiceDesignStyle.highlighted,
+      businessName: 'متجر التجربة',
+      businessAddress: 'الرياض',
+      businessPhone: '0500000000',
+      businessEmail: 'shop@example.com',
+      receiptFooter: 'شكراً لزيارتكم',
+      logoBase64: 'c21hbGwtaW1hZ2U=',
     );
     const landscape = InvoicePrintSettings(
       paperSize: InvoicePaperSize.a4Landscape,
@@ -27,6 +33,12 @@ void main() {
     expect(savedThermal.paperSize, InvoicePaperSize.thermal80);
     expect(savedThermal.language, InvoicePrintLanguage.bilingual);
     expect(savedThermal.design, InvoiceDesignStyle.highlighted);
+    expect(savedThermal.businessName, 'متجر التجربة');
+    expect(savedThermal.businessAddress, 'الرياض');
+    expect(savedThermal.businessPhone, '0500000000');
+    expect(savedThermal.businessEmail, 'shop@example.com');
+    expect(savedThermal.receiptFooter, 'شكراً لزيارتكم');
+    expect(savedThermal.logoBase64, 'c21hbGwtaW1hZ2U=');
     expect(savedLandscape.paperSize, InvoicePaperSize.a4Landscape);
     expect(savedLandscape.language, InvoicePrintLanguage.english);
     expect(savedLandscape.design, InvoiceDesignStyle.minimal);

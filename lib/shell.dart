@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -5,11 +6,15 @@ import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'accounts_screen.dart';
 import 'auth_service.dart';
+import 'backup_restore_dialog.dart';
 import 'barcode_screen.dart';
 import 'inventory_screen.dart';
 import 'invoice_menu.dart';
+import 'invoice_history_screen.dart';
 import 'invoice_screen.dart';
+import 'models.dart';
 import 'printer_settings_screen.dart';
+import 'storage.dart';
 import 'user_passwords_screen.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -23,6 +28,24 @@ enum ShellView {
   barcode,
   printerSettings,
   userPasswords,
+}
+
+class _ShellRoute {
+  final int id;
+  final ShellView view;
+  final int? invoiceType;
+  final int? invoiceNumber;
+  final String? draftId;
+  final InvoiceDraft? invoiceDraft;
+
+  const _ShellRoute({
+    required this.id,
+    required this.view,
+    this.invoiceType,
+    this.invoiceNumber,
+    this.draftId,
+    this.invoiceDraft,
+  });
 }
 
 /// Window chrome: title strip, menu bar, ribbon, content canvas, status bar.
@@ -41,11 +64,18 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  ShellView view = ShellView.home;
-  int invoiceType = 0;
-  int invoiceSession = 0;
+  final List<_ShellRoute> _routes = [
+    const _ShellRoute(id: 0, view: ShellView.home),
+  ];
+  final Map<int, InvoiceDirtyCheck> _invoiceDirtyChecks = {};
+  int _nextRouteId = 1;
+  int _nextInvoiceNumber = 1;
   UserSession? session;
   bool _loginDialogOpen = false;
+
+  ShellView get view => _routes.last.view;
+  List<_ShellRoute> get _openInvoices =>
+      _routes.where((route) => route.view == ShellView.invoice).toList();
 
   @override
   void initState() {
@@ -70,6 +100,27 @@ class _AppShellState extends State<AppShell> {
       return;
     }
     setState(() => session = loggedInSession);
+    unawaited(_restoreSavedInvoiceDrafts());
+  }
+
+  Future<void> _restoreSavedInvoiceDrafts() async {
+    final drafts = await Store.loadInvoiceDrafts();
+    if (!mounted || drafts.isEmpty) return;
+    setState(() {
+      for (final draft in drafts) {
+        final invoiceNumber = int.tryParse('${draft.invoice['number'] ?? ''}');
+        _routes.add(
+          _ShellRoute(
+            id: _nextRouteId++,
+            view: ShellView.invoice,
+            invoiceType: draft.typeIndex,
+            invoiceNumber: invoiceNumber,
+            draftId: draft.id,
+            invoiceDraft: draft,
+          ),
+        );
+      }
+    });
   }
 
   bool _can(String permission) => session?.can(permission) ?? false;
@@ -88,24 +139,136 @@ class _AppShellState extends State<AppShell> {
       soon('هذه الشاشة');
       return;
     }
-    setState(() => view = v);
+    if (v == ShellView.home) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_returnHomeSafely());
+      });
+      return;
+    }
+    setState(() {
+      if (_routes.last.view == v) return;
+      _routes.add(_ShellRoute(id: _nextRouteId++, view: v));
+    });
+  }
+
+  Future<bool> _confirmOpenInvoicesCanClose() async {
+    final openInvoices = _routes
+        .where((route) => route.view == ShellView.invoice)
+        .toList();
+    final dirtyCount = openInvoices
+        .where((route) => _invoiceDirtyChecks[route.id]?.call() ?? false)
+        .length;
+    if (dirtyCount == 0) return true;
+
+    final discard = await fluent.showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => fluent.ContentDialog(
+        key: const ValueKey('invoice-home-unsaved-close-dialog'),
+        title: const Text('تغييرات غير محفوظة'),
+        content: Text(
+          dirtyCount == 1
+              ? 'تحتوي الفاتورة المفتوحة على تغييرات لم يتم حفظها. '
+                    'هل تريد تجاهلها والعودة للشاشة الرئيسية؟'
+              : 'تحتوي $dirtyCount فواتير مفتوحة على تغييرات لم يتم حفظها. '
+                    'هل تريد تجاهلها والعودة للشاشة الرئيسية؟',
+        ),
+        actions: [
+          fluent.Button(
+            key: const ValueKey('invoice-home-keep-editing'),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('متابعة التعديل'),
+          ),
+          fluent.FilledButton(
+            key: const ValueKey('invoice-home-discard'),
+            style: fluent.ButtonStyle(
+              backgroundColor: const WidgetStatePropertyAll(AppColors.red),
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('تجاهل التغييرات'),
+          ),
+        ],
+      ),
+    );
+    return discard == true;
+  }
+
+  Future<void> _returnHomeSafely() async {
+    if (!await _confirmOpenInvoicesCanClose() || !mounted) return;
+    setState(() {
+      _routes
+        ..clear()
+        ..add(const _ShellRoute(id: 0, view: ShellView.home));
+    });
   }
 
   void openInvoice(int t) {
     if (!_can('invoice.view')) return;
+    final draftId =
+        'invoice-${DateTime.now().microsecondsSinceEpoch}-$_nextRouteId';
     setState(() {
-      invoiceType = t;
-      invoiceSession++;
-      view = ShellView.invoice;
+      final newInvoice = _ShellRoute(
+        id: _nextRouteId++,
+        view: ShellView.invoice,
+        invoiceType: t,
+        invoiceNumber: _nextInvoiceNumber++,
+        draftId: draftId,
+      );
+      if (view == ShellView.invoiceMenu) {
+        _routes[_routes.length - 1] = newInvoice;
+      } else {
+        _routes.add(newInvoice);
+      }
     });
   }
 
-  void _logout() {
+  void _activateInvoice(int routeId) {
+    final index = _routes.indexWhere(
+      (route) => route.id == routeId && route.view == ShellView.invoice,
+    );
+    if (index < 0 || index == _routes.length - 1) return;
+    setState(() => _routes.add(_routes.removeAt(index)));
+  }
+
+  void _closeCurrentView() {
+    if (_routes.length <= 1) return;
+    setState(() => _routes.removeLast());
+  }
+
+  void _logout() => unawaited(_logoutSafely());
+
+  Future<void> _logoutSafely() async {
+    if (!await _confirmOpenInvoicesCanClose() || !mounted) return;
     setState(() {
       session = null;
-      view = ShellView.home;
+      _routes
+        ..clear()
+        ..add(const _ShellRoute(id: 0, view: ShellView.home));
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => _showLoginDialog());
+  }
+
+  void _refreshCurrentView() {
+    setState(() {
+      if (view == ShellView.invoice) {
+        final previous = _routes.removeLast();
+        _routes.add(
+          _ShellRoute(
+            id: _nextRouteId++,
+            view: ShellView.invoice,
+            invoiceType: previous.invoiceType,
+            invoiceNumber: previous.invoiceNumber,
+            draftId: previous.draftId,
+            invoiceDraft: previous.invoiceDraft,
+          ),
+        );
+      }
+    });
+    toast(
+      context,
+      'تم تحديث البيانات',
+      severity: fluent.InfoBarSeverity.success,
+    );
   }
 
   void soon(String name) => toast(
@@ -113,6 +276,15 @@ class _AppShellState extends State<AppShell> {
     '$name — غير متاحة في هذه النسخة',
     severity: fluent.InfoBarSeverity.warning,
   );
+
+  Future<void> _openBackupDialog() async {
+    if (!_can('admin.backup')) return;
+    await fluent.showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const BackupRestoreDialog(),
+    );
+  }
 
   Future<void> calculator() async {
     await showGeneralDialog<void>(
@@ -144,6 +316,7 @@ class _AppShellState extends State<AppShell> {
             _titleStrip(),
             _menuBar(),
             _ribbon(),
+            if (_openInvoices.length > 1) _openInvoiceTabs(),
             const Divider(height: 1, color: AppColors.line),
             Expanded(child: _content()),
             const _StatusBar(),
@@ -195,6 +368,7 @@ class _AppShellState extends State<AppShell> {
   Widget _menu(String title, List<(String, VoidCallback)> entries) {
     final compact = MediaQuery.sizeOf(context).width < 600;
     return fluent.DropDownButton(
+      key: ValueKey('top-menu-$title'),
       title: Text(title, style: TextStyle(fontSize: compact ? 11 : 13)),
       style: fluent.ButtonStyle(
         padding: WidgetStatePropertyAll(
@@ -243,8 +417,7 @@ class _AppShellState extends State<AppShell> {
     ]);
     final toolsMenu = _menu('أدوات', [
       ('آلة حاسبة', calculator),
-      if (_can('admin.backup'))
-        ('نسخة احتياطية', () => soon('النسخ الاحتياطي')),
+      if (_can('admin.backup')) ('نسخة احتياطية', _openBackupDialog),
     ]);
     final itemsEntries = <(String, VoidCallback)>[];
     if (_can('inventory.view')) {
@@ -339,14 +512,7 @@ class _AppShellState extends State<AppShell> {
         assetPath: AppIcons.refresh,
         label: 'تحديث',
         color: AppColors.green,
-        onTap: () {
-          setState(() => invoiceSession++);
-          toast(
-            context,
-            'تم تحديث البيانات',
-            severity: fluent.InfoBarSeverity.success,
-          );
-        },
+        onTap: _refreshCurrentView,
       ),
       _RibbonButton(
         assetPath: AppIcons.website,
@@ -508,79 +674,181 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
+  Widget _openInvoiceTabs() {
+    final invoices = _openInvoices;
+    return Container(
+      key: const ValueKey('open-invoice-tabs'),
+      height: 42,
+      color: const Color(0xFFF0F0F0),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: invoices.length + 1,
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
+        itemBuilder: (context, index) {
+          if (index == invoices.length) {
+            return fluent.Button(
+              key: const ValueKey('open-new-invoice-tab'),
+              onPressed: () => go(ShellView.invoiceMenu),
+              style: fluent.ButtonStyle(
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                ),
+                backgroundColor: const WidgetStatePropertyAll(Colors.white),
+                foregroundColor: const WidgetStatePropertyAll(AppColors.ink),
+                shape: WidgetStatePropertyAll(
+                  RoundedRectangleBorder(
+                    side: const BorderSide(color: AppColors.line),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              child: const Text('＋ فاتورة جديدة'),
+            );
+          }
+          final route = invoices[index];
+          final isActive =
+              view == ShellView.invoice && _routes.last.id == route.id;
+          final typeIndex = (route.invoiceType ?? 0)
+              .clamp(0, invoiceTypes.length - 1)
+              .toInt();
+          return fluent.Button(
+            key: ValueKey('open-invoice-tab-${route.invoiceNumber}'),
+            onPressed: () => _activateInvoice(route.id),
+            style: fluent.ButtonStyle(
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              ),
+              backgroundColor: WidgetStatePropertyAll(
+                isActive ? AppColors.navy : Colors.white,
+              ),
+              foregroundColor: WidgetStatePropertyAll(
+                isActive ? Colors.white : AppColors.ink,
+              ),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(
+                  side: BorderSide(
+                    color: isActive ? AppColors.navy : AppColors.line,
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${invoiceTypes[typeIndex].ar} ${route.invoiceNumber ?? index + 1}',
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _content() {
-    final content = switch (view) {
+    final theme = fluent.FluentTheme.of(context);
+    return ClipRect(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          for (var index = 0; index < _routes.length; index++)
+            _buildRouteLayer(
+              _routes[index],
+              isTop: index == _routes.length - 1,
+              theme: theme,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRouteLayer(
+    _ShellRoute route, {
+    required bool isTop,
+    required fluent.FluentThemeData theme,
+  }) {
+    final content = switch (route.view) {
       ShellView.home => const ColoredBox(
+        key: ValueKey('shell-home-background'),
         color: AppColors.canvasBlue,
         child: SizedBox.expand(),
       ),
       ShellView.inventory => InventoryScreen(
         session: session!,
         authService: widget.authService,
-        onExit: () => go(ShellView.home),
+        onExit: _closeCurrentView,
       ),
       ShellView.invoiceMenu => InvoiceMenu(
         onPick: openInvoice,
-        onClose: () => go(ShellView.home),
+        onHistory: () => showInvoiceHistoryDialog(
+          context: context,
+          session: session!,
+          authService: widget.authService,
+        ),
+        onClose: _closeCurrentView,
       ),
       ShellView.invoice => InvoiceScreen(
-        typeIndex: invoiceType,
+        key: ValueKey('invoice-form-${route.invoiceNumber}'),
+        typeIndex: route.invoiceType ?? 0,
         session: session!,
         authService: widget.authService,
-        onExit: () => go(ShellView.invoiceMenu),
+        onExit: _closeCurrentView,
+        onCloseGuardReady: (isDirty) => _invoiceDirtyChecks[route.id] = isDirty,
+        onCloseGuardDisposed: () => _invoiceDirtyChecks.remove(route.id),
+        draftId: route.draftId,
+        initialDraft: route.invoiceDraft,
       ),
       ShellView.accounts => AccountsScreen(
         session: session!,
         authService: widget.authService,
-        onExit: () => go(ShellView.home),
+        onExit: _closeCurrentView,
       ),
       ShellView.barcode => BarcodeScreen(
         session: session!,
         authService: widget.authService,
-        onExit: () => go(ShellView.home),
+        onExit: _closeCurrentView,
       ),
       ShellView.printerSettings => PrinterSettingsScreen(
         session: session!,
         authService: widget.authService,
         embeddedPrinterToken: widget.embeddedPrinterToken,
-        onExit: () => go(ShellView.home),
+        onExit: _closeCurrentView,
       ),
       ShellView.userPasswords => UserPasswordsScreen(
         session: session!,
         authService: widget.authService,
         passwordService: widget.authService as AdminPasswordManagementService,
-        onExit: () => go(ShellView.home),
+        onExit: _closeCurrentView,
       ),
     };
-    final contentKey = ValueKey(
-      '${view.name}-${view == ShellView.invoice ? '$invoiceType-$invoiceSession' : ''}',
-    );
-    final theme = fluent.FluentTheme.of(context);
-    return ClipRect(
-      child: AnimatedSwitcher(
-        key: const ValueKey('app-content-transition'),
-        duration: theme.mediumAnimationDuration,
-        reverseDuration: theme.fastAnimationDuration,
-        switchInCurve: theme.animationCurve,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) {
-          final eased = CurvedAnimation(
-            parent: animation,
+    return Positioned.fill(
+      key: ValueKey('shell-position-${route.id}'),
+      child: IgnorePointer(
+        key: ValueKey('shell-route-layer-${route.id}'),
+        ignoring: !isTop,
+        child: ExcludeSemantics(
+          excluding: !isTop,
+          child: AnimatedOpacity(
+            opacity: isTop ? 1 : 0,
+            duration: theme.mediumAnimationDuration,
             curve: theme.animationCurve,
-            reverseCurve: Curves.easeInCubic,
-          );
-          return FadeTransition(
-            opacity: eased,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.035, 0),
-                end: Offset.zero,
-              ).animate(eased),
-              child: child,
+            child: AnimatedSlide(
+              offset: isTop ? Offset.zero : const Offset(0.025, 0),
+              duration: theme.mediumAnimationDuration,
+              curve: theme.animationCurve,
+              child: TickerMode(
+                enabled: isTop,
+                child: KeyedSubtree(
+                  key: ValueKey('shell-route-${route.id}-${route.view.name}'),
+                  child: content,
+                ),
+              ),
             ),
-          );
-        },
-        child: KeyedSubtree(key: contentKey, child: content),
+          ),
+        ),
       ),
     );
   }

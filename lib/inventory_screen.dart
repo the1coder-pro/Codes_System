@@ -104,6 +104,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   final sText = TextEditingController();
   final _searchScrollController = ScrollController();
   List<Item> results = [];
+  bool mobileFiltersExpanded = true;
 
   @override
   void initState() {
@@ -498,34 +499,42 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       minFirstExtent: 0,
                       minSecondExtent: 0,
                       overlaySecond: true,
-                      first: Column(
-                        children: [
-                          SizedBox(
-                            height: 236,
-                            child: ResizableSplit(
-                              dividerKey: const ValueKey(
-                                'splitter-inventory-header',
-                              ),
-                              collapseToggleKey: const ValueKey(
-                                'splitter-inventory-header-toggle',
-                              ),
-                              first: _actions(),
-                              second: _headerForm(true),
-                              initialFirstFraction: .27,
-                              minFirstWidth: 210,
-                              minSecondWidth: 480,
-                              collapsibleFirst: true,
-                              collapsedLabel: 'الإجراءات',
+                      first: ResizableVerticalSplit(
+                        dividerKey: const ValueKey(
+                          'splitter-inventory-header-grid',
+                        ),
+                        secondExtentKey: const ValueKey(
+                          'inventory-grid-section-size',
+                        ),
+                        initialFirstExtent: 236,
+                        initialSecondExtent: 0,
+                        minFirstExtent: 210,
+                        minSecondExtent: 180,
+                        resizeFirst: true,
+                        collapsibleSecond: false,
+                        dividerLabel: 'تغيير ارتفاع رأس الصنف والجدول',
+                        first: SizedBox(
+                          key: const ValueKey('inventory-header-section'),
+                          child: ResizableSplit(
+                            dividerKey: const ValueKey(
+                              'splitter-inventory-header',
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Expanded(
-                            child: Container(
-                              key: const ValueKey('inventory-items-grid-area'),
-                              child: grid,
+                            collapseToggleKey: const ValueKey(
+                              'splitter-inventory-header-toggle',
                             ),
+                            first: _actions(),
+                            second: _headerForm(true),
+                            initialFirstFraction: .27,
+                            minFirstWidth: 210,
+                            minSecondWidth: 480,
+                            collapsibleFirst: true,
+                            collapsedLabel: 'الإجراءات',
                           ),
-                        ],
+                        ),
+                        second: Container(
+                          key: const ValueKey('inventory-items-grid-area'),
+                          child: grid,
+                        ),
                       ),
                       second: Container(
                         key: const ValueKey('inventory-search-section'),
@@ -557,6 +566,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         return Container(
           color: AppColors.paper,
           child: ListView(
+            key: const ValueKey('inventory-mobile-layout'),
             padding: const EdgeInsets.all(8),
             children: [
               _actions(),
@@ -565,13 +575,41 @@ class _InventoryScreenState extends State<InventoryScreen> {
               const SizedBox(height: 8),
               SizedBox(height: 300, child: grid),
               const SizedBox(height: 8),
-              _searchPanel(),
+              _mobileFiltersToggle(),
+              const SizedBox(height: 8),
+              if (mobileFiltersExpanded) _searchPanel(),
               const SizedBox(height: 8),
               SizedBox(height: 220, child: _resultsPanel()),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _mobileFiltersToggle() {
+    final label = mobileFiltersExpanded
+        ? 'إخفاء عوامل التصفية'
+        : 'إظهار عوامل التصفية';
+    return SizedBox(
+      width: double.infinity,
+      height: 44,
+      child: fluent.Button(
+        key: const ValueKey('inventory-mobile-filters-toggle'),
+        onPressed: () =>
+            setState(() => mobileFiltersExpanded = !mobileFiltersExpanded),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              mobileFiltersExpanded ? Icons.expand_less : Icons.expand_more,
+              size: 20,
+            ),
+            const SizedBox(width: 6),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+          ],
+        ),
+      ),
     );
   }
 

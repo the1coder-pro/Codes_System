@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:accounting_ui/invoice_print_settings.dart';
 import 'package:accounting_ui/print_documents.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as image;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +39,37 @@ void main() {
     expect(bytes.length, greaterThan(1000));
   });
 
+  test('saved invoice snapshot exports as a PDF for its stored type', () async {
+    final bytes = await buildSavedInvoicePdf(
+      typeIndex: 2,
+      fallbackDate: DateTime(2026, 11, 14),
+      invoice: {
+        'number': 'HIST-0081',
+        'invDate': '2026-10-09T14:35:12.000',
+        'delivDate': '2026-10-12T00:00:00.000',
+        'account': 'Saved account',
+        'taxNo': '123456789',
+        'taxable': 'خاضع للضريبة',
+        'taxRate': '0.15',
+        'discount': '2',
+        'cash': '5',
+        'network': '3',
+        'credit': '1',
+        'returnBal': '0',
+        'notes': 'Saved note',
+        'lines': [
+          {'name': 'Saved item', 'unit': 'piece', 'qty': 2, 'price': 10},
+        ],
+      },
+      settings: const InvoicePrintSettings(
+        paperSize: InvoicePaperSize.thermal80,
+      ),
+    );
+
+    expect(ascii.decode(bytes.take(4).toList()), '%PDF');
+    expect(bytes.length, greaterThan(1000));
+  });
+
   test('thermal bilingual invoice exports with receipt page size', () async {
     final bytes = await buildInvoicePdf(
       titleAr: 'فاتورة بيع',
@@ -67,6 +99,10 @@ void main() {
         paperSize: InvoicePaperSize.thermal58,
         language: InvoicePrintLanguage.bilingual,
         design: InvoiceDesignStyle.highlighted,
+        businessName: 'متجر التجربة',
+        businessAddress: 'الرياض',
+        businessPhone: '0500000000',
+        receiptFooter: 'شكراً لزيارتكم',
       ),
     );
 
@@ -75,6 +111,9 @@ void main() {
   });
 
   test('A4 landscape English invoice exports as a PDF', () async {
+    final logoBase64 = base64Encode(
+      image.encodeJpg(image.Image(width: 2, height: 2)),
+    );
     final bytes = await buildInvoicePdf(
       titleAr: 'فاتورة بيع',
       titleEn: 'Sales Invoice',
@@ -90,9 +129,15 @@ void main() {
         InvoicePrintTotal('الصافي', '0.00', labelEn: 'Net', emphasized: true),
       ],
       notes: '',
-      settings: const InvoicePrintSettings(
+      settings: InvoicePrintSettings(
         paperSize: InvoicePaperSize.a4Landscape,
         language: InvoicePrintLanguage.english,
+        businessName: 'Sample shop',
+        businessAddress: 'Riyadh',
+        businessPhone: '0500000000',
+        businessEmail: 'shop@example.com',
+        receiptFooter: 'Thank you for your visit',
+        logoBase64: logoBase64,
       ),
     );
 

@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart' as pdf;
 import 'package:pdf/widgets.dart' as pw;
 
 import 'invoice_print_settings.dart';
+import 'models.dart';
 
 const _mm = pdf.PdfPageFormat.mm;
 const _pageMarginMm = 12.0;
@@ -114,9 +117,9 @@ Future<Uint8List> buildInvoicePdf({
     return document.save();
   }
 
-  final rowsPerPage = settings.paperSize == InvoicePaperSize.a4Landscape
-      ? 24
-      : 16;
+  final rowsPerPage = _hasBusinessBranding(settings)
+      ? (settings.paperSize == InvoicePaperSize.a4Landscape ? 19 : 12)
+      : (settings.paperSize == InvoicePaperSize.a4Landscape ? 24 : 16);
   final pageCount = (lines.length / rowsPerPage).ceil().clamp(1, 1000);
   final format = settings.paperSize == InvoicePaperSize.a4Landscape
       ? pdf.PdfPageFormat.a4.landscape
@@ -135,6 +138,10 @@ Future<Uint8List> buildInvoicePdf({
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
+              if (isFirstPage && _hasBusinessBranding(settings)) ...[
+                _businessBranding(settings, fonts, thermal: false),
+                pw.SizedBox(height: 12),
+              ],
               _invoiceHeading(
                 titleAr,
                 titleEn,
@@ -216,6 +223,18 @@ Future<Uint8List> buildInvoicePdf({
                     ),
                   ),
                 ],
+                if (settings.receiptFooter.trim().isNotEmpty) ...[
+                  pw.SizedBox(height: 14),
+                  pw.Text(
+                    settings.receiptFooter.trim(),
+                    textAlign: pw.TextAlign.center,
+                    style: pw.TextStyle(
+                      font: fonts.regular,
+                      fontSize: 9,
+                      color: pdf.PdfColors.blueGrey,
+                    ),
+                  ),
+                ],
               ],
             ],
           ),
@@ -224,6 +243,130 @@ Future<Uint8List> buildInvoicePdf({
     );
   }
   return document.save();
+}
+
+/// Builds a printable document directly from a saved invoice snapshot.
+///
+/// This intentionally does not consult the active invoice form or inventory,
+/// so historical values remain stable even if the current invoice changes.
+Future<Uint8List> buildSavedInvoicePdf({
+  required int typeIndex,
+  required Map<String, dynamic> invoice,
+  required DateTime fallbackDate,
+  required InvoicePrintSettings settings,
+}) {
+  final type = invoiceTypes[typeIndex.clamp(0, invoiceTypes.length - 1)];
+  final invoiceDate =
+      DateTime.tryParse('${invoice['invDate'] ?? ''}') ?? fallbackDate;
+  final deliveryDate = DateTime.tryParse('${invoice['delivDate'] ?? ''}');
+  final lines = (invoice['lines'] is List ? invoice['lines'] as List : const [])
+      .whereType<Map>()
+      .map((raw) => Map<String, dynamic>.from(raw))
+      .toList();
+  final subtotal = lines.fold<double>(
+    0,
+    (sum, line) =>
+        sum +
+        _savedInvoiceNumber(line['qty'], fallback: 1) *
+            _savedInvoiceNumber(line['price']),
+  );
+  final discount = _savedInvoiceNumber(invoice['discount']);
+  final taxRate = _savedInvoiceNumber(invoice['taxRate']);
+  final tax = '${invoice['taxable'] ?? ''}' == 'خاضع للضريبة'
+      ? (subtotal - discount).clamp(0, double.infinity) * taxRate
+      : 0.0;
+  final net = subtotal - discount + tax;
+  final cash = _savedInvoiceNumber(invoice['cash']);
+  final network = _savedInvoiceNumber(invoice['network']);
+  final credit = _savedInvoiceNumber(invoice['credit']);
+  final returnBalance = _savedInvoiceNumber(invoice['returnBal']);
+  final notes = '${invoice['notes'] ?? ''}'.trim();
+
+  return buildInvoicePdf(
+    titleAr: type.ar,
+    titleEn: type.en,
+    invoiceNumber: '${invoice['number'] ?? '—'}',
+    invoiceDateTime: _savedInvoiceDateTime(invoiceDate),
+    deliveryDate: deliveryDate == null ? '' : _savedInvoiceDate(deliveryDate),
+    account: '${invoice['account'] ?? ''}'.trim(),
+    taxNumber: '${invoice['taxNo'] ?? ''}'.trim(),
+    taxStatus: '${invoice['taxable'] ?? 'غير خاضع للضريبة'}',
+    taxStatusEn: '${invoice['taxable'] ?? ''}' == 'خاضع للضريبة'
+        ? 'Taxable'
+        : 'Not taxable',
+    lines: [
+      for (final line in lines)
+        InvoicePrintLine(
+          name: '${line['name'] ?? ''}',
+          unit: '${line['unit'] ?? ''}',
+          quantity: _savedInvoiceQuantity(line['qty']),
+          unitPrice: _savedInvoiceMoney(_savedInvoiceNumber(line['price'])),
+          total: _savedInvoiceMoney(
+            _savedInvoiceNumber(line['qty'], fallback: 1) *
+                _savedInvoiceNumber(line['price']),
+          ),
+        ),
+    ],
+    totals: [
+      InvoicePrintTotal(
+        'الإجمالي قبل الخصم',
+        _savedInvoiceMoney(subtotal),
+        labelEn: 'Gross before discount',
+      ),
+      InvoicePrintTotal(
+        'الخصم',
+        _savedInvoiceMoney(discount),
+        labelEn: 'Discount',
+      ),
+      InvoicePrintTotal('الضريبة', _savedInvoiceMoney(tax), labelEn: 'Tax'),
+      InvoicePrintTotal(
+        'الصافي',
+        _savedInvoiceMoney(net),
+        labelEn: 'Net',
+        emphasized: true,
+      ),
+      InvoicePrintTotal('نقداً', _savedInvoiceMoney(cash), labelEn: 'Cash'),
+      InvoicePrintTotal('شبكة', _savedInvoiceMoney(network), labelEn: 'Card'),
+      InvoicePrintTotal('آجل', _savedInvoiceMoney(credit), labelEn: 'Credit'),
+      InvoicePrintTotal(
+        'رصيد رجيع',
+        _savedInvoiceMoney(returnBalance),
+        labelEn: 'Return balance',
+      ),
+      InvoicePrintTotal(
+        'المتبقي',
+        _savedInvoiceMoney(net - cash - network - credit - returnBalance),
+        labelEn: 'Remaining',
+      ),
+    ],
+    notes: notes,
+    settings: settings,
+  );
+}
+
+double _savedInvoiceNumber(dynamic value, {double fallback = 0}) {
+  if (value is num) return value.toDouble();
+  return double.tryParse('$value') ?? fallback;
+}
+
+String _savedInvoiceQuantity(dynamic value) {
+  final quantity = _savedInvoiceNumber(value, fallback: 1);
+  return quantity == quantity.roundToDouble()
+      ? quantity.toStringAsFixed(0)
+      : quantity.toString();
+}
+
+String _savedInvoiceMoney(double value) => value.toStringAsFixed(2);
+
+String _savedInvoiceDate(DateTime date) =>
+    '${date.month}/${date.day}/${date.year}';
+
+String _savedInvoiceDateTime(DateTime date) {
+  final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
+  final minute = date.minute.toString().padLeft(2, '0');
+  final second = date.second.toString().padLeft(2, '0');
+  return '${_savedInvoiceDate(date)} $hour:$minute:$second '
+      '${date.hour < 12 ? 'AM' : 'PM'}';
 }
 
 pw.Widget _thermalInvoice({
@@ -268,6 +411,10 @@ pw.Widget _thermalInvoice({
     child: pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.stretch,
       children: [
+        if (_hasBusinessBranding(settings)) ...[
+          _businessBranding(settings, fonts, thermal: true),
+          pw.SizedBox(height: dense ? 3 : 5),
+        ],
         pw.Container(
           padding: pw.EdgeInsets.symmetric(
             vertical: dense ? 3 : 6,
@@ -371,9 +518,111 @@ pw.Widget _thermalInvoice({
           textAlign: pw.TextAlign.center,
           style: pw.TextStyle(font: fonts.bold, fontSize: dense ? 8 : 9),
         ),
+        if (settings.receiptFooter.trim().isNotEmpty) ...[
+          pw.SizedBox(height: dense ? 3 : 5),
+          pw.Text(
+            settings.receiptFooter.trim(),
+            textAlign: pw.TextAlign.center,
+            style: pw.TextStyle(font: fonts.regular, fontSize: dense ? 7 : 8),
+          ),
+        ],
       ],
     ),
   );
+}
+
+bool _hasBusinessBranding(InvoicePrintSettings settings) =>
+    settings.businessName.trim().isNotEmpty ||
+    settings.businessAddress.trim().isNotEmpty ||
+    settings.businessPhone.trim().isNotEmpty ||
+    settings.businessEmail.trim().isNotEmpty ||
+    settings.logoBase64.trim().isNotEmpty;
+
+pw.Widget _businessBranding(
+  InvoicePrintSettings settings,
+  PrintFonts fonts, {
+  required bool thermal,
+}) {
+  final textStyle = pw.TextStyle(
+    font: fonts.regular,
+    fontSize: thermal ? 7 : 9,
+    color: pdf.PdfColors.blueGrey,
+  );
+  final logo = _businessLogo(settings, thermal: thermal);
+  final details = <String>[
+    if (settings.businessAddress.trim().isNotEmpty)
+      settings.businessAddress.trim(),
+    if (settings.businessPhone.trim().isNotEmpty) settings.businessPhone.trim(),
+    if (settings.businessEmail.trim().isNotEmpty) settings.businessEmail.trim(),
+  ];
+  if (thermal) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+      children: [
+        if (logo != null) ...[pw.Center(child: logo), pw.SizedBox(height: 2)],
+        if (settings.businessName.trim().isNotEmpty)
+          pw.Text(
+            settings.businessName.trim(),
+            textAlign: pw.TextAlign.center,
+            style: pw.TextStyle(
+              font: fonts.bold,
+              fontSize: settings.paperSize == InvoicePaperSize.thermal58
+                  ? 10
+                  : 12,
+            ),
+          ),
+        for (final detail in details)
+          pw.Text(detail, textAlign: pw.TextAlign.center, style: textStyle),
+      ],
+    );
+  }
+  return pw.Row(
+    crossAxisAlignment: pw.CrossAxisAlignment.center,
+    children: [
+      if (logo != null) ...[logo, pw.SizedBox(width: 12)],
+      pw.Expanded(
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+          children: [
+            if (settings.businessName.trim().isNotEmpty)
+              pw.Text(
+                settings.businessName.trim(),
+                textAlign: settings.language == InvoicePrintLanguage.english
+                    ? pw.TextAlign.left
+                    : pw.TextAlign.right,
+                style: pw.TextStyle(font: fonts.bold, fontSize: 14),
+              ),
+            for (final detail in details)
+              pw.Text(
+                detail,
+                textAlign: settings.language == InvoicePrintLanguage.english
+                    ? pw.TextAlign.left
+                    : pw.TextAlign.right,
+                style: textStyle,
+              ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+pw.Widget? _businessLogo(
+  InvoicePrintSettings settings, {
+  required bool thermal,
+}) {
+  final encoded = settings.logoBase64.trim();
+  if (encoded.isEmpty) return null;
+  try {
+    return pw.Image(
+      pw.MemoryImage(base64Decode(encoded)),
+      width: thermal ? 34 : 64,
+      height: thermal ? 24 : 48,
+      fit: pw.BoxFit.contain,
+    );
+  } on FormatException {
+    return null;
+  }
 }
 
 pw.Widget _thermalLine(

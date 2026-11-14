@@ -48,11 +48,16 @@ class _TestAuthService implements AccountingAuthService {
 InvoiceScreen _invoiceScreen({
   required VoidCallback onExit,
   UserSession session = _adminSession,
+  int typeIndex = 0,
+  String? draftId,
+  InvoiceDraft? initialDraft,
 }) => InvoiceScreen(
-  typeIndex: 0,
+  typeIndex: typeIndex,
   onExit: onExit,
   session: session,
   authService: _testAuthService,
+  draftId: draftId,
+  initialDraft: initialDraft,
 );
 
 InventoryScreen _inventoryScreen({
@@ -129,6 +134,8 @@ Future<void> _launchAndLogin(
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   test(
     'role matrix separates viewing, editing, discounting, and administration',
     () {
@@ -163,6 +170,33 @@ void main() {
       expect(auditor.can('admin.users'), isFalse);
     },
   );
+
+  testWidgets('only administrators can open the backup and restore controls', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1024, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _launchAndLogin(tester);
+    await tester.tap(find.text('أدوات'));
+    await tester.pumpAndSettle();
+    expect(find.text('نسخة احتياطية'), findsOneWidget);
+    await tester.tap(find.text('نسخة احتياطية'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('backup-restore-dialog')), findsOneWidget);
+
+    await tester.tap(find.text('إغلاق').last);
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
+    await _launchAndLogin(tester, username: 'cashier1');
+    await tester.tap(find.text('أدوات'));
+    await tester.pumpAndSettle();
+    expect(find.text('نسخة احتياطية'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'auditors get read-only accounting controls and invoice printing',
@@ -544,7 +578,68 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('screen navigation uses Fluent fade and slide transitions', (
+  testWidgets('invoice close only confirms when there are unsaved changes', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    var exitCount = 0;
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: _invoiceScreen(onExit: () => exitCount++)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('invoice-exit')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('invoice-unsaved-close-dialog')),
+      findsNothing,
+    );
+    expect(exitCount, 1);
+
+    final accountField = find.byKey(const ValueKey('invoice-account-field'));
+    await tester.enterText(accountField, 'مورد تجريبي');
+    await tester.tap(find.byKey(const ValueKey('invoice-exit')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('invoice-unsaved-close-dialog')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('invoice-close-continue')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('invoice-unsaved-close-dialog')),
+      findsNothing,
+    );
+    expect(exitCount, 1);
+    expect(
+      tester.widget<app_widgets.TextBox>(accountField).controller.text,
+      'مورد تجريبي',
+    );
+
+    await tester.tap(find.byKey(const ValueKey('invoice-exit')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('invoice-close-discard')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('invoice-unsaved-close-dialog')),
+      findsNothing,
+    );
+    expect(exitCount, 2);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('forms stack and closing restores the previous form', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1024, 900);
@@ -554,22 +649,225 @@ void main() {
     await _launchAndLogin(tester);
 
     await tester.tap(find.byKey(const ValueKey('ribbon-الأصناف')));
-    await tester.pump(const Duration(milliseconds: 40));
-    final transition = find.byKey(const ValueKey('app-content-transition'));
-    expect(
-      find.descendant(of: transition, matching: find.byType(SlideTransition)),
-      findsWidgets,
-    );
     await tester.pumpAndSettle();
     expect(find.byType(InventoryScreen), findsOneWidget);
-    expect(find.text('➕'), findsNothing);
-    expect(find.text('↩️'), findsNothing);
+    final searchField = find.descendant(
+      of: find.byKey(const ValueKey('inventory-search-panel')),
+      matching: find.byType(app_widgets.TextBox),
+    );
+    await tester.enterText(searchField, 'milk');
+
+    await tester.tap(find.byKey(const ValueKey('ribbon-الحسابات')));
+    await tester.pumpAndSettle();
+    expect(find.byType(InventoryScreen), findsOneWidget);
+    expect(find.byType(AccountsScreen), findsOneWidget);
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.byKey(const ValueKey('shell-route-layer-1')),
+          )
+          .ignoring,
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.byKey(const ValueKey('shell-route-layer-2')),
+          )
+          .ignoring,
+      isFalse,
+    );
+
+    final accountsExit = find.descendant(
+      of: find.byType(AccountsScreen),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is AppImageIcon && widget.assetPath == AppIcons.exit,
+      ),
+    );
+    await tester.tap(accountsExit);
+    await tester.pumpAndSettle();
+    expect(find.byType(AccountsScreen), findsNothing);
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.byKey(const ValueKey('shell-route-layer-1')),
+          )
+          .ignoring,
+      isFalse,
+    );
+    expect(
+      tester.widget<app_widgets.TextBox>(searchField).controller.text,
+      'milk',
+    );
+
+    final inventoryExit = find.descendant(
+      of: find.byType(InventoryScreen),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is AppImageIcon && widget.assetPath == AppIcons.exit,
+      ),
+    );
+    await tester.tap(inventoryExit);
+    await tester.pumpAndSettle();
+    expect(find.byType(InventoryScreen), findsNothing);
+    expect(find.byKey(const ValueKey('shell-home-background')), findsOneWidget);
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.byKey(const ValueKey('shell-route-layer-0')),
+          )
+          .ignoring,
+      isFalse,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('multiple invoices keep separate drafts and can switch tabs', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await _launchAndLogin(tester);
+
+    final invoicesButton = find.byKey(
+      const ValueKey('ribbon-الفواتير\nوأوامر الصرف'),
+    );
+    await tester.tap(invoicesButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('فاتورة شراء').first);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('invoice-form-1')), findsOneWidget);
+
+    final firstAccountField = find.descendant(
+      of: find.byKey(const ValueKey('invoice-form-1')),
+      matching: find.byKey(const ValueKey('invoice-account-field')),
+    );
+    await tester.enterText(firstAccountField, 'Supplier One');
+
+    await tester.tap(invoicesButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('فاتورة إرجاع مشتريات').first);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('invoice-form-1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('invoice-form-2')), findsOneWidget);
+    expect(find.byKey(const ValueKey('open-invoice-tabs')), findsOneWidget);
+    expect(find.byKey(const ValueKey('open-invoice-tab-1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('open-invoice-tab-2')), findsOneWidget);
+
+    final secondAccountField = find.descendant(
+      of: find.byKey(const ValueKey('invoice-form-2')),
+      matching: find.byKey(const ValueKey('invoice-account-field')),
+    );
+    await tester.enterText(secondAccountField, 'Supplier Two');
+    await tester.tap(find.byKey(const ValueKey('open-invoice-tab-1')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.byKey(const ValueKey('shell-route-layer-2')),
+          )
+          .ignoring,
+      isFalse,
+    );
+    expect(
+      tester.widget<app_widgets.TextBox>(firstAccountField).controller.text,
+      'Supplier One',
+    );
+    expect(
+      tester.widget<app_widgets.TextBox>(secondAccountField).controller.text,
+      'Supplier Two',
+    );
+
+    await tester.tap(find.byKey(const ValueKey('open-invoice-tab-2')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.byKey(const ValueKey('shell-route-layer-4')),
+          )
+          .ignoring,
+      isFalse,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('returning home confirms every changed open invoice', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await _launchAndLogin(tester);
+
+    final invoicesButton = find.byKey(
+      const ValueKey('ribbon-الفواتير\nوأوامر الصرف'),
+    );
+    await tester.tap(invoicesButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('فاتورة شراء').first);
+    await tester.pumpAndSettle();
+    final firstAccountField = find.descendant(
+      of: find.byKey(const ValueKey('invoice-form-1')),
+      matching: find.byKey(const ValueKey('invoice-account-field')),
+    );
+    await tester.enterText(firstAccountField, 'مورد أول');
+
+    await tester.tap(invoicesButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('فاتورة إرجاع مشتريات').first);
+    await tester.pumpAndSettle();
+    final secondAccountField = find.descendant(
+      of: find.byKey(const ValueKey('invoice-form-2')),
+      matching: find.byKey(const ValueKey('invoice-account-field')),
+    );
+    await tester.enterText(secondAccountField, 'مورد ثانٍ');
+
+    Future<void> chooseHome() async {
+      await tester.tap(find.byKey(const ValueKey('top-menu-القائمة الرئيسية')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('الشاشة الرئيسية'));
+      await tester.pumpAndSettle();
+    }
+
+    await chooseHome();
+    expect(
+      find.byKey(const ValueKey('invoice-home-unsaved-close-dialog')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('تحتوي 2 فواتير مفتوحة'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('invoice-home-keep-editing')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('invoice-home-unsaved-close-dialog')),
+      findsNothing,
+    );
+
+    expect(find.byType(InvoiceScreen), findsNWidgets(2));
+    expect(
+      tester.widget<app_widgets.TextBox>(firstAccountField).controller.text,
+      'مورد أول',
+    );
+    expect(
+      tester.widget<app_widgets.TextBox>(secondAccountField).controller.text,
+      'مورد ثانٍ',
+    );
+
+    await chooseHome();
+    await tester.tap(find.byKey(const ValueKey('invoice-home-discard')));
+    await tester.pumpAndSettle();
+    expect(find.byType(InvoiceScreen), findsNothing);
+    expect(find.byKey(const ValueKey('shell-home-background')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('menus align right and ribbon buttons stay compact on desktop', (
     tester,
   ) async {
+    SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(1024, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -969,6 +1267,34 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.getSize(searchSection).height, 0);
 
+    final headerSection = find.byKey(
+      const ValueKey('inventory-header-section'),
+    );
+    final headerGridDivider = find.byKey(
+      const ValueKey('splitter-inventory-header-grid'),
+    );
+    final headerBeforeResize = tester.getSize(headerSection).height;
+    final gridBeforeResize = tester.getSize(gridArea).height;
+    await tester.drag(headerGridDivider, const Offset(0, 72));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(headerSection).height,
+      greaterThan(headerBeforeResize),
+    );
+    expect(tester.getSize(gridArea).height, lessThan(gridBeforeResize));
+    await tester.drag(headerGridDivider, const Offset(0, 2000));
+    await tester.pumpAndSettle();
+    expect(tester.getSize(gridArea).height, greaterThanOrEqualTo(180));
+
+    tester.view.physicalSize = const Size(1280, 640);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(headerSection).height, greaterThanOrEqualTo(210));
+    expect(tester.getSize(gridArea).height, greaterThanOrEqualTo(180));
+    tester.view.physicalSize = const Size(1280, 1200);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(headerSection).height, greaterThanOrEqualTo(210));
+    expect(tester.getSize(gridArea).height, greaterThanOrEqualTo(180));
+
     final actionsPanel = find.byKey(const ValueKey('inventory-actions-panel'));
     final actionsToggle = find.byKey(
       const ValueKey('splitter-inventory-header-toggle'),
@@ -981,6 +1307,73 @@ void main() {
     await tester.tap(actionsToggle);
     await tester.pumpAndSettle();
     expect(actionsPanel, findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('mobile inventory filters can be hidden and reopened', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(400, 850);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: _inventoryScreen(onExit: () {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final filters = find.byKey(const ValueKey('inventory-search-panel'));
+    final toggle = find.byKey(
+      const ValueKey('inventory-mobile-filters-toggle'),
+    );
+    final results = find.byKey(
+      const ValueKey('inventory-search-results-panel'),
+    );
+    final mobileLayout = find.byKey(const ValueKey('inventory-mobile-layout'));
+    await tester.scrollUntilVisible(
+      toggle,
+      400,
+      scrollable: find
+          .descendant(of: mobileLayout, matching: find.byType(Scrollable))
+          .first,
+    );
+    await tester.pumpAndSettle();
+    expect(filters, findsOneWidget);
+    final searchField = find
+        .descendant(of: filters, matching: find.byType(app_widgets.TextBox))
+        .last;
+    await tester.ensureVisible(searchField);
+    await tester.enterText(searchField, 'milk');
+
+    await tester.ensureVisible(toggle);
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(filters, findsNothing);
+    expect(results, findsOneWidget);
+    expect(find.text('إظهار عوامل التصفية'), findsOneWidget);
+
+    await tester.ensureVisible(results);
+    await tester.pumpAndSettle();
+    final resultsRect = tester.getRect(results);
+    expect(resultsRect.top, greaterThanOrEqualTo(0));
+    expect(resultsRect.bottom, lessThanOrEqualTo(850));
+
+    await tester.ensureVisible(toggle);
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(filters, findsOneWidget);
+    expect(
+      tester.widget<app_widgets.TextBox>(searchField).controller.text,
+      'milk',
+    );
+    expect(find.text('إخفاء عوامل التصفية'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -1162,35 +1555,34 @@ void main() {
         ],
       ),
     ]);
-    await Store.saveDraft(0, {
-      'number': '999999',
-      'lines': [
-        {
-          'id': 'stale-line',
-          'code': 'OLD-1',
-          'name': 'صنف من مسودة سابقة',
-          'unitNo': '1',
-          'unit': 'حبة',
-          'qty': 1,
-          'price': 99,
-        },
-      ],
-    });
-
+    final savedDraft = InvoiceDraft(
+      id: 'draft-being-saved',
+      typeIndex: 0,
+      updatedAt: DateTime(2026, 11, 13),
+      invoice: {'number': '000001', 'lines': []},
+    );
+    final otherDraft = InvoiceDraft(
+      id: 'other-open-draft',
+      typeIndex: 1,
+      updatedAt: DateTime(2026, 11, 13),
+      invoice: {'number': '000099', 'lines': []},
+    );
+    await Store.saveInvoiceDraft(savedDraft);
+    await Store.saveInvoiceDraft(otherDraft);
     await tester.pumpWidget(
       fluent.FluentApp(
         theme: buildFluentTheme(),
         home: Directionality(
           textDirection: TextDirection.rtl,
-          child: Scaffold(body: _invoiceScreen(onExit: () {})),
+          child: Scaffold(
+            body: _invoiceScreen(onExit: () {}, draftId: savedDraft.id),
+          ),
         ),
       ),
     );
     await tester.pumpAndSettle();
     expect(find.text('000001'), findsOneWidget);
     expect(find.byKey(const ValueKey('invoice-side-row-0')), findsNothing);
-    expect(find.text('صنف من مسودة سابقة'), findsNothing);
-    expect(await Store.loadDraft(0), isNull);
     await tester.tap(find.text('إضافة الأصناف'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('invoice-item-add-SAVE-1')));
@@ -1214,17 +1606,238 @@ void main() {
     expect(savedLines.single['name'], 'صنف للحفظ');
     expect(invoice['number'], '000001');
     expect(DateTime.tryParse(invoice['invDate'] as String), isNotNull);
-    expect(await Store.loadDraft(0), isNull);
+    expect((await Store.loadInvoiceDrafts()).map((draft) => draft.id), [
+      otherDraft.id,
+    ]);
     expect(find.byKey(const ValueKey('invoice-side-row-0')), findsNothing);
     expect(find.text('مسح المسودة وبدء فاتورة جديدة'), findsNothing);
     expect(find.text('حفظ\nوطباعة'), findsOneWidget);
     expect(find.textContaining('طباعة F7'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('invoice-exit')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('invoice-unsaved-close-dialog')),
+      findsNothing,
+    );
     await tester.tap(find.text('بيانات الفاتورة'));
     await tester.pumpAndSettle();
     expect(find.text('000002'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 3));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('restored invoice draft keeps its fields and can be discarded', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final draft = InvoiceDraft(
+      id: 'restored-invoice',
+      typeIndex: 4,
+      updatedAt: DateTime(2026, 11, 14),
+      invoice: {
+        'number': '000042',
+        'invDate': DateTime(2026, 11, 10).toIso8601String(),
+        'delivDate': DateTime(2026, 11, 11).toIso8601String(),
+        'account': 'عميل محفوظ',
+        'taxNo': '300123456700003',
+        'notes': 'ملاحظات المسودة',
+        'discount': '4',
+        'taxRate': '0.15',
+        'cash': '5',
+        'network': '12',
+        'credit': '0',
+        'returnBal': '1',
+        'pick': '',
+        'creditor': 'شركة النخبة',
+        'debtor': 'الصندوق',
+        'storeCredit': '-',
+        'storeDebit': 'المستودع الرئيسي',
+        'taxable': 'غير خاضع',
+        'selectedPayment': 'network',
+        'paymentAuto': false,
+        'lines': [
+          {
+            'id': 'draft-line-1',
+            'code': 'DRAFT-1',
+            'name': 'صنف محفوظ',
+            'unitNo': '2',
+            'unit': 'كرتون',
+            'qty': 3,
+            'price': 7.5,
+          },
+        ],
+      },
+    );
+    expect(await Store.saveInvoiceDraft(draft), isTrue);
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: _invoiceScreen(
+              onExit: () {},
+              typeIndex: 4,
+              draftId: draft.id,
+              initialDraft: draft,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('000042'), findsOneWidget);
+    expect(find.byKey(const ValueKey('invoice-side-row-0')), findsOneWidget);
+    expect(find.text('صنف محفوظ • كرتون'), findsOneWidget);
+    expect(
+      tester
+          .widget<app_widgets.TextBox>(
+            find.byKey(const ValueKey('invoice-account-field')),
+          )
+          .controller
+          .text,
+      'عميل محفوظ',
+    );
+    expect(
+      tester
+          .widget<fluent.TextBox>(
+            find.byKey(const ValueKey('payment-field-network')),
+          )
+          .controller!
+          .text,
+      '12',
+    );
+
+    await tester.tap(find.byKey(const ValueKey('invoice-discard-draft')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('نعم، تأكيد'));
+    await tester.pumpAndSettle();
+    expect(await Store.loadInvoiceDrafts(), isEmpty);
+    expect(find.byKey(const ValueKey('invoice-side-row-0')), findsNothing);
+    expect(find.text('000001'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('saved invoice drafts reopen after signing in', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final draft = InvoiceDraft(
+      id: 'startup-recovery',
+      typeIndex: 2,
+      updatedAt: DateTime(2026, 11, 14),
+      invoice: {
+        'number': '000077',
+        'invDate': DateTime(2026, 11, 12).toIso8601String(),
+        'delivDate': DateTime(2026, 11, 13).toIso8601String(),
+        'account': 'حساب مستعاد',
+        'taxNo': '',
+        'notes': '',
+        'discount': '0',
+        'taxRate': '0.15',
+        'cash': '0',
+        'network': '0',
+        'credit': '0',
+        'returnBal': '0',
+        'pick': '',
+        'paymentAuto': false,
+        'lines': [
+          {
+            'id': 'startup-line',
+            'code': 'STARTUP-1',
+            'name': 'بند مستعاد',
+            'unitNo': '1',
+            'unit': 'حبة',
+            'qty': 2,
+            'price': 11,
+          },
+        ],
+      },
+    );
+    await Store.saveInvoiceDraft(draft);
+
+    await _launchAndLogin(tester);
+
+    expect(find.byType(InvoiceScreen), findsOneWidget);
+    expect(find.text('000077'), findsOneWidget);
+    expect(find.text('بند مستعاد • حبة'), findsOneWidget);
+    expect(
+      tester
+          .widget<app_widgets.TextBox>(
+            find.byKey(const ValueKey('invoice-account-field')),
+          )
+          .controller
+          .text,
+      'حساب مستعاد',
+    );
+  });
+
+  testWidgets('invoice edits are saved automatically as an independent draft', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await Store.saveItems([
+      Item(
+        id: 'AUTO-1',
+        nameAr: 'صنف للمسودة',
+        units: [
+          UnitRow(unitNo: '1', size: 'حبة', priceBefore: '9', quick: true),
+        ],
+      ),
+    ]);
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: _invoiceScreen(onExit: () {}, draftId: 'autosave-test'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('إضافة الأصناف'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('invoice-item-add-AUTO-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('بيانات الفاتورة'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('invoice-account-field')),
+      'حساب يحفظ تلقائياً',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('payment-field-network')),
+      '23.5',
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    final savedDrafts = await Store.loadInvoiceDrafts();
+    expect(savedDrafts, hasLength(1));
+    expect(savedDrafts.single.id, 'autosave-test');
+    expect(savedDrafts.single.typeIndex, 0);
+    expect(savedDrafts.single.invoice['account'], 'حساب يحفظ تلقائياً');
+    expect(savedDrafts.single.invoice['network'], '23.5');
+    final savedLines = savedDrafts.single.invoice['lines'] as List;
+    expect(savedLines, hasLength(1));
+    expect((savedLines.single as Map)['qty'], 1);
+    expect((savedLines.single as Map)['name'], 'صنف للمسودة');
   });
 
   testWidgets('inventory adds a unit row without clearing item fields', (
@@ -1366,6 +1979,40 @@ void main() {
     );
     expect(
       find.byKey(const ValueKey('invoice-item-card-REGULAR-1')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('invoice history search opens as a dialog over the invoice', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: _invoiceScreen(onExit: () {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('invoice-history-search-open')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(InvoiceScreen), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('invoice-history-search-dialog')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('invoice-history-search-submit')),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
