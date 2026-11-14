@@ -8,11 +8,23 @@ class InvoicePrintSettings {
   final InvoicePaperSize paperSize;
   final InvoicePrintLanguage language;
   final InvoiceDesignStyle design;
+  final String businessName;
+  final String businessAddress;
+  final String businessPhone;
+  final String businessEmail;
+  final String receiptFooter;
+  final String logoBase64;
 
   const InvoicePrintSettings({
     this.paperSize = InvoicePaperSize.a4Portrait,
     this.language = InvoicePrintLanguage.arabic,
     this.design = InvoiceDesignStyle.classic,
+    this.businessName = '',
+    this.businessAddress = '',
+    this.businessPhone = '',
+    this.businessEmail = '',
+    this.receiptFooter = '',
+    this.logoBase64 = '',
   });
 
   bool get isThermal =>
@@ -41,23 +53,60 @@ class InvoicePrintSettings {
     final noteLines =
         (notesLength / (paperSize == InvoicePaperSize.thermal58 ? 24 : 36))
             .ceil();
-    return 150 + (lineCount * perLine) + (noteLines * 6);
+    final lineCapacity = paperSize == InvoicePaperSize.thermal58 ? 24 : 36;
+    final brandLines =
+        [businessName, businessAddress, businessPhone, businessEmail]
+            .where((value) => value.trim().isNotEmpty)
+            .fold<int>(
+              0,
+              (count, value) => count + (value.length / lineCapacity).ceil(),
+            );
+    final brandHeight =
+        (logoBase64.trim().isNotEmpty ? 28.0 : 0.0) +
+        (brandLines * 4.0) +
+        (logoBase64.trim().isNotEmpty && brandLines > 0 ? 2.0 : 0.0);
+    final footerHeight = receiptFooter.trim().isEmpty
+        ? 0.0
+        : (receiptFooter.length / lineCapacity).ceil() * 4.0;
+    return 150 +
+        brandHeight +
+        footerHeight +
+        (lineCount * perLine) +
+        (noteLines * 6);
   }
 
   InvoicePrintSettings copyWith({
     InvoicePaperSize? paperSize,
     InvoicePrintLanguage? language,
     InvoiceDesignStyle? design,
+    String? businessName,
+    String? businessAddress,
+    String? businessPhone,
+    String? businessEmail,
+    String? receiptFooter,
+    String? logoBase64,
   }) => InvoicePrintSettings(
     paperSize: paperSize ?? this.paperSize,
     language: language ?? this.language,
     design: design ?? this.design,
+    businessName: businessName ?? this.businessName,
+    businessAddress: businessAddress ?? this.businessAddress,
+    businessPhone: businessPhone ?? this.businessPhone,
+    businessEmail: businessEmail ?? this.businessEmail,
+    receiptFooter: receiptFooter ?? this.receiptFooter,
+    logoBase64: logoBase64 ?? this.logoBase64,
   );
 
   Map<String, dynamic> toJson() => {
     'paperSize': paperSize.name,
     'language': language.name,
     'design': design.name,
+    'businessName': businessName,
+    'businessAddress': businessAddress,
+    'businessPhone': businessPhone,
+    'businessEmail': businessEmail,
+    'receiptFooter': receiptFooter,
+    'logoBase64': logoBase64,
   };
 
   factory InvoicePrintSettings.fromJson(Map<String, dynamic> json) =>
@@ -74,5 +123,11 @@ class InvoicePrintSettings {
           (value) => value.name == json['design'],
           orElse: () => InvoiceDesignStyle.classic,
         ),
+        businessName: json['businessName'] as String? ?? '',
+        businessAddress: json['businessAddress'] as String? ?? '',
+        businessPhone: json['businessPhone'] as String? ?? '',
+        businessEmail: json['businessEmail'] as String? ?? '',
+        receiptFooter: json['receiptFooter'] as String? ?? '',
+        logoBase64: json['logoBase64'] as String? ?? '',
       );
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:accounting_ui/invoice_print_settings.dart';
 import 'package:accounting_ui/print_documents.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as image;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -67,6 +68,10 @@ void main() {
         paperSize: InvoicePaperSize.thermal58,
         language: InvoicePrintLanguage.bilingual,
         design: InvoiceDesignStyle.highlighted,
+        businessName: 'متجر التجربة',
+        businessAddress: 'الرياض',
+        businessPhone: '0500000000',
+        receiptFooter: 'شكراً لزيارتكم',
       ),
     );
 
@@ -75,6 +80,9 @@ void main() {
   });
 
   test('A4 landscape English invoice exports as a PDF', () async {
+    final logoBase64 = base64Encode(
+      image.encodeJpg(image.Image(width: 2, height: 2)),
+    );
     final bytes = await buildInvoicePdf(
       titleAr: 'فاتورة بيع',
       titleEn: 'Sales Invoice',
@@ -90,9 +98,15 @@ void main() {
         InvoicePrintTotal('الصافي', '0.00', labelEn: 'Net', emphasized: true),
       ],
       notes: '',
-      settings: const InvoicePrintSettings(
+      settings: InvoicePrintSettings(
         paperSize: InvoicePaperSize.a4Landscape,
         language: InvoicePrintLanguage.english,
+        businessName: 'Sample shop',
+        businessAddress: 'Riyadh',
+        businessPhone: '0500000000',
+        businessEmail: 'shop@example.com',
+        receiptFooter: 'Thank you for your visit',
+        logoBase64: logoBase64,
       ),
     );
 

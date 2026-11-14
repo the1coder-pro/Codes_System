@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart' as pdf;
 import 'package:pdf/widgets.dart' as pw;
@@ -114,9 +116,9 @@ Future<Uint8List> buildInvoicePdf({
     return document.save();
   }
 
-  final rowsPerPage = settings.paperSize == InvoicePaperSize.a4Landscape
-      ? 24
-      : 16;
+  final rowsPerPage = _hasBusinessBranding(settings)
+      ? (settings.paperSize == InvoicePaperSize.a4Landscape ? 19 : 12)
+      : (settings.paperSize == InvoicePaperSize.a4Landscape ? 24 : 16);
   final pageCount = (lines.length / rowsPerPage).ceil().clamp(1, 1000);
   final format = settings.paperSize == InvoicePaperSize.a4Landscape
       ? pdf.PdfPageFormat.a4.landscape
@@ -135,6 +137,10 @@ Future<Uint8List> buildInvoicePdf({
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
+              if (isFirstPage && _hasBusinessBranding(settings)) ...[
+                _businessBranding(settings, fonts, thermal: false),
+                pw.SizedBox(height: 12),
+              ],
               _invoiceHeading(
                 titleAr,
                 titleEn,
@@ -216,6 +222,18 @@ Future<Uint8List> buildInvoicePdf({
                     ),
                   ),
                 ],
+                if (settings.receiptFooter.trim().isNotEmpty) ...[
+                  pw.SizedBox(height: 14),
+                  pw.Text(
+                    settings.receiptFooter.trim(),
+                    textAlign: pw.TextAlign.center,
+                    style: pw.TextStyle(
+                      font: fonts.regular,
+                      fontSize: 9,
+                      color: pdf.PdfColors.blueGrey,
+                    ),
+                  ),
+                ],
               ],
             ],
           ),
@@ -268,6 +286,10 @@ pw.Widget _thermalInvoice({
     child: pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.stretch,
       children: [
+        if (_hasBusinessBranding(settings)) ...[
+          _businessBranding(settings, fonts, thermal: true),
+          pw.SizedBox(height: dense ? 3 : 5),
+        ],
         pw.Container(
           padding: pw.EdgeInsets.symmetric(
             vertical: dense ? 3 : 6,
@@ -371,9 +393,111 @@ pw.Widget _thermalInvoice({
           textAlign: pw.TextAlign.center,
           style: pw.TextStyle(font: fonts.bold, fontSize: dense ? 8 : 9),
         ),
+        if (settings.receiptFooter.trim().isNotEmpty) ...[
+          pw.SizedBox(height: dense ? 3 : 5),
+          pw.Text(
+            settings.receiptFooter.trim(),
+            textAlign: pw.TextAlign.center,
+            style: pw.TextStyle(font: fonts.regular, fontSize: dense ? 7 : 8),
+          ),
+        ],
       ],
     ),
   );
+}
+
+bool _hasBusinessBranding(InvoicePrintSettings settings) =>
+    settings.businessName.trim().isNotEmpty ||
+    settings.businessAddress.trim().isNotEmpty ||
+    settings.businessPhone.trim().isNotEmpty ||
+    settings.businessEmail.trim().isNotEmpty ||
+    settings.logoBase64.trim().isNotEmpty;
+
+pw.Widget _businessBranding(
+  InvoicePrintSettings settings,
+  PrintFonts fonts, {
+  required bool thermal,
+}) {
+  final textStyle = pw.TextStyle(
+    font: fonts.regular,
+    fontSize: thermal ? 7 : 9,
+    color: pdf.PdfColors.blueGrey,
+  );
+  final logo = _businessLogo(settings, thermal: thermal);
+  final details = <String>[
+    if (settings.businessAddress.trim().isNotEmpty)
+      settings.businessAddress.trim(),
+    if (settings.businessPhone.trim().isNotEmpty) settings.businessPhone.trim(),
+    if (settings.businessEmail.trim().isNotEmpty) settings.businessEmail.trim(),
+  ];
+  if (thermal) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+      children: [
+        if (logo != null) ...[pw.Center(child: logo), pw.SizedBox(height: 2)],
+        if (settings.businessName.trim().isNotEmpty)
+          pw.Text(
+            settings.businessName.trim(),
+            textAlign: pw.TextAlign.center,
+            style: pw.TextStyle(
+              font: fonts.bold,
+              fontSize: settings.paperSize == InvoicePaperSize.thermal58
+                  ? 10
+                  : 12,
+            ),
+          ),
+        for (final detail in details)
+          pw.Text(detail, textAlign: pw.TextAlign.center, style: textStyle),
+      ],
+    );
+  }
+  return pw.Row(
+    crossAxisAlignment: pw.CrossAxisAlignment.center,
+    children: [
+      if (logo != null) ...[logo, pw.SizedBox(width: 12)],
+      pw.Expanded(
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+          children: [
+            if (settings.businessName.trim().isNotEmpty)
+              pw.Text(
+                settings.businessName.trim(),
+                textAlign: settings.language == InvoicePrintLanguage.english
+                    ? pw.TextAlign.left
+                    : pw.TextAlign.right,
+                style: pw.TextStyle(font: fonts.bold, fontSize: 14),
+              ),
+            for (final detail in details)
+              pw.Text(
+                detail,
+                textAlign: settings.language == InvoicePrintLanguage.english
+                    ? pw.TextAlign.left
+                    : pw.TextAlign.right,
+                style: textStyle,
+              ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+pw.Widget? _businessLogo(
+  InvoicePrintSettings settings, {
+  required bool thermal,
+}) {
+  final encoded = settings.logoBase64.trim();
+  if (encoded.isEmpty) return null;
+  try {
+    return pw.Image(
+      pw.MemoryImage(base64Decode(encoded)),
+      width: thermal ? 34 : 64,
+      height: thermal ? 24 : 48,
+      fit: pw.BoxFit.contain,
+    );
+  } on FormatException {
+    return null;
+  }
 }
 
 pw.Widget _thermalLine(
