@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'local_web_companion_controller.dart';
 import 'theme.dart';
+import 'web_companion_password_dialog.dart';
 
 class WebCompanionApp extends StatefulWidget {
   const WebCompanionApp({super.key});
@@ -60,6 +61,15 @@ class _WebCompanionScreen extends StatelessWidget {
   final LocalWebCompanionController controller;
 
   const _WebCompanionScreen({required this.controller});
+
+  void _showPasswordDialog(BuildContext context) {
+    unawaited(
+      fluent.showDialog<void>(
+        context: context,
+        builder: (_) => WebCompanionPasswordDialog(controller: controller),
+      ),
+    );
+  }
 
   Widget _tokenPanel() {
     final token = controller.printerController.token;
@@ -244,6 +254,13 @@ class _WebCompanionScreen extends StatelessWidget {
                             onPressed: controller.openInBrowser,
                             child: const Text('فتح الواجهة في المتصفح'),
                           ),
+                        fluent.Button(
+                          key: const ValueKey('web-companion-passwords'),
+                          onPressed: !controller.isRunning || controller.isBusy
+                              ? null
+                              : () => _showPasswordDialog(context),
+                          child: const Text('إدارة كلمات المرور'),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 14),
