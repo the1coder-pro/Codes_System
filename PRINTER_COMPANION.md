@@ -4,6 +4,25 @@ The Flutter desktop build runs the complete accounting interface without a
 browser or Node.js. It starts the loopback-only printing service automatically
 and uses Flutter's `printing` plugin to discover printers and print PDFs.
 
+## Choose between the two desktop modes
+
+Build without a mode define to show the startup chooser:
+
+```sh
+flutter build macos
+```
+
+Choose either the standalone Flutter system or the local web companion. To
+build directly into one mode, use `PRINTER_COMPANION=true` for the standalone
+system or `PRINTER_WEB_COMPANION=true` for the local web companion.
+
+The Flutter-only branch does not contain the web or API source. For the web
+companion, select the folder of a full `Codes_System` checkout. It needs
+Node.js, pnpm, Flutter, a configured local PostgreSQL database, and the full
+repository's dependencies. The companion builds and starts the API and web UI,
+starts the Dart printer service, then opens the browser. Pair once using the
+printer token shown in the companion.
+
 ## Build the standalone system
 
 Install Flutter and the platform's normal desktop build tools. From the
@@ -37,7 +56,8 @@ published domains are allowed by default.
 ## Platform setup
 
 - macOS: both debug and release entitlements include printer access, local
-  network client/server access, and Keychain access for secure passwords.
+  network client/server access, Keychain access for secure passwords, and
+  selected-folder access for the web companion.
 - Linux: install `libsecret-1-dev` to build and `libsecret-1-0` to run the app.
 - Windows: install Visual Studio Build Tools with the C++ ATL component.
 

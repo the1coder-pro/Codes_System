@@ -129,6 +129,15 @@ class PrinterCompanionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> stop() async {
+    final service = _service;
+    _service = null;
+    if (service != null) await service.stop();
+    _isReady = false;
+    _status = 'خدمة الطباعة متوقفة.';
+    notifyListeners();
+  }
+
   String _createToken() {
     final random = Random.secure();
     const chars = '0123456789abcdef';
@@ -138,6 +147,7 @@ class PrinterCompanionController extends ChangeNotifier {
   @override
   void dispose() {
     final service = _service;
+    _service = null;
     if (service != null) unawaited(service.stop());
     super.dispose();
   }
