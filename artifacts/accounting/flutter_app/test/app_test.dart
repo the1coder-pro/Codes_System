@@ -793,7 +793,7 @@ void main() {
     await tester.enterText(secondAccountField, 'مورد ثانٍ');
 
     Future<void> chooseHome() async {
-      await tester.tap(find.text('القائمة الرئيسية'));
+      await tester.tap(find.byKey(const ValueKey('top-menu-القائمة الرئيسية')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('الشاشة الرئيسية'));
       await tester.pumpAndSettle();
@@ -801,17 +801,16 @@ void main() {
 
     await chooseHome();
     expect(
-      find.byKey(const ValueKey('invoice-unsaved-close-dialog')),
+      find.byKey(const ValueKey('invoice-home-unsaved-close-dialog')),
       findsOneWidget,
     );
-    await tester.tap(find.byKey(const ValueKey('invoice-close-discard')));
+    expect(find.textContaining('تحتوي 2 فواتير مفتوحة'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('invoice-home-keep-editing')));
     await tester.pumpAndSettle();
     expect(
-      find.byKey(const ValueKey('invoice-unsaved-close-dialog')),
-      findsOneWidget,
+      find.byKey(const ValueKey('invoice-home-unsaved-close-dialog')),
+      findsNothing,
     );
-    await tester.tap(find.byKey(const ValueKey('invoice-close-continue')));
-    await tester.pumpAndSettle();
 
     expect(find.byType(InvoiceScreen), findsNWidgets(2));
     expect(
@@ -824,9 +823,7 @@ void main() {
     );
 
     await chooseHome();
-    await tester.tap(find.byKey(const ValueKey('invoice-close-discard')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('invoice-close-discard')));
+    await tester.tap(find.byKey(const ValueKey('invoice-home-discard')));
     await tester.pumpAndSettle();
     expect(find.byType(InvoiceScreen), findsNothing);
     expect(find.byKey(const ValueKey('shell-home-background')), findsOneWidget);

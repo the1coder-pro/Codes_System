@@ -15,7 +15,7 @@ import 'storage.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
-typedef InvoiceCloseGuard = Future<bool> Function();
+typedef InvoiceDirtyCheck = bool Function();
 
 /// Invoice form: right main form with tabs, left payments/items sidebar,
 /// bottom green totals strip. Drafts persist per invoice type.
@@ -24,7 +24,7 @@ class InvoiceScreen extends StatefulWidget {
   final VoidCallback onExit;
   final UserSession session;
   final AccountingAuthService authService;
-  final ValueChanged<InvoiceCloseGuard>? onCloseGuardReady;
+  final ValueChanged<InvoiceDirtyCheck>? onCloseGuardReady;
   final VoidCallback? onCloseGuardDisposed;
   const InvoiceScreen({
     super.key,
@@ -93,7 +93,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     for (final k in _paymentKeys) {
       h[k]!.text = '0';
     }
-    widget.onCloseGuardReady?.call(_confirmDiscardChanges);
+    widget.onCloseGuardReady?.call(() => _hasUnsavedChanges);
     _initializeInvoice();
   }
 

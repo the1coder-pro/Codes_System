@@ -62,7 +62,7 @@ class _AppShellState extends State<AppShell> {
   final List<_ShellRoute> _routes = [
     const _ShellRoute(id: 0, view: ShellView.home),
   ];
-  final Map<int, InvoiceCloseGuard> _invoiceCloseGuards = {};
+  final Map<int, InvoiceDirtyCheck> _invoiceDirtyChecks = {};
   int _nextRouteId = 1;
   int _nextInvoiceNumber = 1;
   UserSession? session;
@@ -115,7 +115,9 @@ class _AppShellState extends State<AppShell> {
       return;
     }
     if (v == ShellView.home) {
-      unawaited(_returnHomeSafely());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_returnHomeSafely());
+      });
       return;
     }
     setState(() {
@@ -128,11 +130,42 @@ class _AppShellState extends State<AppShell> {
     final openInvoices = _routes
         .where((route) => route.view == ShellView.invoice)
         .toList();
-    for (final route in openInvoices) {
-      final guard = _invoiceCloseGuards[route.id];
-      if (guard != null && !await guard()) return false;
-    }
-    return true;
+    final dirtyCount = openInvoices
+        .where((route) => _invoiceDirtyChecks[route.id]?.call() ?? false)
+        .length;
+    if (dirtyCount == 0) return true;
+
+    final discard = await fluent.showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => fluent.ContentDialog(
+        key: const ValueKey('invoice-home-unsaved-close-dialog'),
+        title: const Text('تغييرات غير محفوظة'),
+        content: Text(
+          dirtyCount == 1
+              ? 'تحتوي الفاتورة المفتوحة على تغييرات لم يتم حفظها. '
+                    'هل تريد تجاهلها والعودة للشاشة الرئيسية؟'
+              : 'تحتوي $dirtyCount فواتير مفتوحة على تغييرات لم يتم حفظها. '
+                    'هل تريد تجاهلها والعودة للشاشة الرئيسية؟',
+        ),
+        actions: [
+          fluent.Button(
+            key: const ValueKey('invoice-home-keep-editing'),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('متابعة التعديل'),
+          ),
+          fluent.FilledButton(
+            key: const ValueKey('invoice-home-discard'),
+            style: fluent.ButtonStyle(
+              backgroundColor: const WidgetStatePropertyAll(AppColors.red),
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('تجاهل التغييرات'),
+          ),
+        ],
+      ),
+    );
+    return discard == true;
   }
 
   Future<void> _returnHomeSafely() async {
@@ -296,6 +329,7 @@ class _AppShellState extends State<AppShell> {
   Widget _menu(String title, List<(String, VoidCallback)> entries) {
     final compact = MediaQuery.sizeOf(context).width < 600;
     return fluent.DropDownButton(
+      key: ValueKey('top-menu-$title'),
       title: Text(title, style: TextStyle(fontSize: compact ? 11 : 13)),
       style: fluent.ButtonStyle(
         padding: WidgetStatePropertyAll(
@@ -723,8 +757,8 @@ class _AppShellState extends State<AppShell> {
         session: session!,
         authService: widget.authService,
         onExit: _closeCurrentView,
-        onCloseGuardReady: (guard) => _invoiceCloseGuards[route.id] = guard,
-        onCloseGuardDisposed: () => _invoiceCloseGuards.remove(route.id),
+        onCloseGuardReady: (isDirty) => _invoiceDirtyChecks[route.id] = isDirty,
+        onCloseGuardDisposed: () => _invoiceDirtyChecks.remove(route.id),
       ),
       ShellView.accounts => AccountsScreen(
         session: session!,
