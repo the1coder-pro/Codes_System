@@ -544,7 +544,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('screen navigation uses Fluent fade and slide transitions', (
+  testWidgets('forms stack and closing restores the previous form', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1024, 900);
@@ -554,16 +554,75 @@ void main() {
     await _launchAndLogin(tester);
 
     await tester.tap(find.byKey(const ValueKey('ribbon-الأصناف')));
-    await tester.pump(const Duration(milliseconds: 40));
-    final transition = find.byKey(const ValueKey('app-content-transition'));
-    expect(
-      find.descendant(of: transition, matching: find.byType(SlideTransition)),
-      findsWidgets,
-    );
     await tester.pumpAndSettle();
     expect(find.byType(InventoryScreen), findsOneWidget);
-    expect(find.text('➕'), findsNothing);
-    expect(find.text('↩️'), findsNothing);
+    final searchField = find.descendant(
+      of: find.byKey(const ValueKey('inventory-search-panel')),
+      matching: find.byType(app_widgets.TextBox),
+    );
+    await tester.enterText(searchField, 'milk');
+
+    await tester.tap(find.byKey(const ValueKey('ribbon-الحسابات')));
+    await tester.pumpAndSettle();
+    expect(find.byType(InventoryScreen), findsOneWidget);
+    expect(find.byType(AccountsScreen), findsOneWidget);
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.byKey(const ValueKey('shell-route-layer-1')),
+          )
+          .ignoring,
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.byKey(const ValueKey('shell-route-layer-2')),
+          )
+          .ignoring,
+      isFalse,
+    );
+
+    final accountsExit = find.descendant(
+      of: find.byType(AccountsScreen),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is AppImageIcon && widget.assetPath == AppIcons.exit,
+      ),
+    );
+    await tester.tap(accountsExit);
+    await tester.pumpAndSettle();
+    expect(find.byType(AccountsScreen), findsNothing);
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.byKey(const ValueKey('shell-route-layer-1')),
+          )
+          .ignoring,
+      isFalse,
+    );
+    expect(
+      tester.widget<app_widgets.TextBox>(searchField).controller.text,
+      'milk',
+    );
+
+    final inventoryExit = find.descendant(
+      of: find.byType(InventoryScreen),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is AppImageIcon && widget.assetPath == AppIcons.exit,
+      ),
+    );
+    await tester.tap(inventoryExit);
+    await tester.pumpAndSettle();
+    expect(find.byType(InventoryScreen), findsNothing);
+    expect(find.byKey(const ValueKey('shell-home-background')), findsOneWidget);
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.byKey(const ValueKey('shell-route-layer-0')),
+          )
+          .ignoring,
+      isFalse,
+    );
     expect(tester.takeException(), isNull);
   });
 

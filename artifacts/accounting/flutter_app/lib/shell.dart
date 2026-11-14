@@ -25,6 +25,14 @@ enum ShellView {
   userPasswords,
 }
 
+class _ShellRoute {
+  final int id;
+  final ShellView view;
+  final int? invoiceType;
+
+  const _ShellRoute({required this.id, required this.view, this.invoiceType});
+}
+
 /// Window chrome: title strip, menu bar, ribbon, content canvas, status bar.
 class AppShell extends StatefulWidget {
   final AccountingAuthService authService;
@@ -41,11 +49,14 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  ShellView view = ShellView.home;
-  int invoiceType = 0;
-  int invoiceSession = 0;
+  final List<_ShellRoute> _routes = [
+    const _ShellRoute(id: 0, view: ShellView.home),
+  ];
+  int _nextRouteId = 1;
   UserSession? session;
   bool _loginDialogOpen = false;
+
+  ShellView get view => _routes.last.view;
 
   @override
   void initState() {
@@ -88,24 +99,64 @@ class _AppShellState extends State<AppShell> {
       soon('هذه الشاشة');
       return;
     }
-    setState(() => view = v);
+    setState(() {
+      if (v == ShellView.home) {
+        _routes
+          ..clear()
+          ..add(const _ShellRoute(id: 0, view: ShellView.home));
+        return;
+      }
+      if (_routes.last.view == v) return;
+      _routes.add(_ShellRoute(id: _nextRouteId++, view: v));
+    });
   }
 
   void openInvoice(int t) {
     if (!_can('invoice.view')) return;
     setState(() {
-      invoiceType = t;
-      invoiceSession++;
-      view = ShellView.invoice;
+      _routes.add(
+        _ShellRoute(
+          id: _nextRouteId++,
+          view: ShellView.invoice,
+          invoiceType: t,
+        ),
+      );
     });
+  }
+
+  void _closeCurrentView() {
+    if (_routes.length <= 1) return;
+    setState(() => _routes.removeLast());
   }
 
   void _logout() {
     setState(() {
       session = null;
-      view = ShellView.home;
+      _routes
+        ..clear()
+        ..add(const _ShellRoute(id: 0, view: ShellView.home));
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => _showLoginDialog());
+  }
+
+  void _refreshCurrentView() {
+    setState(() {
+      if (view == ShellView.invoice) {
+        final previous = _routes.removeLast();
+        _routes.add(
+          _ShellRoute(
+            id: _nextRouteId++,
+            view: ShellView.invoice,
+            invoiceType: previous.invoiceType,
+          ),
+        );
+      }
+    });
+    toast(
+      context,
+      'تم تحديث البيانات',
+      severity: fluent.InfoBarSeverity.success,
+    );
   }
 
   void soon(String name) => toast(
@@ -339,14 +390,7 @@ class _AppShellState extends State<AppShell> {
         assetPath: AppIcons.refresh,
         label: 'تحديث',
         color: AppColors.green,
-        onTap: () {
-          setState(() => invoiceSession++);
-          toast(
-            context,
-            'تم تحديث البيانات',
-            severity: fluent.InfoBarSeverity.success,
-          );
-        },
+        onTap: _refreshCurrentView,
       ),
       _RibbonButton(
         assetPath: AppIcons.website,
@@ -509,78 +553,95 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget _content() {
-    final content = switch (view) {
+    final theme = fluent.FluentTheme.of(context);
+    return ClipRect(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          for (var index = 0; index < _routes.length; index++)
+            _buildRouteLayer(
+              _routes[index],
+              isTop: index == _routes.length - 1,
+              theme: theme,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRouteLayer(
+    _ShellRoute route, {
+    required bool isTop,
+    required fluent.FluentThemeData theme,
+  }) {
+    final content = switch (route.view) {
       ShellView.home => const ColoredBox(
+        key: ValueKey('shell-home-background'),
         color: AppColors.canvasBlue,
         child: SizedBox.expand(),
       ),
       ShellView.inventory => InventoryScreen(
         session: session!,
         authService: widget.authService,
-        onExit: () => go(ShellView.home),
+        onExit: _closeCurrentView,
       ),
       ShellView.invoiceMenu => InvoiceMenu(
         onPick: openInvoice,
-        onClose: () => go(ShellView.home),
+        onClose: _closeCurrentView,
       ),
       ShellView.invoice => InvoiceScreen(
-        typeIndex: invoiceType,
+        typeIndex: route.invoiceType ?? 0,
         session: session!,
         authService: widget.authService,
-        onExit: () => go(ShellView.invoiceMenu),
+        onExit: _closeCurrentView,
       ),
       ShellView.accounts => AccountsScreen(
         session: session!,
         authService: widget.authService,
-        onExit: () => go(ShellView.home),
+        onExit: _closeCurrentView,
       ),
       ShellView.barcode => BarcodeScreen(
         session: session!,
         authService: widget.authService,
-        onExit: () => go(ShellView.home),
+        onExit: _closeCurrentView,
       ),
       ShellView.printerSettings => PrinterSettingsScreen(
         session: session!,
         authService: widget.authService,
         embeddedPrinterToken: widget.embeddedPrinterToken,
-        onExit: () => go(ShellView.home),
+        onExit: _closeCurrentView,
       ),
       ShellView.userPasswords => UserPasswordsScreen(
         session: session!,
         authService: widget.authService,
         passwordService: widget.authService as AdminPasswordManagementService,
-        onExit: () => go(ShellView.home),
+        onExit: _closeCurrentView,
       ),
     };
-    final contentKey = ValueKey(
-      '${view.name}-${view == ShellView.invoice ? '$invoiceType-$invoiceSession' : ''}',
-    );
-    final theme = fluent.FluentTheme.of(context);
-    return ClipRect(
-      child: AnimatedSwitcher(
-        key: const ValueKey('app-content-transition'),
-        duration: theme.mediumAnimationDuration,
-        reverseDuration: theme.fastAnimationDuration,
-        switchInCurve: theme.animationCurve,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) {
-          final eased = CurvedAnimation(
-            parent: animation,
+    return Positioned.fill(
+      child: IgnorePointer(
+        key: ValueKey('shell-route-layer-${route.id}'),
+        ignoring: !isTop,
+        child: ExcludeSemantics(
+          excluding: !isTop,
+          child: AnimatedOpacity(
+            opacity: isTop ? 1 : 0,
+            duration: theme.mediumAnimationDuration,
             curve: theme.animationCurve,
-            reverseCurve: Curves.easeInCubic,
-          );
-          return FadeTransition(
-            opacity: eased,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.035, 0),
-                end: Offset.zero,
-              ).animate(eased),
-              child: child,
+            child: AnimatedSlide(
+              offset: isTop ? Offset.zero : const Offset(0.025, 0),
+              duration: theme.mediumAnimationDuration,
+              curve: theme.animationCurve,
+              child: TickerMode(
+                enabled: isTop,
+                child: KeyedSubtree(
+                  key: ValueKey('shell-route-${route.id}-${route.view.name}'),
+                  child: content,
+                ),
+              ),
             ),
-          );
-        },
-        child: KeyedSubtree(key: contentKey, child: content),
+          ),
+        ),
       ),
     );
   }
