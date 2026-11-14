@@ -498,34 +498,42 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       minFirstExtent: 0,
                       minSecondExtent: 0,
                       overlaySecond: true,
-                      first: Column(
-                        children: [
-                          SizedBox(
-                            height: 236,
-                            child: ResizableSplit(
-                              dividerKey: const ValueKey(
-                                'splitter-inventory-header',
-                              ),
-                              collapseToggleKey: const ValueKey(
-                                'splitter-inventory-header-toggle',
-                              ),
-                              first: _actions(),
-                              second: _headerForm(true),
-                              initialFirstFraction: .27,
-                              minFirstWidth: 210,
-                              minSecondWidth: 480,
-                              collapsibleFirst: true,
-                              collapsedLabel: 'الإجراءات',
+                      first: ResizableVerticalSplit(
+                        dividerKey: const ValueKey(
+                          'splitter-inventory-header-grid',
+                        ),
+                        secondExtentKey: const ValueKey(
+                          'inventory-grid-section-size',
+                        ),
+                        initialFirstExtent: 236,
+                        initialSecondExtent: 0,
+                        minFirstExtent: 210,
+                        minSecondExtent: 180,
+                        resizeFirst: true,
+                        collapsibleSecond: false,
+                        dividerLabel: 'تغيير ارتفاع رأس الصنف والجدول',
+                        first: SizedBox(
+                          key: const ValueKey('inventory-header-section'),
+                          child: ResizableSplit(
+                            dividerKey: const ValueKey(
+                              'splitter-inventory-header',
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Expanded(
-                            child: Container(
-                              key: const ValueKey('inventory-items-grid-area'),
-                              child: grid,
+                            collapseToggleKey: const ValueKey(
+                              'splitter-inventory-header-toggle',
                             ),
+                            first: _actions(),
+                            second: _headerForm(true),
+                            initialFirstFraction: .27,
+                            minFirstWidth: 210,
+                            minSecondWidth: 480,
+                            collapsibleFirst: true,
+                            collapsedLabel: 'الإجراءات',
                           ),
-                        ],
+                        ),
+                        second: Container(
+                          key: const ValueKey('inventory-items-grid-area'),
+                          child: grid,
+                        ),
                       ),
                       second: Container(
                         key: const ValueKey('inventory-search-section'),

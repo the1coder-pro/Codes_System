@@ -170,12 +170,16 @@ class ResizableVerticalSplit extends StatefulWidget {
   final Widget first;
   final Widget second;
   final double initialSecondExtent;
+  final double? initialFirstExtent;
   final double minFirstExtent;
   final double minSecondExtent;
   final Key? dividerKey;
   final Key? collapseToggleKey;
   final Key? secondExtentKey;
   final bool overlaySecond;
+  final bool resizeFirst;
+  final bool collapsibleSecond;
+  final String dividerLabel;
 
   const ResizableVerticalSplit({
     super.key,
@@ -184,10 +188,14 @@ class ResizableVerticalSplit extends StatefulWidget {
     required this.initialSecondExtent,
     required this.minFirstExtent,
     required this.minSecondExtent,
+    this.initialFirstExtent,
     this.dividerKey,
     this.collapseToggleKey,
     this.secondExtentKey,
     this.overlaySecond = false,
+    this.resizeFirst = false,
+    this.collapsibleSecond = true,
+    this.dividerLabel = 'تغيير ارتفاع قسم البحث والتصفية',
   });
 
   @override
@@ -197,6 +205,7 @@ class ResizableVerticalSplit extends StatefulWidget {
 class _ResizableVerticalSplitState extends State<ResizableVerticalSplit> {
   static const _dividerHeight = 48.0;
   double? _secondExtent;
+  double? _firstExtent;
   bool _secondCollapsed = false;
 
   @override
@@ -209,37 +218,62 @@ class _ResizableVerticalSplitState extends State<ResizableVerticalSplit> {
         math.max(0.0, available - minSecond),
       );
       final maxSecond = math.max(minSecond, available - minFirst);
-      final secondExtent = (_secondExtent ?? widget.initialSecondExtent)
-          .clamp(minSecond, maxSecond)
-          .toDouble();
+      final initialFirst =
+          widget.initialFirstExtent ?? (available - widget.initialSecondExtent);
+      final firstExtent = widget.resizeFirst
+          ? (_firstExtent ?? initialFirst)
+                .clamp(minFirst, math.max(minFirst, available - minSecond))
+                .toDouble()
+          : 0.0;
+      final secondExtent = widget.resizeFirst
+          ? math.max(0.0, available - firstExtent)
+          : (_secondExtent ?? widget.initialSecondExtent)
+                .clamp(minSecond, maxSecond)
+                .toDouble();
       final secondHeight = _secondCollapsed ? 0.0 : secondExtent;
-      final firstHeight = math.max(0.0, available - secondHeight);
+      final firstHeight = widget.resizeFirst
+          ? (_secondCollapsed ? available : firstExtent)
+          : math.max(0.0, available - secondHeight);
 
-      void setSecondExtent(double requested) {
+      void setSplitExtent(double requested) {
         setState(() {
           _secondCollapsed = false;
-          _secondExtent = requested.clamp(minSecond, maxSecond).toDouble();
+          if (widget.resizeFirst) {
+            _firstExtent = requested
+                .clamp(minFirst, math.max(minFirst, available - minSecond))
+                .toDouble();
+          } else {
+            _secondExtent = requested.clamp(minSecond, maxSecond).toDouble();
+          }
         });
       }
 
       void resizeBy(double delta) {
-        setSecondExtent(secondExtent - delta);
+        setSplitExtent(
+          widget.resizeFirst ? firstExtent + delta : secondExtent - delta,
+        );
       }
 
       final expanding = _secondCollapsed || secondHeight == 0;
       final handle = Semantics(
-        label: 'تغيير ارتفاع قسم البحث والتصفية',
-        value: _secondCollapsed ? 'مطوي' : '${secondHeight.round()} بكسل',
+        label: widget.dividerLabel,
+        value: _secondCollapsed
+            ? 'مطوي'
+            : '${(widget.resizeFirst ? firstHeight : secondHeight).round()} بكسل',
         increasedValue:
-            '${math.min(maxSecond, secondExtent + 16).round()} بكسل',
+            '${(widget.resizeFirst ? math.min(available - minSecond, firstExtent + 16) : math.min(maxSecond, secondExtent + 16)).round()} بكسل',
         decreasedValue:
-            '${math.max(minSecond, secondExtent - 16).round()} بكسل',
+            '${(widget.resizeFirst ? math.max(minFirst, firstExtent - 16) : math.max(minSecond, secondExtent - 16)).round()} بكسل',
         onIncrease: _secondCollapsed
             ? null
-            : () => setSecondExtent(secondExtent + 16),
+            : () => setSplitExtent(
+                widget.resizeFirst ? firstExtent + 16 : secondExtent + 16,
+              ),
         onDecrease: _secondCollapsed
             ? null
-            : () => setSecondExtent(secondExtent - 16),
+            : () => setSplitExtent(
+                widget.resizeFirst ? firstExtent - 16 : secondExtent - 16,
+              ),
         child: MouseRegion(
           cursor: SystemMouseCursors.resizeRow,
           child: GestureDetector(
@@ -255,42 +289,54 @@ class _ResizableVerticalSplitState extends State<ResizableVerticalSplit> {
                   alignment: Alignment.center,
                   children: [
                     Container(height: 1, color: AppColors.line),
-                    Material(
-                      color: AppColors.paper,
-                      child: IconButton(
-                        key: widget.collapseToggleKey,
-                        tooltip: expanding
-                            ? 'إظهار البحث والتصفية'
-                            : 'طي البحث والتصفية',
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                        constraints: const BoxConstraints.tightFor(
-                          width: 30,
-                          height: 30,
-                        ),
-                        icon: Icon(
-                          expanding
-                              ? Icons.keyboard_arrow_up
-                              : Icons.keyboard_arrow_down,
-                          size: 18,
-                          color: AppColors.ink,
-                        ),
-                        onPressed: () => setState(() {
-                          if (expanding) {
-                            _secondCollapsed = false;
-                            if (secondExtent == 0) {
-                              _secondExtent = math.min(
-                                widget.initialSecondExtent,
-                                maxSecond,
-                              );
+                    if (widget.collapsibleSecond)
+                      Material(
+                        color: AppColors.paper,
+                        child: IconButton(
+                          key: widget.collapseToggleKey,
+                          tooltip: expanding
+                              ? 'إظهار البحث والتصفية'
+                              : 'طي البحث والتصفية',
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          constraints: const BoxConstraints.tightFor(
+                            width: 30,
+                            height: 30,
+                          ),
+                          icon: Icon(
+                            expanding
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            size: 18,
+                            color: AppColors.ink,
+                          ),
+                          onPressed: () => setState(() {
+                            if (expanding) {
+                              _secondCollapsed = false;
+                              if (secondExtent == 0) {
+                                if (widget.resizeFirst) {
+                                  _firstExtent = math.max(
+                                    minFirst,
+                                    available -
+                                        math.min(
+                                          widget.initialSecondExtent,
+                                          maxSecond,
+                                        ),
+                                  );
+                                } else {
+                                  _secondExtent = math.min(
+                                    widget.initialSecondExtent,
+                                    maxSecond,
+                                  );
+                                }
+                              }
+                            } else {
+                              _secondExtent = secondHeight;
+                              _secondCollapsed = true;
                             }
-                          } else {
-                            _secondExtent = secondHeight;
-                            _secondCollapsed = true;
-                          }
-                        }),
+                          }),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),

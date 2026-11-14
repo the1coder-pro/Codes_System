@@ -1100,6 +1100,34 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.getSize(searchSection).height, 0);
 
+    final headerSection = find.byKey(
+      const ValueKey('inventory-header-section'),
+    );
+    final headerGridDivider = find.byKey(
+      const ValueKey('splitter-inventory-header-grid'),
+    );
+    final headerBeforeResize = tester.getSize(headerSection).height;
+    final gridBeforeResize = tester.getSize(gridArea).height;
+    await tester.drag(headerGridDivider, const Offset(0, 72));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(headerSection).height,
+      greaterThan(headerBeforeResize),
+    );
+    expect(tester.getSize(gridArea).height, lessThan(gridBeforeResize));
+    await tester.drag(headerGridDivider, const Offset(0, 2000));
+    await tester.pumpAndSettle();
+    expect(tester.getSize(gridArea).height, greaterThanOrEqualTo(180));
+
+    tester.view.physicalSize = const Size(1280, 640);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(headerSection).height, greaterThanOrEqualTo(210));
+    expect(tester.getSize(gridArea).height, greaterThanOrEqualTo(180));
+    tester.view.physicalSize = const Size(1280, 1200);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(headerSection).height, greaterThanOrEqualTo(210));
+    expect(tester.getSize(gridArea).height, greaterThanOrEqualTo(180));
+
     final actionsPanel = find.byKey(const ValueKey('inventory-actions-panel'));
     final actionsToggle = find.byKey(
       const ValueKey('splitter-inventory-header-toggle'),
