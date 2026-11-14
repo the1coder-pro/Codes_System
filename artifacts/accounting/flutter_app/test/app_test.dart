@@ -1143,6 +1143,73 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('mobile inventory filters can be hidden and reopened', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(400, 850);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      fluent.FluentApp(
+        theme: buildFluentTheme(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: _inventoryScreen(onExit: () {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final filters = find.byKey(const ValueKey('inventory-search-panel'));
+    final toggle = find.byKey(
+      const ValueKey('inventory-mobile-filters-toggle'),
+    );
+    final results = find.byKey(
+      const ValueKey('inventory-search-results-panel'),
+    );
+    final mobileLayout = find.byKey(const ValueKey('inventory-mobile-layout'));
+    await tester.scrollUntilVisible(
+      toggle,
+      400,
+      scrollable: find
+          .descendant(of: mobileLayout, matching: find.byType(Scrollable))
+          .first,
+    );
+    await tester.pumpAndSettle();
+    expect(filters, findsOneWidget);
+    final searchField = find
+        .descendant(of: filters, matching: find.byType(app_widgets.TextBox))
+        .last;
+    await tester.ensureVisible(searchField);
+    await tester.enterText(searchField, 'milk');
+
+    await tester.ensureVisible(toggle);
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(filters, findsNothing);
+    expect(results, findsOneWidget);
+    expect(find.text('إظهار عوامل التصفية'), findsOneWidget);
+
+    await tester.ensureVisible(results);
+    await tester.pumpAndSettle();
+    final resultsRect = tester.getRect(results);
+    expect(resultsRect.top, greaterThanOrEqualTo(0));
+    expect(resultsRect.bottom, lessThanOrEqualTo(850));
+
+    await tester.ensureVisible(toggle);
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(filters, findsOneWidget);
+    expect(
+      tester.widget<app_widgets.TextBox>(searchField).controller.text,
+      'milk',
+    );
+    expect(find.text('إخفاء عوامل التصفية'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('inventory uploads and persists an item image', (tester) async {
     SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(1280, 1000);

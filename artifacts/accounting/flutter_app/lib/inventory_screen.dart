@@ -104,6 +104,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   final sText = TextEditingController();
   final _searchScrollController = ScrollController();
   List<Item> results = [];
+  bool mobileFiltersExpanded = true;
 
   @override
   void initState() {
@@ -565,6 +566,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         return Container(
           color: AppColors.paper,
           child: ListView(
+            key: const ValueKey('inventory-mobile-layout'),
             padding: const EdgeInsets.all(8),
             children: [
               _actions(),
@@ -573,13 +575,41 @@ class _InventoryScreenState extends State<InventoryScreen> {
               const SizedBox(height: 8),
               SizedBox(height: 300, child: grid),
               const SizedBox(height: 8),
-              _searchPanel(),
+              _mobileFiltersToggle(),
+              const SizedBox(height: 8),
+              if (mobileFiltersExpanded) _searchPanel(),
               const SizedBox(height: 8),
               SizedBox(height: 220, child: _resultsPanel()),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _mobileFiltersToggle() {
+    final label = mobileFiltersExpanded
+        ? 'إخفاء عوامل التصفية'
+        : 'إظهار عوامل التصفية';
+    return SizedBox(
+      width: double.infinity,
+      height: 44,
+      child: fluent.Button(
+        key: const ValueKey('inventory-mobile-filters-toggle'),
+        onPressed: () =>
+            setState(() => mobileFiltersExpanded = !mobileFiltersExpanded),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              mobileFiltersExpanded ? Icons.expand_less : Icons.expand_more,
+              size: 20,
+            ),
+            const SizedBox(width: 6),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+          ],
+        ),
+      ),
     );
   }
 
