@@ -41,6 +41,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   final lineCtl = <String, List<TextEditingController>>{};
   final selectedLineIds = <String>{};
   final _printerBridge = PrinterBridgeClient();
+  final _itemSearchFocus = FocusNode();
   int? selected;
   List<Item> catalog = [];
   String? selectedPayment = 'cash';
@@ -108,6 +109,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   @override
   void dispose() {
     _printerBridge.dispose();
+    _itemSearchFocus.dispose();
     for (final controller in h.values) {
       controller.dispose();
     }
@@ -181,6 +183,41 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       TextEditingController(text: money(price)),
     ];
     selected = lines.length - 1;
+  }
+
+  void _submitItemSearch(String scannedValue) {
+    final barcode = scannedValue.trim();
+    if (barcode.isEmpty) return;
+
+    final matches = <({Item item, UnitRow unit})>[];
+    for (final item in catalog) {
+      for (final unit in item.units) {
+        if (unit.barcode.trim() == barcode) {
+          matches.add((item: item, unit: unit));
+        }
+      }
+    }
+    if (matches.length != 1) {
+      // Leave the scan in the search field so matching results stay visible
+      // when the barcode is missing or shared by multiple units.
+      setState(() {});
+      return;
+    }
+
+    final match = matches.single;
+    setState(() {
+      _addLine(
+        code: match.item.id,
+        name: match.item.nameAr,
+        unitNo: match.unit.unitNo,
+        unit: match.unit.size,
+        price: double.tryParse(match.unit.priceBefore) ?? 0,
+      );
+      h['pick']!.clear();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && tab == 2) _itemSearchFocus.requestFocus();
+    });
   }
 
   void _syncQty(InvoiceLine l) {
@@ -1019,8 +1056,11 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               child: TextBox(
                 key: const ValueKey('invoice-item-search'),
                 controller: h['pick']!,
+                focusNode: _itemSearchFocus,
+                autofocus: true,
                 compact: true,
                 onChanged: (_) => setState(() {}),
+                onSubmitted: _submitItemSearch,
               ),
             ),
           ),
@@ -1312,6 +1352,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
               ),
               Expanded(
                 child: Container(
+                  key: const ValueKey('invoice-quantity-readout'),
                   height: 34,
                   margin: const EdgeInsets.symmetric(horizontal: 3),
                   alignment: Alignment.center,

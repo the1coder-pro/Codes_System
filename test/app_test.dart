@@ -1371,6 +1371,76 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'scanning a barcode and pressing Enter adds and increments item',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = const Size(1280, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      const barcode = '6291234567890';
+      await Store.saveItems([
+        Item(
+          id: 'SCAN-1',
+          nameAr: 'صنف ممسوح',
+          units: [
+            UnitRow(
+              unitNo: '1',
+              size: 'علبة',
+              priceBefore: '7.50',
+              barcode: barcode,
+            ),
+          ],
+        ),
+      ]);
+
+      await tester.pumpWidget(
+        fluent.FluentApp(
+          theme: buildFluentTheme(),
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(body: _invoiceScreen(onExit: () {})),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('اختيار الأصناف'));
+      await tester.pumpAndSettle();
+
+      final searchField = find.byKey(const ValueKey('invoice-item-search'));
+      await tester.enterText(searchField, barcode);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('invoice-side-row-0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('invoice-side-row-1')), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('invoice-quantity-readout')),
+          matching: find.text('1'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('صنف ممسوح • علبة'), findsOneWidget);
+
+      await tester.enterText(searchField, barcode);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('invoice-side-row-0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('invoice-side-row-1')), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('invoice-quantity-readout')),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('invoice shows each unit type with its own price', (
     tester,
   ) async {
