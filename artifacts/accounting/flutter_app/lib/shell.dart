@@ -6,6 +6,7 @@ import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 import 'accounts_screen.dart';
 import 'auth_service.dart';
+import 'backup_restore_dialog.dart';
 import 'barcode_screen.dart';
 import 'inventory_screen.dart';
 import 'invoice_menu.dart';
@@ -247,6 +248,15 @@ class _AppShellState extends State<AppShell> {
     severity: fluent.InfoBarSeverity.warning,
   );
 
+  Future<void> _openBackupDialog() async {
+    if (!_can('admin.backup')) return;
+    await fluent.showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const BackupRestoreDialog(),
+    );
+  }
+
   Future<void> calculator() async {
     await showGeneralDialog<void>(
       context: context,
@@ -378,8 +388,7 @@ class _AppShellState extends State<AppShell> {
     ]);
     final toolsMenu = _menu('أدوات', [
       ('آلة حاسبة', calculator),
-      if (_can('admin.backup'))
-        ('نسخة احتياطية', () => soon('النسخ الاحتياطي')),
+      if (_can('admin.backup')) ('نسخة احتياطية', _openBackupDialog),
     ]);
     final itemsEntries = <(String, VoidCallback)>[];
     if (_can('inventory.view')) {

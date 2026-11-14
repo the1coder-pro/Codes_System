@@ -164,6 +164,33 @@ void main() {
     },
   );
 
+  testWidgets('only administrators can open the backup and restore controls', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1024, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _launchAndLogin(tester);
+    await tester.tap(find.text('أدوات'));
+    await tester.pumpAndSettle();
+    expect(find.text('نسخة احتياطية'), findsOneWidget);
+    await tester.tap(find.text('نسخة احتياطية'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('backup-restore-dialog')), findsOneWidget);
+
+    await tester.tap(find.text('إغلاق').last);
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
+    await _launchAndLogin(tester, username: 'cashier1');
+    await tester.tap(find.text('أدوات'));
+    await tester.pumpAndSettle();
+    expect(find.text('نسخة احتياطية'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'auditors get read-only accounting controls and invoice printing',
     (tester) async {
