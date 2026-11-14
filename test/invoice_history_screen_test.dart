@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:accounting_ui/auth_service.dart';
 import 'package:accounting_ui/invoice_history_screen.dart';
 import 'package:accounting_ui/theme.dart';
+import 'package:accounting_ui/widgets.dart' as app_widgets;
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -118,11 +119,32 @@ void main() {
       find.byKey(const ValueKey('invoice-history-details')),
       findsOneWidget,
     );
+    final detailsDialog = tester.widget<fluent.ContentDialog>(
+      find.byKey(const ValueKey('invoice-history-details')),
+    );
+    expect(
+      (detailsDialog.style!.decoration as BoxDecoration).color,
+      Colors.white,
+    );
     expect(find.text('Supplier One'), findsNWidgets(2));
     expect(find.textContaining('Saved item'), findsOneWidget);
     expect(find.text('Saved note'), findsOneWidget);
     expect(find.text('20.70'), findsOneWidget);
     expect(find.byKey(const ValueKey('invoice-history-print')), findsOneWidget);
+    final detailPrintIcon = tester.widget<app_widgets.AppImageIcon>(
+      find.descendant(
+        of: find.byKey(const ValueKey('invoice-history-print')),
+        matching: find.byType(app_widgets.AppImageIcon),
+      ),
+    );
+    expect(detailPrintIcon.assetPath, app_widgets.AppIcons.printer);
+    final detailCloseIcon = tester.widget<app_widgets.AppImageIcon>(
+      find.descendant(
+        of: find.byKey(const ValueKey('invoice-history-details-close')),
+        matching: find.byType(app_widgets.AppImageIcon),
+      ),
+    );
+    expect(detailCloseIcon.assetPath, app_widgets.AppIcons.exit);
 
     final draft = await SharedPreferences.getInstance();
     expect(draft.getString('draft_0'), jsonEncode({'number': 'ACTIVE-DRAFT'}));
@@ -253,6 +275,18 @@ void main() {
       find.byKey(const ValueKey('invoice-history-search-dialog')),
       findsOneWidget,
     );
+    final historyDialog = tester.widget<fluent.ContentDialog>(
+      find.byKey(const ValueKey('invoice-history-search-dialog')),
+    );
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(
+      (historyDialog.style!.decoration as BoxDecoration).color,
+      Colors.white,
+    );
+    expect(
+      (historyDialog.style!.actionsDecoration as BoxDecoration).color,
+      Colors.white,
+    );
     expect(
       find.byKey(const ValueKey('invoice-history-id-filter')),
       findsOneWidget,
@@ -273,6 +307,41 @@ void main() {
       find.byKey(const ValueKey('invoice-history-print-selected')),
       findsOneWidget,
     );
+    final searchImage = tester.widget<app_widgets.AppImageIcon>(
+      find.descendant(
+        of: find.byKey(const ValueKey('invoice-history-search-submit')),
+        matching: find.byType(app_widgets.AppImageIcon),
+      ),
+    );
+    expect(searchImage.assetPath, app_widgets.AppIcons.search);
+    final downloadImage = tester.widget<app_widgets.AppImageIcon>(
+      find.descendant(
+        of: find.byKey(const ValueKey('invoice-history-download')),
+        matching: find.byType(app_widgets.AppImageIcon),
+      ),
+    );
+    expect(downloadImage.assetPath, app_widgets.AppIcons.save);
+    final printImage = tester.widget<app_widgets.AppImageIcon>(
+      find.descendant(
+        of: find.byKey(const ValueKey('invoice-history-print-selected')),
+        matching: find.byType(app_widgets.AppImageIcon),
+      ),
+    );
+    expect(printImage.assetPath, app_widgets.AppIcons.printer);
+    final closeImage = tester.widget<app_widgets.AppImageIcon>(
+      find.descendant(
+        of: find.byKey(const ValueKey('invoice-history-search-close')),
+        matching: find.byType(app_widgets.AppImageIcon),
+      ),
+    );
+    expect(closeImage.assetPath, app_widgets.AppIcons.exit);
+
+    await tester.tap(find.byKey(const ValueKey('invoice-history-date-from')));
+    await tester.pumpAndSettle();
+    expect(find.byType(fluent.DatePicker), findsOneWidget);
+    expect(find.byType(fluent.ContentDialog), findsNWidgets(2));
+    await tester.tap(find.text('إلغاء'));
+    await tester.pumpAndSettle();
 
     await tester.enterText(
       find.byKey(const ValueKey('invoice-history-id-filter')),

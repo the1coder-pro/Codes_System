@@ -1,1 +1,41 @@
 modules = ["python-base-3.13"]
+
+[[ports]]
+localPort = 5000
+externalPort = 5000
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 80
+
+[[ports]]
+localPort = 24339
+externalPort = 3000
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Flutter Web Preview"
+
+[[workflows.workflow]]
+name = "Flutter Web Preview"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "/nix/store/i07crp4mg1rimd97s1byrq4gasg7dsk5-flutter-wrapped-3.32.0-sdk-links/bin/flutter run -d web-server --web-hostname=0.0.0.0 --web-port=5000"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"

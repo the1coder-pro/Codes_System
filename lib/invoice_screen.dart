@@ -456,51 +456,21 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   Future<void> _requestExit() async {
     final hadUnsavedChanges = _hasUnsavedChanges;
     if (!await _confirmDiscardChanges() || !mounted) return;
-    if (hadUnsavedChanges && !await Store.clearInvoiceDraft(_draftId)) {
-      if (mounted) {
-        toast(
-          context,
-          'تعذر تجاهل مسودة الفاتورة',
-          severity: fluent.InfoBarSeverity.error,
-        );
+    if (hadUnsavedChanges) {
+      _draftSaveTimer?.cancel();
+      _draftSaveTimer = null;
+      if (!await Store.clearInvoiceDraft(_draftId)) {
+        if (mounted) {
+          toast(
+            context,
+            'تعذر تجاهل مسودة الفاتورة',
+            severity: fluent.InfoBarSeverity.error,
+          );
+        }
+        return;
       }
-      return;
     }
     if (mounted) widget.onExit();
-  }
-
-  Future<void> _discardDraft() async {
-    final discard = await confirmDialog(
-      context,
-      'مسح المسودة',
-      'سيتم حذف هذه المسودة فقط وبدء فاتورة جديدة. هل تريد المتابعة؟',
-    );
-    if (!discard || !mounted) return;
-    if (!await Store.clearInvoiceDraft(_draftId)) {
-      if (mounted) {
-        toast(
-          context,
-          'تعذر مسح مسودة الفاتورة',
-          severity: fluent.InfoBarSeverity.error,
-        );
-      }
-      return;
-    }
-    final nextNumber = await Store.nextInvoiceNumber();
-    if (!mounted) return;
-    _initializingDraft = true;
-    setState(() {
-      _resetInvoiceForm();
-      h['number']!.text = nextNumber;
-    });
-    _syncAutomaticPayment();
-    _cleanInvoiceFingerprint = _invoiceFingerprint();
-    _initializingDraft = false;
-    toast(
-      context,
-      'تم مسح المسودة وبدء فاتورة جديدة',
-      severity: fluent.InfoBarSeverity.success,
-    );
   }
 
   Future<bool> _saveInvoiceAndReset() async {
@@ -541,6 +511,8 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       );
       return false;
     }
+    _draftSaveTimer?.cancel();
+    _draftSaveTimer = null;
     final draftCleared = await Store.clearInvoiceDraft(_draftId);
     final nextNumber = await Store.nextInvoiceNumber();
     if (!mounted) return false;
@@ -1443,17 +1415,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                   width: 54,
                   height: 58,
                   onTap: _save,
-                ),
-              if (_canEdit)
-                ActionTile(
-                  key: const ValueKey('invoice-discard-draft'),
-                  assetPath: AppIcons.delete,
-                  label: 'مسح المسودة',
-                  glyphColor: AppColors.red,
-                  hideLabel: true,
-                  width: 54,
-                  height: 58,
-                  onTap: _discardDraft,
                 ),
               if (_canEdit && _can('invoice.print'))
                 ActionTile(
