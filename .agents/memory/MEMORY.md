@@ -5,3 +5,4 @@
 - [Inventory unit rows](inventory-groups.md) — New while editing preserves item fields and adds an independent unit row; invoices bill each unit at its own price.
 - [Fluent InfoBar lifecycle](fluent-infobar-lifecycle.md) — `displayInfoBar` returns after overlay insertion, not after dismissal; track deduplication with an explicit lifetime.
 - [Dart printer companion](dart-printer-companion.md) — keep local silent printing in Flutter/Dart; workstations should not require Node.
+- [Legacy schema compatibility](legacy-schema-compatibility.md) — preserve legacy names and stored values exactly across Access import and offline/online SQL storage.
