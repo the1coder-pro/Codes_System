@@ -47,8 +47,8 @@ The uploaded CSV archive has all 357 expected table files, exact headers, and
 1,544,263 rows. Its rows fit the current candidate field-length limits. A
 temporary SQLite import passes all schema constraints only when empty CSV
 fields are treated as SQL `NULL`; the strict check reports duplicate empty
-values in four unique-indexed fields. Because the CSV does not distinguish
-`NULL` from a genuine zero-length string, that conversion is not yet safe.
+values in four unique-indexed fields. The archive does not distinguish `NULL`
+from a genuine zero-length string, so that conversion is not safe.
 
 The supplied CSV archive contains 53,400 nonempty
 `tblMoneyTransaction.TransactionDate` values whose day component is `00`.
@@ -65,9 +65,17 @@ python3 scripts/migration/validate_legacy_csv_export.py \
 ```
 
 `--empty-as-null` is available only to test that interpretation; it is not a
-data-import setting and can change valid empty strings. To export from a local
-Windows computer with the Microsoft Access Database Engine installed, run
-PowerShell from the repository root:
+data-import setting and can change valid empty strings. The cross-platform
+exporter uses Java 11+ and Maven to read the database locally through
+UCanAccess. On macOS or Linux, run:
+
+```sh
+./scripts/migration/export_access.sh \
+  --database "$HOME/path/to/legacy.accdb" \
+  --output "$HOME/path/to/legacy-access-export.zip"
+```
+
+On Windows, the PowerShell alternative is:
 
 ```powershell
 powershell -NoProfile -File .\scripts\migration\export_access.ps1 `
@@ -75,20 +83,23 @@ powershell -NoProfile -File .\scripts\migration\export_access.ps1 `
   -OutputPath "C:\path\to\legacy-access-export.zip"
 ```
 
-The exporter reads the Access file without modifying it, checks table and
-column names against the exact legacy manifest, streams each table into a ZIP,
-uses `\N` for SQL `NULL`, escapes literal text that could look like the marker,
-formats actual Access dates invariantly, and encodes binary fields as base64.
-It requires a registered Microsoft ACE OLE DB provider (12.0 or 16.0) matching
-the PowerShell process architecture. It will stop and remove the partial ZIP if
-the legacy schema does not match. It does not upload or print business records.
+The Java exporter downloads its pinned Java dependencies from Maven Central on
+the first run. Both exporters read the Access file without changing its
+business records, check table and column names against the exact legacy
+manifest, stream the tables into a ZIP, distinguish SQL `NULL` from empty text,
+format dates invariantly, and encode binary fields as base64. The Java route
+does not require Microsoft Access or its Windows-only database driver. The
+PowerShell route requires the Microsoft Access Database Engine matching the
+PowerShell process architecture. Each exporter removes a partial output if
+schema validation or a table read fails; neither uploads nor prints business
+records.
 
-Validate the resulting archive with Python 3:
+Validate either resulting archive with Python 3:
 
-```powershell
-py -3 .\scripts\migration\validate_legacy_csv_export.py `
-  --archive "C:\path\to\legacy-access-export.zip" `
-  --null-marker '\N' `
+```sh
+python3 ./scripts/migration/validate_legacy_csv_export.py \
+  --archive "$HOME/path/to/legacy-access-export.zip" \
+  --null-marker '\N' \
   --escape-prefix '\'
 ```
 

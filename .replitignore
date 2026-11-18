@@ -5,3 +5,4 @@
 .local
 **/.dart_tool/
 **/flutter_app/build/
+/scripts/migration/access-exporter/target/

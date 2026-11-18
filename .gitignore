@@ -56,3 +56,4 @@ Thumbs.db
 .dart_tool/
 **/flutter_app/build/
 **/flutter_app/.flutter-plugins-dependencies
+/scripts/migration/access-exporter/target/
