@@ -15,6 +15,8 @@ import sqlite3
 import sys
 import tempfile
 import zipfile
+from collections import Counter
+from datetime import datetime
 from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -53,6 +55,32 @@ def open_csv_text(archive: zipfile.ZipFile, info: zipfile.ZipInfo):
     except UnicodeDecodeError:
         encoding = "cp1256"
     return io.TextIOWrapper(raw, encoding=encoding, errors="strict", newline="")
+
+
+def is_valid_datetime(value: str) -> bool:
+    value = value.strip()
+    if not value:
+        return True
+    normalized = value.replace("Z", "+00:00")
+    try:
+        datetime.fromisoformat(normalized)
+        return True
+    except ValueError:
+        pass
+    for pattern in (
+        "%m/%d/%Y",
+        "%m/%d/%Y %H:%M:%S",
+        "%m/%d/%Y %I:%M:%S %p",
+        "%d/%m/%Y",
+        "%d/%m/%Y %H:%M:%S",
+        "%d/%m/%Y %I:%M:%S %p",
+    ):
+        try:
+            datetime.strptime(value, pattern)
+            return True
+        except ValueError:
+            continue
+    return False
 
 
 def validate_export(
@@ -123,6 +151,7 @@ def validate_export(
                     if header != columns:
                         failures.append(f"{table_name}: CSV header differs from schema")
                         continue
+                    table_count += 1
 
                     placeholders = ", ".join("?" for _ in columns)
                     column_list = ", ".join(quote_identifier(name) for name in columns)
@@ -135,6 +164,7 @@ def validate_export(
                     bad_width = False
                     too_long_varchar: set[str] = set()
                     too_long_indexed_text: set[str] = set()
+                    invalid_datetimes: Counter[str] = Counter()
                     try:
                         with database:
                             for row in reader:
@@ -146,6 +176,12 @@ def validate_export(
                                     size = len(value)
                                     if column_types[name] == "VARCHAR" and size > 255:
                                         too_long_varchar.add(name)
+                                    if (
+                                        column_types[name] == "DATETIME"
+                                        and value
+                                        and not is_valid_datetime(value)
+                                    ):
+                                        invalid_datetimes[name] += 1
                                     if (
                                         column_types[name] == "TEXT"
                                         and name in indexed_columns
@@ -168,11 +204,13 @@ def validate_export(
                             f"{table_name}: SQL constraint validation failed "
                             f"({error})"
                         )
+                        total_rows += row_count
                         continue
                     except (csv.Error, UnicodeDecodeError, OSError) as error:
                         failures.append(
                             f"{table_name}: CSV parsing failed ({type(error).__name__})"
                         )
+                        total_rows += row_count
                         continue
                     finally:
                         text.close()
@@ -189,14 +227,21 @@ def validate_export(
                             f"{table_name}: indexed TEXT fields exceed 450 characters: "
                             + ", ".join(sorted(too_long_indexed_text))
                         )
+                    if invalid_datetimes:
+                        failures.append(
+                            f"{table_name}: invalid DateTime values "
+                            + ", ".join(
+                                f"{name} ({count} rows)"
+                                for name, count in sorted(invalid_datetimes.items())
+                            )
+                        )
 
                     stored_count = database.execute(
                         f"SELECT COUNT(*) FROM {quoted_table}"
                     ).fetchone()[0]
                     if stored_count != row_count:
                         failures.append(f"{table_name}: stored row count differs")
-                    total_rows += stored_count
-                    table_count += 1
+                    total_rows += row_count
             finally:
                 database.close()
 

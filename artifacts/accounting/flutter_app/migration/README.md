@@ -50,6 +50,12 @@ fields are treated as SQL `NULL`; the strict check reports duplicate empty
 values in four unique-indexed fields. Because the CSV does not distinguish
 `NULL` from a genuine zero-length string, that conversion is not yet safe.
 
+The same export contains 53,400 nonempty `tblMoneyTransaction.TransactionDate`
+values whose day component is `00`. These values are not valid SQL dates, and
+the SQL Server `DATETIME2` candidate cannot store them. Do not normalize them
+to another date. This may be a source-data issue or an export-format issue; the
+original Access file is needed to tell which.
+
 Run the structural/constraint check with:
 
 ```sh
@@ -60,8 +66,9 @@ python3 scripts/migration/validate_legacy_csv_export.py \
 `--empty-as-null` is available only to test that interpretation; it is not a
 data-import setting and can change valid empty strings. Before importing
 business data, provide the original Access database or re-export with an
-explicit null marker so record values can be converted and compared without
-guessing. The temporary validation database is deleted automatically.
+explicit null marker and faithful date values so records can be converted and
+compared without guessing. The temporary validation database is deleted
+automatically.
 
 ## Offline and online direction
 

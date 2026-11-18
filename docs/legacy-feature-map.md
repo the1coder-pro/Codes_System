@@ -83,6 +83,11 @@ under strict import. The archive does not encode whether those blanks were
 `NULL` or genuine zero-length strings, so a lossless import still requires the
 original Access database or an export with an explicit null marker.
 
+It also contains 53,400 nonempty `tblMoneyTransaction.TransactionDate` values
+with an invalid day-of-month value of `00`. Do not normalize these dates.
+Confirm the original values from Access before mapping this column to a typed
+SQL Server date.
+
 ## Current Flutter coverage
 
 The existing Flutter foundation contains the main accounting shell, login and
