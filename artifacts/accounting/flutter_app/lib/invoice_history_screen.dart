@@ -12,6 +12,9 @@ import 'storage.dart';
 import 'theme.dart';
 import 'widgets.dart' as app_widgets;
 
+/// Legacy form name retained for source and feature compatibility.
+typedef InvoiceSearchForm = InvoiceHistoryScreen;
+
 /// Read-only browser for invoices that have already been saved locally.
 class InvoiceHistoryScreen extends StatefulWidget {
   final VoidCallback onExit;

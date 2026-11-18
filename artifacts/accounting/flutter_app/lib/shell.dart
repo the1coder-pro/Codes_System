@@ -19,6 +19,9 @@ import 'user_passwords_screen.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
+/// Legacy main-window form name retained for source compatibility.
+typedef MainForm = AppShell;
+
 enum ShellView {
   home,
   inventory,
@@ -776,12 +779,12 @@ class _AppShellState extends State<AppShell> {
         color: AppColors.canvasBlue,
         child: SizedBox.expand(),
       ),
-      ShellView.inventory => InventoryScreen(
+      ShellView.inventory => ItemsForm(
         session: session!,
         authService: widget.authService,
         onExit: _closeCurrentView,
       ),
-      ShellView.invoiceMenu => InvoiceMenu(
+      ShellView.invoiceMenu => InvoiceTypeSelectForm(
         onPick: openInvoice,
         onHistory: () => showInvoiceHistoryDialog(
           context: context,
@@ -790,7 +793,7 @@ class _AppShellState extends State<AppShell> {
         ),
         onClose: _closeCurrentView,
       ),
-      ShellView.invoice => InvoiceScreen(
+      ShellView.invoice => InvoiceForm(
         key: ValueKey('invoice-form-${route.invoiceNumber}'),
         typeIndex: route.invoiceType ?? 0,
         session: session!,
@@ -801,12 +804,12 @@ class _AppShellState extends State<AppShell> {
         draftId: route.draftId,
         initialDraft: route.invoiceDraft,
       ),
-      ShellView.accounts => AccountsScreen(
+      ShellView.accounts => accountsForm(
         session: session!,
         authService: widget.authService,
         onExit: _closeCurrentView,
       ),
-      ShellView.barcode => BarcodeScreen(
+      ShellView.barcode => PrintBarcodesForm(
         session: session!,
         authService: widget.authService,
         onExit: _closeCurrentView,

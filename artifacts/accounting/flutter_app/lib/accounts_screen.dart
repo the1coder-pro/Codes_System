@@ -11,6 +11,10 @@ import 'widgets.dart';
 const _accountTypes = ['الحسابات المالية', 'العملاء', 'الموردون', 'الموظفون'];
 const _paymentTypes = ['حساب نقدي', 'حساب شبكة', 'حساب بنكي', 'حساب آجل'];
 
+/// Legacy form name retained exactly for compatibility with `accountsForm`.
+// ignore: camel_case_types
+typedef accountsForm = AccountsScreen;
+
 /// Arabic account directory and editor. Account changes are saved locally.
 class AccountsScreen extends StatefulWidget {
   final VoidCallback onExit;

@@ -19,6 +19,9 @@ import 'widgets.dart';
 
 typedef InvoiceDirtyCheck = bool Function();
 
+/// Legacy form name retained for source and feature compatibility.
+typedef InvoiceForm = InvoiceScreen;
+
 /// Invoice form: right main form with tabs, left payments/items sidebar,
 /// bottom green totals strip. Drafts persist per invoice type.
 class InvoiceScreen extends StatefulWidget {

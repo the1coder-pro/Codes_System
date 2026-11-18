@@ -41,6 +41,9 @@ const _unitTypeOpts = [
   'خدمة',
 ];
 
+/// Legacy form name retained for source and feature compatibility.
+typedef ItemsForm = InventoryScreen;
+
 typedef ItemImageBytesPicker = Future<Uint8List?> Function();
 
 const _unitCols = [

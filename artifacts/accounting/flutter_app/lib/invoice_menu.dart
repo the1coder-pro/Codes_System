@@ -4,6 +4,9 @@ import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'models.dart';
 import 'theme.dart';
 
+/// Legacy form name retained for source and feature compatibility.
+typedef InvoiceTypeSelectForm = InvoiceMenu;
+
 /// Green bilingual list of invoice types on a light-gray canvas.
 class InvoiceMenu extends StatelessWidget {
   final ValueChanged<int> onPick;

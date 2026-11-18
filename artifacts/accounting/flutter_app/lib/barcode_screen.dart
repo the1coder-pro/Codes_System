@@ -16,6 +16,9 @@ const _labelTemplates = [
   'بطاقة رف 30 * 60 مل - 3',
 ];
 
+/// Legacy form name retained for source and feature compatibility.
+typedef PrintBarcodesForm = BarcodeScreen;
+
 /// Barcode-label form backed by the inventory items already in the app.
 class BarcodeScreen extends StatefulWidget {
   final VoidCallback onExit;
