@@ -43,10 +43,25 @@ Regenerate and validate after changing the source export:
 python3 scripts/migration/audit_legacy_schema.py
 ```
 
-The original Access database or a representative data export is still needed
-to test record conversion, source-to-target value parity, and online/offline
-reconciliation. Do not import live business data until those checks and a
-recovery plan are reviewed.
+The uploaded CSV archive has all 357 expected table files, exact headers, and
+1,544,263 rows. Its rows fit the current candidate field-length limits. A
+temporary SQLite import passes all schema constraints only when empty CSV
+fields are treated as SQL `NULL`; the strict check reports duplicate empty
+values in four unique-indexed fields. Because the CSV does not distinguish
+`NULL` from a genuine zero-length string, that conversion is not yet safe.
+
+Run the structural/constraint check with:
+
+```sh
+python3 scripts/migration/validate_legacy_csv_export.py \
+  --archive attached_assets/0_Archive_1795026221028.zip
+```
+
+`--empty-as-null` is available only to test that interpretation; it is not a
+data-import setting and can change valid empty strings. Before importing
+business data, provide the original Access database or re-export with an
+explicit null marker so record values can be converted and compared without
+guessing. The temporary validation database is deleted automatically.
 
 ## Offline and online direction
 

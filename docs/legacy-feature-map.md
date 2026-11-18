@@ -76,6 +76,13 @@ of the supplied table, column, key, and index declarations. Its column names
 are parsed candidates from the export and must be reconciled with Access
 metadata and the matching VB.NET models before data conversion.
 
+The supplied CSV archive contains matching headers for all 357 tables and
+1,544,263 rows. A temporary SQLite import succeeds when every empty field is
+interpreted as `NULL`, but four unique indexes reject duplicate empty strings
+under strict import. The archive does not encode whether those blanks were
+`NULL` or genuine zero-length strings, so a lossless import still requires the
+original Access database or an export with an explicit null marker.
+
 ## Current Flutter coverage
 
 The existing Flutter foundation contains the main accounting shell, login and

@@ -56,7 +56,7 @@ def open_csv_text(archive: zipfile.ZipFile, info: zipfile.ZipInfo):
 
 
 def validate_export(
-    archive_path: Path, schema_path: Path
+    archive_path: Path, schema_path: Path, *, empty_as_null: bool = False
 ) -> tuple[int, int, list[str]]:
     failures: list[str] = []
     total_rows = 0
@@ -152,7 +152,12 @@ def validate_export(
                                         and size > 450
                                     ):
                                         too_long_indexed_text.add(name)
-                                batch.append(row)
+                                batch.append(
+                                    [
+                                        None if empty_as_null and value == "" else value
+                                        for value in row
+                                    ]
+                                )
                                 if len(batch) == 1000:
                                     database.executemany(insert, batch)
                                     batch.clear()
@@ -202,10 +207,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive", type=Path, required=True)
     parser.add_argument("--schema", type=Path, default=DEFAULT_SCHEMA)
+    parser.add_argument(
+        "--empty-as-null",
+        action="store_true",
+        help=(
+            "For constraint testing only, interpret every empty CSV field as "
+            "SQL NULL. This can lose real zero-length strings."
+        ),
+    )
     args = parser.parse_args()
     try:
         table_count, total_rows, failures = validate_export(
-            args.archive, args.schema
+            args.archive, args.schema, empty_as_null=args.empty_as_null
         )
     except (OSError, ValueError, zipfile.BadZipFile, sqlite3.Error) as error:
         print(f"Validation could not run: {type(error).__name__}", file=sys.stderr)
@@ -218,7 +231,10 @@ def main() -> int:
             f"{total_rows} rows."
         )
         return 1
-    print(f"CSV export validated: {table_count} tables, {total_rows} rows.")
+    mode = " (empty fields mapped to NULL for this test)" if args.empty_as_null else ""
+    print(
+        f"CSV export validated{mode}: {table_count} tables, {total_rows} rows."
+    )
     return 0
 
 
