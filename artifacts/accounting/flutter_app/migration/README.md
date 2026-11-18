@@ -61,7 +61,7 @@ Run the structural/constraint check with:
 
 ```sh
 python3 scripts/migration/validate_legacy_csv_export.py \
-  --archive attached_assets/0_Archive_1795026221028.zip
+  --archive attached_assets/0_Archive_1795029234315.zip
 ```
 
 `--empty-as-null` is available only to test that interpretation; it is not a
@@ -104,8 +104,21 @@ python3 ./scripts/migration/validate_legacy_csv_export.py \
 ```
 
 The temporary validation database is deleted automatically. This exporter
-produces a local validation package; a production data importer and online/offline
-synchronization are not implemented yet.
+produces a local validation package. After the strict validator passes, create
+the offline SQLite database locally with:
+
+```sh
+python3 ./scripts/migration/import_legacy_csv.py \
+  --archive "$HOME/path/to/legacy-access-export.zip" \
+  --output "$HOME/path/to/CodesSystem.sqlite"
+```
+
+The importer requires the exporter manifest, exact legacy tables/headers, and
+the declared row counts. It writes the full SQLite database to a temporary file
+and only publishes it after constraint and integrity checks pass. Invalid legacy
+date strings are kept verbatim in SQLite and reported; the SQL Server candidate
+still needs a separate decision for those values. No production data importer
+or online/offline synchronization is implemented yet.
 
 ## Offline and online direction
 
