@@ -28,6 +28,8 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  drift: 2.30.1
+  drift_flutter: 0.2.8
   file_picker: ^11.0.3
   fluent_ui: 4.12.0
   flutter:

@@ -1,11 +1,10 @@
 import 'dart:convert';
 
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'invoice_print_settings.dart';
+import 'local_sqlite_store.dart';
 import 'models.dart';
 
-/// Local persistence (shared_preferences). Failures fall back silently.
+/// Local persistence for the accounting UI.
 class Store {
   static const _backupFormat = 'accounting-local-backup';
   static const _backupSchemaVersion = 1;
@@ -16,13 +15,27 @@ class Store {
   static const _printerPreferencesKey = 'printer_preferences_v1';
   static const _invoicePrintSettingsKey = 'invoice_print_settings_v1';
   static const _invoiceDraftPrefix = 'invoice_draft_v1_';
+  static LocalSettingsStore _settingsStore = SqliteSettingsStore();
+
+  /// Keeps legacy widget tests isolated from the production SQLite database.
+  static void useSharedPreferencesForTesting() {
+    _settingsStore = SharedPreferencesSettingsStore();
+  }
+
+  static Future<void> initialize() => _settingsStore.initialize();
 
   static Future<String> exportBackup({DateTime? createdAt}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final items = _decodeList(prefs.getString(_itemsKey), seedItems);
-    final accounts = _decodeList(prefs.getString(_accountsKey), _seedAccounts);
+    await _settingsStore.initialize();
+    final items = _decodeList(
+      await _settingsStore.getString(_itemsKey),
+      seedItems,
+    );
+    final accounts = _decodeList(
+      await _settingsStore.getString(_accountsKey),
+      _seedAccounts,
+    );
     final invoices = _decodeList(
-      prefs.getString(_invoicesKey),
+      await _settingsStore.getString(_invoicesKey),
       () => <dynamic>[],
     );
     final contents = <String, dynamic>{
@@ -32,7 +45,8 @@ class Store {
       'inventory': items,
       'accounts': accounts,
       'invoices': invoices,
-      'nextInvoiceNumber': prefs.getInt(_invoiceSequenceKey) ?? 1,
+      'nextInvoiceNumber':
+          await _settingsStore.getInt(_invoiceSequenceKey) ?? 1,
     };
     final encoded = jsonEncode(contents);
     parseBackup(encoded);
@@ -124,11 +138,10 @@ class Store {
 
   static Future<void> restoreBackup(String encoded) async {
     final backup = parseBackup(encoded).data;
-    final prefs = await SharedPreferences.getInstance();
+    await _settingsStore.initialize();
     final keys = [_itemsKey, _accountsKey, _invoicesKey, _invoiceSequenceKey];
     final previous = <String, Object?>{
-      for (final key in keys)
-        key: key == _invoiceSequenceKey ? prefs.get(key) : prefs.getString(key),
+      for (final key in keys) key: await _settingsStore.get(key),
     };
     final updates = <String, Object>{
       _itemsKey: jsonEncode(backup['inventory']),
@@ -139,19 +152,19 @@ class Store {
     try {
       for (final entry in updates.entries) {
         final saved = entry.value is int
-            ? await prefs.setInt(entry.key, entry.value as int)
-            : await prefs.setString(entry.key, entry.value as String);
+            ? await _settingsStore.setInt(entry.key, entry.value as int)
+            : await _settingsStore.setString(entry.key, entry.value as String);
         if (!saved) throw StateError('تعذر حفظ بيانات النسخة الاحتياطية.');
       }
     } catch (_) {
       for (final key in keys) {
         final value = previous[key];
         if (value is int) {
-          await prefs.setInt(key, value);
+          await _settingsStore.setInt(key, value);
         } else if (value is String) {
-          await prefs.setString(key, value);
+          await _settingsStore.setString(key, value);
         } else {
-          await prefs.remove(key);
+          await _settingsStore.remove(key);
         }
       }
       rethrow;
@@ -194,8 +207,8 @@ class Store {
 
   static Future<List<Account>> loadAccounts() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_accountsKey);
+      await _settingsStore.initialize();
+      final raw = await _settingsStore.getString(_accountsKey);
       if (raw == null) return _seedAccounts();
       return (jsonDecode(raw) as List)
           .map((entry) => Account.fromJson(Map<String, dynamic>.from(entry)))
@@ -207,8 +220,8 @@ class Store {
 
   static Future<void> saveAccounts(List<Account> accounts) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
+      await _settingsStore.initialize();
+      await _settingsStore.setString(
         _accountsKey,
         jsonEncode(accounts.map((account) => account.toJson()).toList()),
       );
@@ -217,8 +230,8 @@ class Store {
 
   static Future<List<Item>> loadItems() async {
     try {
-      final p = await SharedPreferences.getInstance();
-      final raw = p.getString(_itemsKey);
+      await _settingsStore.initialize();
+      final raw = await _settingsStore.getString(_itemsKey);
       if (raw == null) return seedItems();
       return (jsonDecode(raw) as List)
           .map((e) => Item.fromJson(Map<String, dynamic>.from(e)))
@@ -230,8 +243,8 @@ class Store {
 
   static Future<bool> saveItems(List<Item> items) async {
     try {
-      final p = await SharedPreferences.getInstance();
-      return await p.setString(
+      await _settingsStore.initialize();
+      return await _settingsStore.setString(
         _itemsKey,
         jsonEncode(items.map((e) => e.toJson()).toList()),
       );
@@ -242,8 +255,8 @@ class Store {
 
   static Future<Map<String, dynamic>?> loadDraft(int type) async {
     try {
-      final p = await SharedPreferences.getInstance();
-      final raw = p.getString('draft_$type');
+      await _settingsStore.initialize();
+      final raw = await _settingsStore.getString('draft_$type');
       return raw == null ? null : Map<String, dynamic>.from(jsonDecode(raw));
     } catch (_) {
       return null;
@@ -251,12 +264,12 @@ class Store {
   }
 
   static Future<List<InvoiceDraft>> loadInvoiceDrafts() async {
-    final prefs = await SharedPreferences.getInstance();
+    await _settingsStore.initialize();
     final drafts = <InvoiceDraft>[];
-    for (final key in prefs.getKeys()) {
+    for (final key in await _settingsStore.getKeys()) {
       if (!key.startsWith(_invoiceDraftPrefix)) continue;
       try {
-        final raw = prefs.getString(key);
+        final raw = await _settingsStore.getString(key);
         if (raw == null) continue;
         final draft = InvoiceDraft.fromJson(
           Map<String, dynamic>.from(jsonDecode(raw) as Map),
@@ -275,8 +288,8 @@ class Store {
 
   static Future<bool> saveInvoiceDraft(InvoiceDraft draft) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      return await prefs.setString(
+      await _settingsStore.initialize();
+      return await _settingsStore.setString(
         '$_invoiceDraftPrefix${draft.id}',
         jsonEncode(draft.toJson()),
       );
@@ -287,8 +300,8 @@ class Store {
 
   static Future<bool> clearInvoiceDraft(String id) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('$_invoiceDraftPrefix$id');
+      await _settingsStore.initialize();
+      await _settingsStore.remove('$_invoiceDraftPrefix$id');
       return true;
     } catch (_) {
       return false;
@@ -297,8 +310,8 @@ class Store {
 
   static Future<bool> saveDraft(int type, Map<String, dynamic> data) async {
     try {
-      final p = await SharedPreferences.getInstance();
-      return p.setString('draft_$type', jsonEncode(data));
+      await _settingsStore.initialize();
+      return _settingsStore.setString('draft_$type', jsonEncode(data));
     } catch (_) {
       return false;
     }
@@ -306,8 +319,8 @@ class Store {
 
   static Future<List<Map<String, dynamic>>> loadInvoices() async {
     try {
-      final p = await SharedPreferences.getInstance();
-      final raw = p.getString(_invoicesKey);
+      await _settingsStore.initialize();
+      final raw = await _settingsStore.getString(_invoicesKey);
       if (raw == null) return [];
       return (jsonDecode(raw) as List)
           .map((entry) => Map<String, dynamic>.from(entry))
@@ -319,9 +332,9 @@ class Store {
 
   static Future<String> nextInvoiceNumber() async {
     try {
-      final p = await SharedPreferences.getInstance();
-      final raw = p.getString(_invoicesKey);
-      var next = p.getInt(_invoiceSequenceKey) ?? 1;
+      await _settingsStore.initialize();
+      final raw = await _settingsStore.getString(_invoicesKey);
+      var next = await _settingsStore.getInt(_invoiceSequenceKey) ?? 1;
       if (raw != null) {
         final entries = jsonDecode(raw) as List;
         if (entries.length + 1 > next) next = entries.length + 1;
@@ -342,8 +355,8 @@ class Store {
 
   static Future<bool> saveInvoice(int type, Map<String, dynamic> data) async {
     try {
-      final p = await SharedPreferences.getInstance();
-      final raw = p.getString(_invoicesKey);
+      await _settingsStore.initialize();
+      final raw = await _settingsStore.getString(_invoicesKey);
       final invoices = raw == null
           ? <Map<String, dynamic>>[]
           : (jsonDecode(raw) as List)
@@ -354,13 +367,17 @@ class Store {
         'savedAt': DateTime.now().toIso8601String(),
         'invoice': data,
       });
-      final saved = await p.setString(_invoicesKey, jsonEncode(invoices));
+      final saved = await _settingsStore.setString(
+        _invoicesKey,
+        jsonEncode(invoices),
+      );
       if (!saved) return false;
       final number = int.tryParse('${data['number'] ?? ''}');
       if (number != null) {
-        final currentNext = p.getInt(_invoiceSequenceKey) ?? 1;
+        final currentNext =
+            await _settingsStore.getInt(_invoiceSequenceKey) ?? 1;
         if (number + 1 > currentNext) {
-          await p.setInt(_invoiceSequenceKey, number + 1);
+          await _settingsStore.setInt(_invoiceSequenceKey, number + 1);
         }
       }
       return true;
@@ -371,8 +388,8 @@ class Store {
 
   static Future<bool> clearDraft(int type) async {
     try {
-      final p = await SharedPreferences.getInstance();
-      await p.remove('draft_$type');
+      await _settingsStore.initialize();
+      await _settingsStore.remove('draft_$type');
       return true;
     } catch (_) {
       return false;
@@ -381,8 +398,8 @@ class Store {
 
   static Future<Map<String, dynamic>> loadPrinterPreferences() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_printerPreferencesKey);
+      await _settingsStore.initialize();
+      final raw = await _settingsStore.getString(_printerPreferencesKey);
       if (raw == null) return {};
       final decoded = jsonDecode(raw);
       if (decoded is Map<String, dynamic>) return decoded;
@@ -396,8 +413,11 @@ class Store {
     Map<String, dynamic> preferences,
   ) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.setString(_printerPreferencesKey, jsonEncode(preferences));
+      await _settingsStore.initialize();
+      return _settingsStore.setString(
+        _printerPreferencesKey,
+        jsonEncode(preferences),
+      );
     } catch (_) {
       return false;
     }
@@ -407,8 +427,8 @@ class Store {
     int typeIndex,
   ) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_invoicePrintSettingsKey);
+      await _settingsStore.initialize();
+      final raw = await _settingsStore.getString(_invoicePrintSettingsKey);
       if (raw == null) return const InvoicePrintSettings();
       final decoded = jsonDecode(raw);
       if (decoded is! Map<String, dynamic>) {
@@ -427,13 +447,16 @@ class Store {
     InvoicePrintSettings settings,
   ) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_invoicePrintSettingsKey);
+      await _settingsStore.initialize();
+      final raw = await _settingsStore.getString(_invoicePrintSettingsKey);
       final existing = raw == null
           ? <String, dynamic>{}
           : Map<String, dynamic>.from(jsonDecode(raw) as Map);
       existing['$typeIndex'] = settings.toJson();
-      return prefs.setString(_invoicePrintSettingsKey, jsonEncode(existing));
+      return _settingsStore.setString(
+        _invoicePrintSettingsKey,
+        jsonEncode(existing),
+      );
     } catch (_) {
       return false;
     }

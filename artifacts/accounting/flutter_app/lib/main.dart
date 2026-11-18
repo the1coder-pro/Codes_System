@@ -11,6 +11,7 @@ import 'printer_companion_stub.dart'
     if (dart.library.io) 'printer_companion.dart'
     as printer_companion;
 import 'shell.dart';
+import 'storage.dart';
 import 'theme.dart';
 import 'web_companion_stub.dart'
     if (dart.library.io) 'web_companion.dart'
@@ -39,6 +40,13 @@ Future<void> main() async {
     );
     return;
   }
+  runApp(const _DatabaseLoadingApp());
+  try {
+    await Store.initialize();
+  } catch (error) {
+    runApp(_DatabaseStartupErrorApp(error: error));
+    return;
+  }
   runApp(const AccountingApp());
 }
 
@@ -47,6 +55,7 @@ Future<void> _startStandalone() async {
   final printerController = printer_companion.PrinterCompanionController();
   try {
     await authService.initialize();
+    await Store.initialize();
     await printerController.start();
     runApp(
       AccountingApp(
@@ -105,6 +114,60 @@ class AccountingApp extends StatelessWidget {
   }
 }
 
+class _DatabaseLoadingApp extends StatelessWidget {
+  const _DatabaseLoadingApp();
+
+  @override
+  Widget build(BuildContext context) => fluent.FluentApp(
+    title: 'المحاسبة المالية العامة',
+    theme: buildFluentTheme(),
+    locale: const Locale('ar'),
+    home: fluent.ScaffoldPage(
+      content: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const fluent.ProgressRing(),
+            const SizedBox(height: 16),
+            Text(
+              'جارٍ فتح قاعدة البيانات المحلية…',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _DatabaseStartupErrorApp extends StatelessWidget {
+  final Object error;
+
+  const _DatabaseStartupErrorApp({required this.error});
+
+  @override
+  Widget build(BuildContext context) => fluent.FluentApp(
+    title: 'المحاسبة المالية العامة',
+    theme: buildFluentTheme(),
+    locale: const Locale('ar'),
+    home: fluent.ScaffoldPage(
+      content: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: fluent.InfoBar(
+            title: const Text('تعذر فتح قاعدة البيانات المحلية'),
+            content: Text(
+              'لم يتم تعديل البيانات المحفوظة. تحقق من مساحة التخزين '
+              'وأعد تشغيل التطبيق.\\n$error',
+            ),
+            severity: fluent.InfoBarSeverity.error,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class _StartupErrorApp extends StatelessWidget {
   final Object error;
 
@@ -122,8 +185,8 @@ class _StartupErrorApp extends StatelessWidget {
           child: fluent.InfoBar(
             title: const Text('تعذر تشغيل النظام المستقل'),
             content: Text(
-              'تعذر الوصول إلى مخزن كلمات المرور الآمن في نظام التشغيل. '
-              'أعد تشغيل التطبيق أو تحقق من صلاحيات التخزين الآمن.\\n$error',
+              'تعذر تهيئة قاعدة البيانات المحلية أو الوصول إلى مخزن كلمات '
+              'المرور الآمن. تحقق من صلاحيات التخزين وأعد تشغيل التطبيق.\\n$error',
             ),
             severity: fluent.InfoBarSeverity.error,
           ),

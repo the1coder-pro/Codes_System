@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(Store.useSharedPreferencesForTesting);
 
   test('persists separate print layouts for each invoice type', () async {
     SharedPreferences.setMockInitialValues({});

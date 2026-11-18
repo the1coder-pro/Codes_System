@@ -134,6 +134,7 @@ Future<void> _launchAndLogin(
 }
 
 void main() {
+  setUpAll(Store.useSharedPreferencesForTesting);
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   test(

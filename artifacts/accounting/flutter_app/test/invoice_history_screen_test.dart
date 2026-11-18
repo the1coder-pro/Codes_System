@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:accounting_ui/auth_service.dart';
 import 'package:accounting_ui/invoice_history_screen.dart';
+import 'package:accounting_ui/storage.dart';
 import 'package:accounting_ui/theme.dart';
 import 'package:accounting_ui/widgets.dart' as app_widgets;
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
@@ -72,6 +73,7 @@ class _AllowAuthService implements AccountingAuthService {
 }
 
 void main() {
+  setUpAll(Store.useSharedPreferencesForTesting);
   testWidgets('searches saved invoices and opens read-only details', (
     tester,
   ) async {

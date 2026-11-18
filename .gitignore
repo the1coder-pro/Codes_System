@@ -56,4 +56,6 @@ Thumbs.db
 .dart_tool/
 **/flutter_app/build/
 **/flutter_app/.flutter-plugins-dependencies
+artifacts/accounting/flutter_app/web/sqlite3.wasm
+artifacts/accounting/flutter_app/web/drift_worker.js
 /scripts/migration/access-exporter/target/

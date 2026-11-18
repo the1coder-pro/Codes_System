@@ -22,6 +22,7 @@ Future<void> _pumpBackupDialog(WidgetTester tester, Widget child) async {
 }
 
 void main() {
+  setUpAll(Store.useSharedPreferencesForTesting);
   test(
     'exports and restores inventory, accounts, invoices, and sequence',
     () async {
