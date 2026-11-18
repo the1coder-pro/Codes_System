@@ -50,11 +50,12 @@ fields are treated as SQL `NULL`; the strict check reports duplicate empty
 values in four unique-indexed fields. Because the CSV does not distinguish
 `NULL` from a genuine zero-length string, that conversion is not yet safe.
 
-The same export contains 53,400 nonempty `tblMoneyTransaction.TransactionDate`
-values whose day component is `00`. These values are not valid SQL dates, and
-the SQL Server `DATETIME2` candidate cannot store them. Do not normalize them
-to another date. This may be a source-data issue or an export-format issue; the
-original Access file is needed to tell which.
+The supplied CSV archive contains 53,400 nonempty
+`tblMoneyTransaction.TransactionDate` values whose day component is `00`.
+These are not valid SQL dates, and the SQL Server `DATETIME2` candidate cannot
+store them. Do not normalize them. The archive has been checked against the
+original upload and is byte-for-byte identical; verify these values from the
+Access database before deciding how to store them.
 
 Run the structural/constraint check with:
 
@@ -64,11 +65,36 @@ python3 scripts/migration/validate_legacy_csv_export.py \
 ```
 
 `--empty-as-null` is available only to test that interpretation; it is not a
-data-import setting and can change valid empty strings. Before importing
-business data, provide the original Access database or re-export with an
-explicit null marker and faithful date values so records can be converted and
-compared without guessing. The temporary validation database is deleted
-automatically.
+data-import setting and can change valid empty strings. To export from a local
+Windows computer with the Microsoft Access Database Engine installed, run
+PowerShell from the repository root:
+
+```powershell
+powershell -NoProfile -File .\scripts\migration\export_access.ps1 `
+  -DatabasePath "C:\path\to\legacy.accdb" `
+  -OutputPath "C:\path\to\legacy-access-export.zip"
+```
+
+The exporter reads the Access file without modifying it, checks table and
+column names against the exact legacy manifest, streams each table into a ZIP,
+uses `\N` for SQL `NULL`, escapes literal text that could look like the marker,
+formats actual Access dates invariantly, and encodes binary fields as base64.
+It requires a registered Microsoft ACE OLE DB provider (12.0 or 16.0) matching
+the PowerShell process architecture. It will stop and remove the partial ZIP if
+the legacy schema does not match. It does not upload or print business records.
+
+Validate the resulting archive with Python 3:
+
+```powershell
+py -3 .\scripts\migration\validate_legacy_csv_export.py `
+  --archive "C:\path\to\legacy-access-export.zip" `
+  --null-marker '\N' `
+  --escape-prefix '\'
+```
+
+The temporary validation database is deleted automatically. This exporter
+produces a local validation package; a production data importer and online/offline
+synchronization are not implemented yet.
 
 ## Offline and online direction
 

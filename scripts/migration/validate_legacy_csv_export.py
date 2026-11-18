@@ -9,6 +9,7 @@ It never prints or stores record values.
 from __future__ import annotations
 
 import argparse
+import base64
 import csv
 import io
 import sqlite3
@@ -84,8 +85,20 @@ def is_valid_datetime(value: str) -> bool:
 
 
 def validate_export(
-    archive_path: Path, schema_path: Path, *, empty_as_null: bool = False
+    archive_path: Path,
+    schema_path: Path,
+    *,
+    empty_as_null: bool = False,
+    null_marker: str | None = None,
+    escape_prefix: str | None = None,
 ) -> tuple[int, int, list[str]]:
+    if empty_as_null and null_marker is not None:
+        raise ValueError("--empty-as-null cannot be combined with --null-marker")
+    if escape_prefix is not None and not null_marker:
+        raise ValueError("--escape-prefix requires --null-marker")
+    if escape_prefix == "":
+        raise ValueError("--escape-prefix cannot be empty")
+
     failures: list[str] = []
     total_rows = 0
     table_count = 0
@@ -188,12 +201,33 @@ def validate_export(
                                         and size > 450
                                     ):
                                         too_long_indexed_text.add(name)
-                                batch.append(
-                                    [
+                                normalized_row: list[object] = []
+                                for name, value in zip(columns, row):
+                                    if null_marker is not None and value == null_marker:
+                                        normalized_row.append(None)
+                                        continue
+                                    if (
+                                        escape_prefix
+                                        and value.startswith(escape_prefix * 2)
+                                    ):
+                                        value = value[len(escape_prefix) :]
+                                    if (
+                                        column_types[name] == "BLOB"
+                                        and value.startswith("base64:")
+                                    ):
+                                        try:
+                                            value = base64.b64decode(
+                                                value[len("base64:") :], validate=True
+                                            )
+                                        except ValueError:
+                                            failures.append(
+                                                f"{table_name}: invalid base64 BLOB value"
+                                            )
+                                            value = b""
+                                    normalized_row.append(
                                         None if empty_as_null and value == "" else value
-                                        for value in row
-                                    ]
-                                )
+                                    )
+                                batch.append(normalized_row)
                                 if len(batch) == 1000:
                                     database.executemany(insert, batch)
                                     batch.clear()
@@ -260,10 +294,25 @@ def main() -> int:
             "SQL NULL. This can lose real zero-length strings."
         ),
     )
+    parser.add_argument(
+        "--null-marker",
+        help="Map this exact CSV cell to SQL NULL (for example, '\\N').",
+    )
+    parser.add_argument(
+        "--escape-prefix",
+        help=(
+            "When supplied with --null-marker, remove one repeated prefix "
+            "from escaped text values."
+        ),
+    )
     args = parser.parse_args()
     try:
         table_count, total_rows, failures = validate_export(
-            args.archive, args.schema, empty_as_null=args.empty_as_null
+            args.archive,
+            args.schema,
+            empty_as_null=args.empty_as_null,
+            null_marker=args.null_marker,
+            escape_prefix=args.escape_prefix,
         )
     except (OSError, ValueError, zipfile.BadZipFile, sqlite3.Error) as error:
         print(f"Validation could not run: {type(error).__name__}", file=sys.stderr)
@@ -276,7 +325,11 @@ def main() -> int:
             f"{total_rows} rows."
         )
         return 1
-    mode = " (empty fields mapped to NULL for this test)" if args.empty_as_null else ""
+    mode = ""
+    if args.empty_as_null:
+        mode = " (empty fields mapped to NULL for this test)"
+    elif args.null_marker is not None:
+        mode = " (explicit NULL marker decoded)"
     print(
         f"CSV export validated{mode}: {table_count} tables, {total_rows} rows."
     )
