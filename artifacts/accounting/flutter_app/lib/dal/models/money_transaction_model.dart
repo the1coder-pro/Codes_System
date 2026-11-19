@@ -4,6 +4,20 @@
 import '../legacy_model.dart';
 
 class tblMoneyTransactionModel extends LegacyModel {
+  // BEGIN GENERATED LEGACY SOURCE DEFINITION
+  static const sourceDefinition = LegacySourceModelDefinition(
+    className: 'tblMoneyTransactionModel',
+    sourceFile: 'tblMoneyTransactionModel.vb',
+    tableName: 'tblMoneyTransaction',
+    tableMappingStatus: LegacyModelTableMappingStatus.confirmed,
+    properties: [
+      LegacySourceProperty(name: 'ID', vbType: 'text'),
+      LegacySourceProperty(name: 'CodeID', vbType: 'short'),
+      LegacySourceProperty(name: 'PCID', vbType: 'short'),
+      LegacySourceProperty(name: 'TransactionDate', vbType: 'date'),
+    ],
+  );
+  // END GENERATED LEGACY SOURCE DEFINITION
   tblMoneyTransactionModel(Map<String, Object?> values)
     : super(definition, values);
 

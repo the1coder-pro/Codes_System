@@ -346,7 +346,14 @@ The shared DAL is in `lib/dal/`:
 4. `SqliteLegacyDataSource` uses a Drift database connection.
 5. `SupabaseLegacyDataSource` uses PostgREST over HTTP.
 
-The first model set covers:
+The model catalog contains all 357 legacy class declarations and their 2,136
+public properties in separate Dart files. Exact class names, property names,
+capitalization, and original VB.NET types are preserved in each model's source
+metadata and in `migration/legacy_dal_model_catalog.json`. Values use raw
+`Object?` maps so identifiers, stored codes, and historic invalid dates are not
+silently converted.
+
+Eight class-to-table mappings have been confirmed against the supplied schema:
 
 | Model | Table | Primary key |
 | --- | --- | --- |
@@ -359,9 +366,11 @@ The first model set covers:
 | `tblInvoiceItemModel` | `tblInvoiceItem` | `InvoiceID`, `ID` |
 | `tblMoneyTransactionModel` | `tblMoneyTransaction` | `ID` |
 
-Both adapters expect their legacy tables to exist; they do not install the
-357-table schema. No business screens use these repositories yet, and there is
-no offline queue, conflict resolver, or synchronization engine.
+The other 349 source models have separate files and explicitly unresolved table
+mappings. Their table names are not guessed. Both adapters expect their legacy
+tables to exist; they do not install the 357-table schema. No business screens
+use these repositories yet, and there is no offline queue, conflict resolver,
+or synchronization engine.
 
 The user selected SQL Server as the full online legacy database because
 PostgreSQL/Supabase cannot preserve six index names longer than PostgreSQL's
@@ -450,7 +459,8 @@ cd artifacts/accounting/flutter_app && flutter analyze && flutter test
 - Barcode form and local printer companion.
 - Per-type invoice print settings and printer choices.
 - Local SQLite persistence, backup and restore.
-- Exact-name DAL foundations for eight core legacy tables.
+- Separate DAL model files for all 357 legacy classes; eight table mappings are
+  confirmed and the other 349 remain explicitly unresolved.
 - Schema audit, CSV validator, importer foundation, and migration tests.
 
 ### Not yet implemented or connected

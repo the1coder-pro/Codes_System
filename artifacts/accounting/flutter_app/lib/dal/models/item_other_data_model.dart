@@ -4,6 +4,22 @@
 import '../legacy_model.dart';
 
 class ItemOtherDataModel extends LegacyModel {
+  // BEGIN GENERATED LEGACY SOURCE DEFINITION
+  static const sourceDefinition = LegacySourceModelDefinition(
+    className: 'ItemOtherDataModel',
+    sourceFile: 'ItemOtherDataModel.vb',
+    tableName: 'tblItemOtherData',
+    tableMappingStatus: LegacyModelTableMappingStatus.confirmed,
+    properties: [
+      LegacySourceProperty(name: 'ItemID', vbType: 'Long'),
+      LegacySourceProperty(name: 'ColorID', vbType: 'Byte'),
+      LegacySourceProperty(name: 'BarcodeNo', vbType: 'String'),
+      LegacySourceProperty(name: 'ItemPlaceID', vbType: 'Integer'),
+      LegacySourceProperty(name: 'ItemSizeID', vbType: 'Byte'),
+      LegacySourceProperty(name: 'UnitCount', vbType: 'Single'),
+    ],
+  );
+  // END GENERATED LEGACY SOURCE DEFINITION
   ItemOtherDataModel(Map<String, Object?> values) : super(definition, values);
 
   static final definition = LegacyModelDefinition(

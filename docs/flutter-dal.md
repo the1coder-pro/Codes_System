@@ -1,29 +1,61 @@
 # Flutter legacy DAL
 
-The Flutter DAL keeps one legacy model and repository contract while swapping
-the database adapter. Each table model has its own source file:
+## Model catalog
 
-- `lib/dal/legacy_model.dart` defines the shared model base and table metadata.
-- `lib/dal/models/` contains one file per model: `item_group_model.dart`,
-  `item_model.dart`, `item_other_data_model.dart`, `item_balance_model.dart`,
-  `account_model.dart`, `invoice_model.dart`, `invoice_item_model.dart`, and
-  `money_transaction_model.dart`.
-- `lib/dal/legacy_models.dart` is a small export barrel, so existing callers
-  can continue to import all models from one stable path.
-- The table mappings cover `tblItemGroup`, `tblItem`, `tblItemOtherData`,
-  `tblItemBalance`, `tblAccount`, `tblInvoice`, `tblInvoiceItem`, and
-  `tblMoneyTransaction`.
-- `LegacyRepository<T>` in `lib/dal/legacy_data_source.dart` offers the same
-  list, primary-key lookup, upsert, and delete operations for either backend.
+The catalog mirrors the private `CodesSystem/DAL` source: **355 VB.NET model
+files, 357 class declarations, and 2,136 public properties**. Each source class
+has its own Dart file in `lib/dal/models/`; original class names, property
+spellings, capitalization, and VB.NET type names are recorded without
+normalizing them.
+
+- `lib/dal/legacy_model.dart` contains the shared table model, raw source-model
+  representation, exact table metadata, and explicit mapping status.
+- `lib/dal/models/` contains one file per source class.
+- `lib/dal/legacy_models.dart` exports all model files.
+- `lib/dal/legacy_model_catalog.dart` exposes the full source metadata registry.
+- `migration/legacy_dal_model_catalog.json` is the generated completeness
+  manifest. It records class/file/property counts, original VB types, table
+  mapping status, and source parsing warnings.
+- `scripts/migration/generate_flutter_dal_models.py` regenerates the catalog
+  from the checked-out DAL source and supports `--check`.
+
+The eight mappings confirmed against the supplied schema remain full
+`LegacyModel` table models:
+
+| Model | Exact table |
+| --- | --- |
+| `ItemGroupModel` | `tblItemGroup` |
+| `ItemModel` | `tblItem` |
+| `ItemOtherDataModel` | `tblItemOtherData` |
+| `ItemBalanceModel` | `tblItemBalance` |
+| `accountModel` | `tblAccount` |
+| `tblInvoiceModel` | `tblInvoice` |
+| `tblInvoiceItemModel` | `tblInvoiceItem` |
+| `tblMoneyTransactionModel` | `tblMoneyTransaction` |
+
+The other 349 source classes have separate Dart model files and explicit
+`unresolved` table status. Their exact source properties and VB type names are
+captured, but no database table name is guessed. `LegacySourceModel` stores
+values in an immutable raw map, preserves the original keys and values, and
+rejects keys that are not present in that source class's property list. This
+keeps stored codes, invalid date text, and other Access values from being
+silently converted or normalized.
+
+Four source files reach end-of-file without a closing `End Class`. Their
+properties are still cataloged, and the source warnings are retained in the
+manifest rather than silently repaired:
+`tblInvoiceItemNoteModel.vb`, `tblInvoiceModel.vb`,
+`tblMoneyTransactionModel.vb`, and `tblObjectModel.vb`.
+
+## Shared table repository
+
+`LegacyRepository<T>` in `lib/dal/legacy_data_source.dart` provides list,
+primary-key lookup, upsert, and delete operations for mapped table models.
+
 - `SqliteLegacyDataSource` uses a Drift connection.
 - `SupabaseLegacyDataSource` uses Supabase's PostgREST API through the existing
   `http` dependency. It does not require or embed a service-role key, but it is
   not the selected online target for the complete legacy schema.
-
-The models keep exact table and column spelling and use `Object?` values rather
-than automatically converting legacy values to Dart dates or enums. This is
-intentional: historic Access exports include invalid date strings and stored
-integer lookup IDs that must not be normalized or guessed.
 
 Example:
 
@@ -53,6 +85,8 @@ the user later approves that exception. If used for another schema, enable Row
 Level Security and use only a public/anon key plus the signed-in user's access
 token.
 
-This layer unifies CRUD and serialization; it does not yet implement offline
-queueing, conflict resolution, or synchronization between the local database
-and the future online SQL Server service.
+This layer unifies CRUD and serialization for the eight confirmed table
+mappings; it does not yet implement offline queueing, conflict resolution, or
+synchronization between the local database and the future online SQL Server
+service. The other catalog models need confirmed table relationships before
+they can be used through `LegacyRepository`.

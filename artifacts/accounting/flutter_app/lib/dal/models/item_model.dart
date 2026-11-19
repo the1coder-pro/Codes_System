@@ -4,6 +4,23 @@
 import '../legacy_model.dart';
 
 class ItemModel extends LegacyModel {
+  // BEGIN GENERATED LEGACY SOURCE DEFINITION
+  static const sourceDefinition = LegacySourceModelDefinition(
+    className: 'ItemModel',
+    sourceFile: 'ItemModel.vb',
+    tableName: 'tblItem',
+    tableMappingStatus: LegacyModelTableMappingStatus.confirmed,
+    properties: [
+      LegacySourceProperty(name: 'ID', vbType: 'Long'),
+      LegacySourceProperty(name: 'Price', vbType: 'Single'),
+      LegacySourceProperty(name: 'MinimumPrice', vbType: 'Single'),
+      LegacySourceProperty(name: 'quickitem', vbType: 'Boolean'),
+      LegacySourceProperty(name: 'ItemGroupID', vbType: 'Long'),
+      LegacySourceProperty(name: 'WholesalePrice', vbType: 'Single'),
+      LegacySourceProperty(name: 'WithVatPrice', vbType: 'Single'),
+    ],
+  );
+  // END GENERATED LEGACY SOURCE DEFINITION
   ItemModel(Map<String, Object?> values) : super(definition, values);
 
   static final definition = LegacyModelDefinition(

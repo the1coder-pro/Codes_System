@@ -4,6 +4,27 @@
 import '../legacy_model.dart';
 
 class ItemGroupModel extends LegacyModel {
+  // BEGIN GENERATED LEGACY SOURCE DEFINITION
+  static const sourceDefinition = LegacySourceModelDefinition(
+    className: 'ItemGroupModel',
+    sourceFile: 'ItemGroupModel.vb',
+    tableName: 'tblItemGroup',
+    tableMappingStatus: LegacyModelTableMappingStatus.confirmed,
+    properties: [
+      LegacySourceProperty(name: 'ID', vbType: 'Long'),
+      LegacySourceProperty(name: 'Namear', vbType: 'String'),
+      LegacySourceProperty(name: 'NameEn', vbType: 'String'),
+      LegacySourceProperty(name: 'NotUsed', vbType: 'Boolean'),
+      LegacySourceProperty(name: 'ShortName', vbType: 'String'),
+      LegacySourceProperty(name: 'VaT', vbType: 'Single'),
+      LegacySourceProperty(name: 'ItemTypeID', vbType: 'Integer'),
+      LegacySourceProperty(name: 'UseTypeID', vbType: 'Byte'),
+      LegacySourceProperty(name: 'FilePath', vbType: 'String'),
+      LegacySourceProperty(name: 'ItemNote', vbType: 'String'),
+      LegacySourceProperty(name: 'VaTCategoriesID', vbType: 'Integer'),
+    ],
+  );
+  // END GENERATED LEGACY SOURCE DEFINITION
   ItemGroupModel(Map<String, Object?> values) : super(definition, values);
 
   static final definition = LegacyModelDefinition(

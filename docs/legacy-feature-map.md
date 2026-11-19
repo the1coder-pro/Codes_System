@@ -14,7 +14,10 @@ misspellings unchanged during the port.
 - `ZATCA` contains Saudi e-invoicing integration and invoice XML handling.
 - `DBExportImport` contains database export/import UI.
 - The supplied schema export contains 357 tables and 982 indexes, but does not
-  define foreign keys or include business records.
+  define foreign keys or include business records. The Flutter catalog now
+  captures all 357 DAL class declarations and 2,136 public properties in
+  individual Dart model files; only eight class-to-table mappings are confirmed
+  against that schema so far.
 
 ## Program families
 
@@ -73,10 +76,13 @@ SMS history, backups, reporting configuration, and ZATCA invoice data.
 
 `migration/legacy_schema_manifest.json` is the generated exact-name inventory
 of the supplied table, column, key, and index declarations. Its column names
-are parsed candidates from the export. The core item, account, invoice, and
-transaction fields listed below have additionally been reconciled against
-their matching VB.NET DAL models. The remaining schema still needs equivalent
-model/Access metadata reconciliation before its fields are used for conversion.
+are parsed candidates from the export. The model catalog is
+`artifacts/accounting/flutter_app/migration/legacy_dal_model_catalog.json`;
+it preserves every source class, property spelling, and VB type. The core item,
+account, invoice, and transaction fields listed below have additionally been
+reconciled against their matching database tables. The remaining class-to-table
+relationships and schema fields need confirmation before being used for
+conversion.
 
 The matching DAL models in the private `CodesSystem` source confirm these
 core relationships:
@@ -134,11 +140,13 @@ snapshots in the separate `app_local_settings` table. The verified legacy
 relational tables have not yet been connected to those screens, and online
 synchronization is not implemented.
 
-The Flutter DAL now has shared legacy model definitions and repository
-operations for the core item, account, invoice, and money-transaction tables,
-with SQLite and Supabase data-source adapters. SQL Server was selected for the
-complete online legacy schema to preserve long index names; its API adapter and
-server connection remain future work.
+The Flutter DAL now has separate model files and exact source metadata for all
+357 legacy classes. Eight confirmed item, account, invoice, and
+money-transaction mappings have table metadata and repository operations; the
+other 349 models explicitly have unresolved table mappings. SQLite and
+Supabase data-source adapters exist for confirmed mappings. SQL Server was
+selected for the complete online legacy schema to preserve long index names;
+its API adapter and server connection remain future work.
 
 The screens now expose their original form identifiers as compatibility names:
 `MainForm`, `ItemsForm`, `accountsForm`, `InvoiceTypeSelectForm`, `InvoiceForm`,

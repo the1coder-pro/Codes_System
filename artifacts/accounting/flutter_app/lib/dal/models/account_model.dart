@@ -5,6 +5,26 @@ import '../legacy_model.dart';
 
 /// The class spelling is intentionally the same as the legacy DAL class.
 class accountModel extends LegacyModel {
+  // BEGIN GENERATED LEGACY SOURCE DEFINITION
+  static const sourceDefinition = LegacySourceModelDefinition(
+    className: 'accountModel',
+    sourceFile: 'AccountModel.vb',
+    tableName: 'tblAccount',
+    tableMappingStatus: LegacyModelTableMappingStatus.confirmed,
+    properties: [
+      LegacySourceProperty(name: 'ID', vbType: 'Long'),
+      LegacySourceProperty(name: 'accountTypeID', vbType: 'Byte'),
+      LegacySourceProperty(name: 'Namear', vbType: 'String'),
+      LegacySourceProperty(name: 'NameEn', vbType: 'String'),
+      LegacySourceProperty(name: 'OpeningBalance', vbType: 'Single'),
+      LegacySourceProperty(name: 'CurrentBalance', vbType: 'Single'),
+      LegacySourceProperty(name: 'acountNote', vbType: 'String'),
+      LegacySourceProperty(name: 'BranchID', vbType: 'Byte'),
+      LegacySourceProperty(name: 'NationalityID', vbType: 'Byte'),
+      LegacySourceProperty(name: 'MoneyaccountTypeID', vbType: 'Byte'),
+    ],
+  );
+  // END GENERATED LEGACY SOURCE DEFINITION
   accountModel(Map<String, Object?> values) : super(definition, values);
 
   static final definition = LegacyModelDefinition(

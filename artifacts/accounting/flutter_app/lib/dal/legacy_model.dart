@@ -48,6 +48,61 @@ class LegacyModelDefinition {
   final LegacyModel Function(Map<String, Object?> values) fromMap;
 }
 
+enum LegacyModelTableMappingStatus { confirmed, unresolved }
+
+class LegacySourceProperty {
+  const LegacySourceProperty({required this.name, required this.vbType});
+
+  final String name;
+  final String vbType;
+}
+
+/// Source-level class and property inventory from the VB.NET DAL.
+///
+/// `tableName` is null until the class-to-table relationship has been verified.
+/// Keep `vbType` as source metadata; stored values remain dynamic so adapters
+/// can round-trip legacy values without coercion.
+class LegacySourceModelDefinition {
+  const LegacySourceModelDefinition({
+    required this.className,
+    required this.sourceFile,
+    required this.properties,
+    required this.tableName,
+    required this.tableMappingStatus,
+  });
+
+  final String className;
+  final String sourceFile;
+  final List<LegacySourceProperty> properties;
+  final String? tableName;
+  final LegacyModelTableMappingStatus tableMappingStatus;
+}
+
+/// Value-preserving base for source models whose SQL table is not yet confirmed.
+abstract class LegacySourceModel {
+  LegacySourceModel(this.modelMetadata, Map<String, Object?> values)
+    : _values = Map.unmodifiable(Map<String, Object?>.of(values)) {
+    final knownFields = modelMetadata.properties
+        .map((property) => property.name)
+        .toSet();
+    final unknown = _values.keys.where((name) => !knownFields.contains(name));
+    if (unknown.isNotEmpty) {
+      throw ArgumentError(
+        'Unknown field for ${modelMetadata.className}: '
+        '${unknown.join(', ')}',
+      );
+    }
+  }
+
+  final LegacySourceModelDefinition modelMetadata;
+  final Map<String, Object?> _values;
+
+  Object? operator [](String exactLegacyPropertyName) =>
+      _values[exactLegacyPropertyName];
+
+  Map<String, Object?> toMap() => Map<String, Object?>.of(_values);
+}
+
 abstract class LegacyModel {
   LegacyModel(this.modelDefinition, Map<String, Object?> values)
     : _values = Map.unmodifiable(Map<String, Object?>.of(values)) {
