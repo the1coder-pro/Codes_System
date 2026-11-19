@@ -35,3 +35,12 @@ and all record structures before asking for confirmation; confirming replaces
 the local records. Invalid or unsupported files are rejected without changing
 stored records. Restart the app after restoring so every open screen reloads
 the restored records.
+
+## Full program documentation
+
+The detailed user, architecture, local-storage, printing, and legacy migration
+guides are available in both languages:
+
+- [English guide](../../../docs/program-guide-en.md)
+- [الدليل العربي](../../../docs/program-guide-ar.md)
+- [Documentation index](../../../docs/README.md)
