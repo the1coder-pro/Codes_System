@@ -1,0 +1,158 @@
+{
+  "sourceRepository": "the1coder-pro/CodesSystem",
+  "purpose": "Record only legacy model-to-table fields confirmed against the VB.NET DAL and the exported schema. Destination identifiers retain exact schema spelling.",
+  "mappings": [
+    {
+      "model": "ItemGroupModel",
+      "sourceFile": "DAL/ItemGroupModel.vb",
+      "table": "tblItemGroup",
+      "fields": [
+        {"property": "ID", "column": "ID"},
+        {"property": "Namear", "column": "NameAr"},
+        {"property": "NameEn", "column": "NameEn"},
+        {"property": "ShortName", "column": "ShortName"},
+        {"property": "VaT", "column": "VAT"},
+        {"property": "NotUsed", "column": "NotUsed"},
+        {"property": "UseTypeID", "column": "UseTypeID"},
+        {"property": "ItemTypeID", "column": "ItemTypeID"},
+        {"property": "FilePath", "column": "FilePath"},
+        {"property": "ItemNote", "column": "ItemNote"},
+        {"property": "VaTCategoriesID", "column": "VaTCategoriesID"}
+      ]
+    },
+    {
+      "model": "ItemModel",
+      "sourceFile": "DAL/ItemModel.vb",
+      "table": "tblItem",
+      "fields": [
+        {"property": "ID", "column": "ID"},
+        {"property": "Price", "column": "Price"},
+        {"property": "MinimumPrice", "column": "MinimumPrice"},
+        {"property": "WholesalePrice", "column": "WholesalePrice"},
+        {"property": "quickitem", "column": "quickitem"},
+        {"property": "ItemGroupID", "column": "ItemGroupID"},
+        {"property": "WithVatPrice", "column": "WithVatPrice"}
+      ]
+    },
+    {
+      "model": "ItemOtherDataModel",
+      "sourceFile": "DAL/ItemOtherDataModel.vb",
+      "table": "tblItemOtherData",
+      "fields": [
+        {"property": "ItemID", "column": "ItemID"},
+        {"property": "ColorID", "column": "ColorID"},
+        {"property": "BarcodeNo", "column": "BarcodeNo"},
+        {"property": "ItemPlaceID", "column": "ItemPlaceID"},
+        {"property": "ItemSizeID", "column": "ItemSizeID"},
+        {"property": "UnitCount", "column": "UnitCount"}
+      ]
+    },
+    {
+      "model": "ItemBalanceModel",
+      "sourceFile": "DAL/ItemBalanceModel.vb",
+      "table": "tblItemBalance",
+      "fields": [
+        {"property": "ItemID", "column": "ItemID"},
+        {"property": "StartPeriodBalance", "column": "StartPeriodBalance"},
+        {"property": "PurchaseCount", "column": "PurchaseCount"},
+        {"property": "PurchaseReturnCount", "column": "PurchaseReturnCount"},
+        {"property": "SalesCount", "column": "SalesCount"},
+        {"property": "SalesReturnCount", "column": "SalesReturnCount"},
+        {"property": "SpentCount", "column": "SpentCount"},
+        {"property": "SpentReturnCount", "column": "SpentReturnCount"},
+        {"property": "RentalCount", "column": "RentalCount"},
+        {"property": "RentalReturnCount", "column": "RentalReturnCount"},
+        {"property": "OrderMinammBalance", "column": "OrderMinammBalance"},
+        {"property": "OrderCount", "column": "OrderCount"},
+        {"property": "DecayedCount", "column": "DecayedCount"},
+        {"property": "DecayedReturnCount", "column": "DecayedReturnCount"},
+        {"property": "ProductionCount", "column": "ProductionCount"},
+        {"property": "ProductionCancelCount", "column": "ProductionCancelCount"},
+        {"property": "ProductionReturnCount", "column": "ProductionReturnCount"},
+        {"property": "PurchaseOrderCount", "column": "PurchaseOrderCount"},
+        {"property": "SalesOrderCount", "column": "SalesOrderCount"},
+        {"property": "PackingandUnPackingCount", "column": "PackingAndUnPackingCount"},
+        {"property": "StartPeriodBalanceReturn", "column": "StartPeriodBalanceReturn"},
+        {"property": "CostPrice", "column": "CostPrice"},
+        {"property": "LastPurchasePrice", "column": "LastPurchasePrice"},
+        {"property": "Qty", "column": "Qty"},
+        {"property": "MaxPurchasePrice", "column": "MaxPurchasePrice"},
+        {"property": "MinPurchasePrice", "column": "MinPurchasePrice"},
+        {"property": "LastPurchaseDate", "column": "LastPurchaseDate"}
+      ]
+    },
+    {
+      "model": "AccountModel",
+      "sourceFile": "DAL/AccountModel.vb",
+      "table": "tblAccount",
+      "fields": [
+        {"property": "ID", "column": "ID"},
+        {"property": "accountTypeID", "column": "AccountTypeID"},
+        {"property": "Namear", "column": "NameAr"},
+        {"property": "NameEn", "column": "NameEn"},
+        {"property": "OpeningBalance", "column": "OpeningBalance"},
+        {"property": "CurrentBalance", "column": "CurrentBalance"},
+        {"property": "acountNote", "column": "AcountNote"},
+        {"property": "BranchID", "column": "BranchID"},
+        {"property": "NationalityID", "column": "NationalityID"},
+        {"property": "MoneyaccountTypeID", "column": "MoneyAccountTypeID"},
+        {"property": "StreetNameAr", "column": "StreetNameAr"},
+        {"property": "StreetNameEn", "column": "StreetNameEn"},
+        {"property": "CityAr", "column": "CityAr"},
+        {"property": "CityEn", "column": "CityEn"},
+        {"property": "CountryAlpha2Code", "column": "CountryAlpha2Code"},
+        {"property": "BuildingNumber", "column": "BuildingNumber"},
+        {"property": "DistrictAr", "column": "DistrictAr"},
+        {"property": "DistrictEn", "column": "DistrictEn"},
+        {"property": "PostalCode", "column": "PostalCode"},
+        {"property": "PostalAdditionalNo", "column": "PostalAdditionalNo"}
+      ]
+    },
+    {
+      "model": "tblInvoiceModel",
+      "sourceFile": "DAL/tblInvoiceModel.vb",
+      "table": "tblInvoice",
+      "fields": [
+        {"property": "ID", "column": "ID"},
+        {"property": "CodeID", "column": "CodeID"},
+        {"property": "PCID", "column": "PCID"},
+        {"property": "InvoiceTypeID", "column": "InvoiceTypeID"},
+        {"property": "CreditorID", "column": "CreditorID"},
+        {"property": "DebtorID", "column": "DebtorID"},
+        {"property": "InvoiceNo", "column": "InvoiceNo"},
+        {"property": "InvoiceDate", "column": "InvoiceDate"},
+        {"property": "Amount", "column": "Amount"},
+        {"property": "MoneyTransactionID", "column": "MoneyTransactionID"}
+      ]
+    },
+    {
+      "model": "tblInvoiceItemModel",
+      "sourceFile": "DAL/tblInvoiceItemModel.vb",
+      "table": "tblInvoiceItem",
+      "fields": [
+        {"property": "InvoiceID", "column": "InvoiceID"},
+        {"property": "ID", "column": "ID"},
+        {"property": "ItemID", "column": "ItemID"},
+        {"property": "Price", "column": "Price"},
+        {"property": "Qty", "column": "Qty"},
+        {"property": "PlateQty", "column": "PlateQty"},
+        {"property": "Discount", "column": "Discount"},
+        {"property": "DiscountPercent", "column": "DiscountPercent"},
+        {"property": "UnitCost", "column": "UnitCost"},
+        {"property": "ExpireDate", "column": "ExpireDate"},
+        {"property": "VAT", "column": "VAT"}
+      ]
+    },
+    {
+      "model": "tblMoneyTransactionModel",
+      "sourceFile": "DAL/tblMoneyTransactionModel.vb",
+      "table": "tblMoneyTransaction",
+      "fields": [
+        {"property": "ID", "column": "ID"},
+        {"property": "CodeID", "column": "CodeID"},
+        {"property": "PCID", "column": "PCID"},
+        {"property": "TransactionDate", "column": "TransactionDate"}
+      ]
+    }
+  ]
+}

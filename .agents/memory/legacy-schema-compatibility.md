@@ -7,4 +7,4 @@ Preserve every legacy-facing name and database identifier exactly, and preserve 
 
 **Why:** The user requires existing Access data and names to carry into the replacement unchanged so older-device records continue working smoothly.
 
-**How to apply:** During schema reconstruction, SQL dialect conversion, data import, UI porting, and offline/online sync, verify against the legacy source and flag ambiguity instead of silently renaming or transforming data.
+**How to apply:** During schema reconstruction, SQL dialect conversion, data import, UI porting, and offline/online sync, verify against the legacy source and flag ambiguity instead of silently renaming or transforming data. Resolve `ItemTypeID`, `UseTypeID`, `VaTCategoriesID`, `ItemSizeID`, and `ColorID` through imported legacy lookup rows; UI labels are not safe substitutes for their stored IDs.

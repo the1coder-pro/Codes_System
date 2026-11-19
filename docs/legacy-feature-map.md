@@ -73,8 +73,43 @@ SMS history, backups, reporting configuration, and ZATCA invoice data.
 
 `migration/legacy_schema_manifest.json` is the generated exact-name inventory
 of the supplied table, column, key, and index declarations. Its column names
-are parsed candidates from the export and must be reconciled with Access
-metadata and the matching VB.NET models before data conversion.
+are parsed candidates from the export. The core item, account, invoice, and
+transaction fields listed below have additionally been reconciled against
+their matching VB.NET DAL models. The remaining schema still needs equivalent
+model/Access metadata reconciliation before its fields are used for conversion.
+
+The matching DAL models in the private `CodesSystem` source confirm these
+core relationships:
+
+| Legacy model | Exact database table | Confirmed fields |
+| --- | --- | --- |
+| `ItemGroupModel` | `tblItemGroup` | `ID`, `NameAr`, `NameEn`, `ShortName`, `VAT`, `NotUsed`, `UseTypeID`, `ItemTypeID`, `FilePath`, `ItemNote`, `VaTCategoriesID` |
+| `ItemModel` | `tblItem` | `ID`, `Price`, `MinimumPrice`, `WholesalePrice`, `quickitem`, `ItemGroupID`, `WithVatPrice` |
+| `ItemOtherDataModel` | `tblItemOtherData` | `ItemID`, `ColorID`, `BarcodeNo`, `ItemPlaceID`, `ItemSizeID`, `UnitCount` |
+| `ItemBalanceModel` | `tblItemBalance` | `ItemID` plus the legacy balance, movement, and price fields |
+| `AccountModel` | `tblAccount` | Account identifiers, names, balances, branch/type, notes, and address fields |
+| `tblInvoiceModel` | `tblInvoice` | Invoice identifiers, type, account references, dates, totals, payment transaction, and status fields |
+| `tblInvoiceItemModel` | `tblInvoiceItem` | `InvoiceID`, `ID`, `ItemID`, `Price`, `Qty`, discounts, cost, tax, and expiry |
+| `tblMoneyTransactionModel` | `tblMoneyTransaction` | `ID`, `CodeID`, `PCID`, `TransactionDate` |
+
+The selected field-level mappings are kept in
+`artifacts/accounting/flutter_app/migration/legacy_model_field_map.json`.
+Some VB.NET property spellings/capitalization differ from Access column
+spellings (for example, `accountModel.acountNote` versus `tblAccount.AcountNote`).
+SQL must use the exact database identifier from the schema manifest; do not
+rename either legacy identifier to make the two source spellings look alike.
+
+This confirms the item hierarchy: `tblItemGroup.ID` identifies the displayed
+group, each `tblItem.ID` identifies a billable item/unit and references that
+group through `ItemGroupID`, and `tblItemOtherData.ItemID` stores its barcode,
+size, color, place, and unit count. Before connecting the Flutter inventory
+screen to these tables, load the existing `tblItemType`, `tblItemSize`,
+`tblColor`, and `tblVaTCategories` lookup records and map by their stored IDs.
+The current screen's Arabic labels are not a safe substitute for those IDs.
+The current Flutter `Item` also keeps separate `id` and `group` values, while
+the legacy group record has a single `ID`; its `imageBase64` value is not the
+same representation as legacy `FilePath`. These differences need an explicit
+model/UI mapping before CRUD can be switched to the legacy tables.
 
 The supplied CSV archive contains matching headers for all 357 tables and
 1,544,263 rows. A temporary SQLite import succeeds when every empty field is
@@ -93,9 +128,11 @@ SQL Server date.
 The existing Flutter foundation contains the main accounting shell, login and
 role permissions, inventory and unit rows, account records, the eight invoice
 types, invoice history/drafts, barcode printing, printer and invoice layout
-settings, local printer companion, and local backup/restore. Its current
-business data is stored in `shared_preferences`; it does not yet use the
-legacy relational schema or synchronize online.
+settings, local printer companion, and local backup/restore. Its local storage
+is now SQLite-backed, but existing business screens still store app-shaped JSON
+snapshots in the separate `app_local_settings` table. The verified legacy
+relational tables have not yet been connected to those screens, and online
+synchronization is not implemented.
 
 The screens now expose their original form identifiers as compatibility names:
 `MainForm`, `ItemsForm`, `accountsForm`, `InvoiceTypeSelectForm`, `InvoiceForm`,
