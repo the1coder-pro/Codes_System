@@ -82,7 +82,7 @@
       ]
     },
     {
-      "model": "AccountModel",
+      "model": "accountModel",
       "sourceFile": "DAL/AccountModel.vb",
       "table": "tblAccount",
       "fields": [

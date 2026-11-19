@@ -1,4 +1,5 @@
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -41,13 +42,42 @@ class LegacyModelFieldMapTests(unittest.TestCase):
         account = next(
             mapping
             for mapping in field_map["mappings"]
-            if mapping["model"] == "AccountModel"
+            if mapping["model"] == "accountModel"
         )
         fields = {
             field["property"]: field["column"] for field in account["fields"]
         }
         self.assertEqual(fields["acountNote"], "AcountNote")
         self.assertEqual(fields["MoneyaccountTypeID"], "MoneyAccountTypeID")
+
+    def test_flutter_model_definitions_match_manifest_identifiers_exactly(self):
+        manifest = json.loads(
+            (MIGRATION_DIR / "legacy_schema_manifest.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        schema_tables = {table["name"]: table for table in manifest["tables"]}
+        model_source = (
+            ROOT / "artifacts/accounting/flutter_app/lib/dal/legacy_models.dart"
+        ).read_text(encoding="utf-8")
+        definitions = re.findall(
+            r"tableName:\s*'([^']+)',\s*primaryKey:\s*\[(.*?)\],\s*"
+            r"columns:\s*\[(.*?)\]",
+            model_source,
+            flags=re.DOTALL,
+        )
+
+        self.assertEqual(len(definitions), 8)
+        for table_name, primary_key_source, columns_source in definitions:
+            with self.subTest(table=table_name):
+                table = schema_tables[table_name]
+                primary_key = re.findall(r"'([^']+)'", primary_key_source)
+                columns = re.findall(r"'([^']+)'", columns_source)
+                self.assertEqual(primary_key, table["primary_key"])
+                self.assertEqual(
+                    columns,
+                    [column["name"] for column in table["columns"]],
+                )
 
     def test_item_balance_identifier_case_is_preserved(self):
         field_map = json.loads(

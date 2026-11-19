@@ -87,7 +87,7 @@ core relationships:
 | `ItemModel` | `tblItem` | `ID`, `Price`, `MinimumPrice`, `WholesalePrice`, `quickitem`, `ItemGroupID`, `WithVatPrice` |
 | `ItemOtherDataModel` | `tblItemOtherData` | `ItemID`, `ColorID`, `BarcodeNo`, `ItemPlaceID`, `ItemSizeID`, `UnitCount` |
 | `ItemBalanceModel` | `tblItemBalance` | `ItemID` plus the legacy balance, movement, and price fields |
-| `AccountModel` | `tblAccount` | Account identifiers, names, balances, branch/type, notes, and address fields |
+| `accountModel` | `tblAccount` | Account identifiers, names, balances, branch/type, notes, and address fields |
 | `tblInvoiceModel` | `tblInvoice` | Invoice identifiers, type, account references, dates, totals, payment transaction, and status fields |
 | `tblInvoiceItemModel` | `tblInvoiceItem` | `InvoiceID`, `ID`, `ItemID`, `Price`, `Qty`, discounts, cost, tax, and expiry |
 | `tblMoneyTransactionModel` | `tblMoneyTransaction` | `ID`, `CodeID`, `PCID`, `TransactionDate` |
@@ -133,6 +133,12 @@ is now SQLite-backed, but existing business screens still store app-shaped JSON
 snapshots in the separate `app_local_settings` table. The verified legacy
 relational tables have not yet been connected to those screens, and online
 synchronization is not implemented.
+
+The Flutter DAL now has shared legacy model definitions and repository
+operations for the core item, account, invoice, and money-transaction tables,
+with SQLite and Supabase data-source adapters. SQL Server was selected for the
+complete online legacy schema to preserve long index names; its API adapter and
+server connection remain future work.
 
 The screens now expose their original form identifiers as compatibility names:
 `MainForm`, `ItemsForm`, `accountsForm`, `InvoiceTypeSelectForm`, `InvoiceForm`,

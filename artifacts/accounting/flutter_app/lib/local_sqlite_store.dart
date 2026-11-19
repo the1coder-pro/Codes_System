@@ -4,6 +4,9 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'dal/legacy_data_source.dart';
+import 'dal/sqlite_legacy_data_source.dart';
+
 abstract interface class LocalSettingsStore {
   Future<void> initialize();
   Future<Object?> get(String key);
@@ -69,6 +72,11 @@ class SqliteSettingsStore implements LocalSettingsStore {
 
   final _LocalSettingsDatabase _database;
   Future<void>? _initialization;
+
+  /// Uses the same SQLite connection as local settings once legacy tables are
+  /// installed or imported into this database.
+  late final LegacyDataSource legacyDataSource =
+      SqliteLegacyDataSource(_database);
 
   static const _migrationName = 'shared_preferences_v1';
   static const _legacyKeys = {
