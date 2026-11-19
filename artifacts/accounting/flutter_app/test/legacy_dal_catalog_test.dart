@@ -63,4 +63,37 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  test('every source model preserves raw Access values without coercion', () {
+    const sampleValues = <Object?>[
+      null,
+      '',
+      '001',
+      '31/00/2020',
+      0,
+      0.0,
+      false,
+      true,
+    ];
+
+    for (final definition in legacySourceModelCatalog) {
+      final values = <String, Object?>{
+        for (var index = 0; index < definition.properties.length; index++)
+          definition.properties[index].name:
+              sampleValues[index % sampleValues.length],
+      };
+      final model = _RawSourceModel(definition, values);
+
+      expect(model.toMap(), values, reason: definition.className);
+      expect(
+        model.modelMetadata,
+        same(definition),
+        reason: definition.className,
+      );
+    }
+  });
+}
+
+class _RawSourceModel extends LegacySourceModel {
+  _RawSourceModel(super.modelMetadata, super.values);
 }
