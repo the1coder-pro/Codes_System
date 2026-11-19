@@ -1,11 +1,18 @@
 # Flutter legacy DAL
 
 The Flutter DAL keeps one legacy model and repository contract while swapping
-the database adapter:
+the database adapter. Each table model has its own source file:
 
-- `lib/dal/legacy_models.dart` contains value-preserving models for
-  `tblItemGroup`, `tblItem`, `tblItemOtherData`, `tblItemBalance`, `tblAccount`,
-  `tblInvoice`, `tblInvoiceItem`, and `tblMoneyTransaction`.
+- `lib/dal/legacy_model.dart` defines the shared model base and table metadata.
+- `lib/dal/models/` contains one file per model: `item_group_model.dart`,
+  `item_model.dart`, `item_other_data_model.dart`, `item_balance_model.dart`,
+  `account_model.dart`, `invoice_model.dart`, `invoice_item_model.dart`, and
+  `money_transaction_model.dart`.
+- `lib/dal/legacy_models.dart` is a small export barrel, so existing callers
+  can continue to import all models from one stable path.
+- The table mappings cover `tblItemGroup`, `tblItem`, `tblItemOtherData`,
+  `tblItemBalance`, `tblAccount`, `tblInvoice`, `tblInvoiceItem`, and
+  `tblMoneyTransaction`.
 - `LegacyRepository<T>` in `lib/dal/legacy_data_source.dart` offers the same
   list, primary-key lookup, upsert, and delete operations for either backend.
 - `SqliteLegacyDataSource` uses a Drift connection.
@@ -47,5 +54,5 @@ Level Security and use only a public/anon key plus the signed-in user's access
 token.
 
 This layer unifies CRUD and serialization; it does not yet implement offline
-queueing, conflict resolution, or synchronization between SQLite and
-Supabase.
+queueing, conflict resolution, or synchronization between the local database
+and the future online SQL Server service.

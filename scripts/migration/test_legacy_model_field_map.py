@@ -57,9 +57,11 @@ class LegacyModelFieldMapTests(unittest.TestCase):
             )
         )
         schema_tables = {table["name"]: table for table in manifest["tables"]}
-        model_source = (
-            ROOT / "artifacts/accounting/flutter_app/lib/dal/legacy_models.dart"
-        ).read_text(encoding="utf-8")
+        model_dir = ROOT / "artifacts/accounting/flutter_app/lib/dal/models"
+        model_source = "\n".join(
+            model_file.read_text(encoding="utf-8")
+            for model_file in sorted(model_dir.glob("*_model.dart"))
+        )
         definitions = re.findall(
             r"tableName:\s*'([^']+)',\s*primaryKey:\s*\[(.*?)\],\s*"
             r"columns:\s*\[(.*?)\]",
